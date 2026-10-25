@@ -133,7 +133,7 @@
     return {
       user: { id: 'me', name: 'You' },
       pet: null,                      // active pet, set on hatch
-      xp: 0, level: 1, streak: 4, coins: 1200,
+      xp: 0, level: 1, streak: 4, coins: 0,            // starter goods come in the Welcome Package (inbox gift)
       mood: 70, hunger: 55,
       typeCounts: { food: 0, social: 0, outdoor: 0, creative: 0 },
       completed: [],                  // [{questId, type, title, place, xp, at, proofType}]
@@ -142,7 +142,7 @@
       zoo: [],                        // other pets (not active)
       activeCurse: null,              // {id,name,icon,from,...}
       blessings: [],                  // active blessing ids waiting for next quest
-      inventory: { curses: { pirate: 1, rhyme: 1, hop: 1 }, blessings: { double: 1 }, keys: 1 },
+      inventory: { curses: {}, blessings: {}, keys: 0 },
       inbox: [],                      // [{id, kind:'curse'|'bless'|'challenge', from, ...}]
       sentCurses: {},                 // friendId -> curseId
       duels: [],                      // challenges you sent [{id, friendId, petName, species, engine, difficulty, triesLeft, status, at}]
@@ -190,6 +190,12 @@
     shakespeare: t => 'Hark! ' + t.replace(/\byou are\b/gi, 'thou art').replace(/\byour\b/gi, 'thy').replace(/\byou\b/gi, 'thee')
       .replace(/\bis\b/g, 'doth be').replace(/\bthe\b/g, 'ye olde') + ' Forsooth.',
     backwards: t => t.split(' ').reverse().join(' '),
+    rhyme: t => t + ' Tell it in rhyme, line after line, or the proof will not count this time.',
+    whisper: t => t.toLowerCase().replace(/[!]+/g, '.') + ' (psst... whisper it, we are in a library.)',
+    opera: t => t.replace(/\.\s/g, '... ') + ' Sing your proof like an aria. Vibrato mandatory.',
+    mime: t => t + ' Photo only. Strike a silly pose. No words allowed.',
+    hop: t => t + ' Hop the last ten steps. Yes, hop.',
+    tiny: t => t + ' (Payout: half the coins. Someone is petty.)',
   };
   function cursedText(t) { const f = S.activeCurse && TRANSFORMS[S.activeCurse.id]; return f ? f(t) : t; }
 
@@ -291,7 +297,9 @@
   }
 
   function newEgg(rarity, source, shiny = false) {
-    const e = { id: uid(), rarity, progress: 0, needed: EGG_NEEDS + (rarity === 'legendary' ? 1 : 0), shiny, source };
+    // the nest only has so much warmth: every two eggs already incubating slow a new one down by one step
+    const crowd = Math.floor(S.eggs.length / 2);
+    const e = { id: uid(), rarity, progress: 0, needed: EGG_NEEDS + (rarity === 'legendary' ? 1 : 0) + crowd, shiny, source };
     S.eggs.push(e); return e;
   }
   function allPets() { return (S.pet ? [S.pet] : []).concat(S.zoo); }
@@ -327,8 +335,10 @@
       S.pet = { id: uid(), name: name || rnd(PET_NAMES), species: 'axolotl', rarity: 'common', bornAt: Date.now() };
       makeQuests();
       // first-run social hooks: a friend has already cursed you and challenged you
+      S.inbox.push({ id: uid(), kind: 'gift', from: 'HackTX', title: 'Welcome package', text: 'A care package for your first day. Open it!',
+        items: [{ kind: 'coins', amount: 1200 }, { kind: 'curse', id: 'pirate', qty: 1 }, { kind: 'curse', id: 'rhyme', qty: 1 }, { kind: 'curse', id: 'hop', qty: 1 }, { kind: 'blessing', id: 'double', qty: 1 }, { kind: 'key', qty: 1 }] });
       S.inbox.push({ id: uid(), kind: 'curse', from: 'Leo', curse: CURSES[0] });
-      S.inbox.push({ id: uid(), kind: 'challenge', from: 'Leo', pet: clone(FRIENDS_SEED[0].pet), engine: 'timing', difficulty: 3, triesLeft: 3, wager: 40 });
+      S.inbox.push({ id: uid(), kind: 'challenge', from: 'Leo', pet: clone(FRIENDS_SEED[0].pet), engine: Animals.A[FRIENDS_SEED[0].pet.species].minigame, difficulty: 4, triesLeft: 3, wager: 60 });
       save();
       return S.pet;
     },
@@ -441,10 +451,11 @@
 
       // evolution: the starter axolotl becomes an animal by your dominant quest type, one tier sharper
       let evolution = null;
-      if (S.pet.species === 'axolotl' && S.completed.length >= EVOLVE_AT) {
-        const to = Animals.EVOLVE_TO[dominantType()];
-        evolution = { from: 'axolotl', to, toName: Animals.A[to].name, fromRarity: S.pet.rarity, toRarity: 'uncommon' };
-        S.pet.species = to; S.pet.rarity = 'uncommon';
+      // evolution: the SAME pet grows into its stage-2 form (bigger, sharper, crowned), never another species
+      if ((S.pet.stage || 1) < 2 && S.completed.length >= EVOLVE_AT) {
+        const fromRarity = Animals.normRarity(S.pet.rarity), toRarity = RAR[Math.min(4, tierOf(fromRarity) + 1)];
+        evolution = { species: S.pet.species, from: S.pet.species, to: S.pet.species, toName: `${Animals.A[S.pet.species].name} · Stage 2`, fromRarity, toRarity, fromStage: 1, toStage: 2 };
+        S.pet.stage = 2; S.pet.rarity = toRarity;
       }
 
       // raid damage for every raid you are in
@@ -611,13 +622,14 @@
       if (S.games.day !== today) S.games = { day: today, rewarded: 0 };
       const p = allPets().find(x => x.id === petId);
       if (!win) { save(); return { ok: true, reward: null }; }
-      if (S.games.rewarded >= 5) return { ok: true, reward: null, message: 'Daily minigame rewards used up. Still bragging rights.' };
-      S.games.rewarded++;
-      const coins = 15 + tierOf(p ? p.rarity : 'common') * 15;
-      S.coins += coins; S.mood = Math.min(100, S.mood + 8);
+      // every win warms the nest; only the coin payout is capped per day
       S.eggs.forEach(e => { e.progress = Math.min(e.needed, e.progress + 1); });
+      S.mood = Math.min(100, S.mood + 8);
+      const readyEggs = S.eggs.filter(e => e.progress >= e.needed).length;
+      let coins = 0;
+      if (S.games.rewarded < 5) { S.games.rewarded++; coins = 15 + tierOf(p ? p.rarity : 'common') * 15; S.coins += coins; }
       save();
-      return { ok: true, reward: { coins, warmed: S.eggs.length }, left: 5 - S.games.rewarded };
+      return { ok: true, reward: { coins, warmed: S.eggs.length, readyEggs }, left: Math.max(0, 5 - S.games.rewarded) };
     },
 
     /** POST /friends/:id/challenge { petId } — friend gets 3 tries at your pet's minigame */
@@ -631,7 +643,7 @@
       const a = Animals.A[p.species];
       const d = { id: uid(), friendId, friendName: f.name, petName: p.name, species: p.species, rarity: p.rarity, engine: a.minigame,
         engineName: (global.Minigames && Minigames.gameFor ? Minigames.gameFor(p.species).name : a.minigame),
-        difficulty: tierOf(p.rarity) + 1, triesLeft: 3, status: 'pending', at: Date.now() };
+        difficulty: Math.min(5, tierOf(p.rarity) + 2), triesLeft: 3, status: 'pending', at: Date.now() };   // duels are one notch harder than practice
       S.duels.unshift(d); S.duels = S.duels.slice(0, 8); save();
       return { ok: true, duel: d, message: `Sent! ${f.name} has 3 tries to beat ${p.name}'s ${d.engineName}. If they fail all 3, you win coins.` };
     },
@@ -653,7 +665,7 @@
       await delay(100);
       const f = rnd(S.friends.filter(x => !x.vacation));
       if (onVacation()) return { ok: false, blocked: true, message: `${f.name} tried to challenge you, but you are on vacation. Request bounced.` };
-      const diff = tierOf(f.pet.rarity) + 1;
+      const diff = Math.min(5, tierOf(f.pet.rarity) + 2);
       S.inbox.push({ id: uid(), kind: 'challenge', from: f.name, pet: clone(f.pet), engine: Animals.A[f.pet.species].minigame, difficulty: diff, triesLeft: 3, wager: 20 + diff * 15 });
       save(); return { ok: true, message: `${f.name} challenged you to ${f.pet.name}'s minigame.` };
     },
@@ -676,6 +688,15 @@
       const m = S.inbox[i];
       if (m.kind === 'challenge') return m;          // challenges stay until played (attemptChallenge)
       S.inbox.splice(i, 1);
+      if (m.kind === 'gift') {
+        (m.items || []).forEach(it => {
+          if (it.kind === 'coins') S.coins += it.amount;
+          if (it.kind === 'curse') S.inventory.curses[it.id] = (S.inventory.curses[it.id] || 0) + (it.qty || 1);
+          if (it.kind === 'blessing') S.inventory.blessings[it.id] = (S.inventory.blessings[it.id] || 0) + (it.qty || 1);
+          if (it.kind === 'key') S.inventory.keys += it.qty || 1;
+          if (it.kind === 'egg') newEgg(it.rarity || 'common', 'gift');
+        });
+      }
       if (m.kind === 'curse') {
         if (S.shield) { S.shield = false; save(); return Object.assign({ shielded: true }, m); }
         S.activeCurse = Object.assign({ from: m.from }, m.curse);

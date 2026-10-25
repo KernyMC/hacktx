@@ -240,7 +240,8 @@
   // falls back to the procedural animal. Set Sprites.USE_SHEETS = false to force procedural everywhere.
   const TIER_CACHE = new Map();
   function drawSheetAtTier(ctx, sheet, pet, x, y, px, opts) {
-    const N = global.Animals.RES[global.Animals.normRarity(pet.rarity)];
+    // stage-2 sheets ("<species>_2") are drawn at their own native size whatever the pet's tier
+    const N = /_2$/.test(pet.species) ? sheet.meta.frameW : global.Animals.RES[global.Animals.normRarity(pet.rarity)];
     const { image, meta } = sheet;
     const anim = meta.anims[opts.anim] || meta.anims.idle;
     const frame = Math.floor((opts.t || 0) / (1000 / (anim.fps || 6))) % anim.frames;

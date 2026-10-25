@@ -464,6 +464,7 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
       <button class="iconbtn" id="btnSettings" aria-label="Settings"><i data-icon="gear" data-size="20"></i></button>
     </div>
   </header>
+  <div class="cursebar" id="cursebar" hidden></div>
 
   <main id="main">
   <!-- pet stage (scrolls with the content; top bar + tab bar stay fixed) -->
@@ -502,9 +503,8 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
       <div class="panel"><h2>Nest</h2><div class="zoo-grid" id="eggGrid"></div><div class="empty" id="eggEmpty">No eggs yet. Complete quests to find some.</div></div>
       <div class="panel"><div class="row"><h2 class="grow">Collection</h2><span class="lbl" id="dexCount">0 / 30</span></div>
         <p class="sub" style="margin:0 0 8px">Tap a Familiar to make it active, play its minigame or challenge a friend. Rarer animals are drawn at higher resolution.</p>
-        <div class="filters" id="clsFilters"></div>
         <div class="zoo-grid" id="zooGrid"></div><div class="empty" id="zooEmpty" hidden>Hatch an egg to meet your second Familiar.</div></div>
-      <div class="panel"><h2>Familiar Dex</h2><p class="sub" style="margin:0 0 8px">Every animal, by class. Silhouettes are still out there.</p><div class="zoo-grid" id="dexGrid"></div></div>
+      <div class="panel"><h2>Familiar Dex</h2><p class="sub" style="margin:0 0 8px">Every animal, rarest last. Silhouettes are still out there.</p><div class="zoo-grid" id="dexGrid"></div></div>
     </section>
 
     <!-- SHOP -->

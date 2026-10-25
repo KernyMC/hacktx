@@ -177,6 +177,12 @@
       if (t > modeUntil) mode = 'idle';
       let anim = mode;
       if (anim === 'idle' && (me.mood < 35 || away)) anim = 'sad';
+      const curse = me.activeCurse && me.activeCurse.id;
+      if (curse === 'hop' && anim === 'idle') { anim = 'happy'; mode = 'happy'; modeUntil = t + 100; }        // Hop Hex: cannot stop hopping
+      if (curse === 'opera' && Math.floor(t / 900) !== Math.floor((t - 16) / 900)) {                            // Opera Night: notes keep floating up
+        const n = document.createElement('span'); n.className = 'fx'; n.innerHTML = ic('note', 18, '#2b2140');
+        n.style.left = (120 + Math.random() * 160) + 'px'; n.style.top = '90px'; $('stage').appendChild(n); setTimeout(() => n.remove(), 2200);
+      }
 
       let dy = Math.sin(t / 380) * 3, sx = 1, sy = 1;
       if (anim === 'happy') { const p = (t % 420) / 420; dy = -Math.abs(Math.sin(p * Math.PI)) * 26; sx = 1.06; sy = 0.94 + Math.abs(Math.sin(p * Math.PI)) * 0.12; }
@@ -198,7 +204,7 @@
   // tap the pet
   $('stage').addEventListener('pointerdown', e => {
     if (!me || !me.pet) return;
-    Audio8.play('squeak'); stage.set('happy', 700);
+    Audio8.cry(me.pet.species); stage.set('happy', 700);
     const r = $('stage').getBoundingClientRect();
     const h = document.createElement('span'); h.className = 'heart'; h.innerHTML = Math.random() < 0.7 ? ic('heart', 22, ['#ff6f9c', '#ffcf4d', '#6fe3b1'][Math.floor(Math.random() * 3)]) : ic('sparkle', 22, '#ffcf4d');
     h.style.left = (e.clientX - r.left - 10 + (Math.random() - .5) * 30) + 'px'; h.style.top = (e.clientY - r.top - 20) + 'px';
@@ -225,15 +231,21 @@
   // ------------------------------------------------------------------
   // Speech (ElevenLabs TTS via server, browser voice fallback)
   // ------------------------------------------------------------------
-  let speaking = null;
+  let speaking = null, speakFallbackWarned = false;
   async function speak(text, pet = me.pet, mood = 'neutral') {
     if (speaking) { speaking.pause(); speaking = null; }
     const blob = await API.say(text, animal(pet).voice, mood);
     if (blob) { speaking = new Audio(URL.createObjectURL(blob)); speaking.play().catch(() => {}); return true; }
     if ('speechSynthesis' in window) {
-      speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text);
-      const pitch = { cute: 1.6, hyper: 1.5, chill: 0.9, grumpy: 0.6, wise: 0.7, regal: 1.0, spooky: 0.5, cowboy: 0.8 }[animal(pet).voice] || 1.2;
-      u.pitch = pitch; u.rate = 1.05; speechSynthesis.speak(u); return true;
+      // browser fallback (ElevenLabs unreachable): pick the best English voice available and keep pitch natural
+      speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/\[[^\]]{1,24}\]\s*/g, ''));
+      const voices = speechSynthesis.getVoices();
+      const pref = ['Google US English', 'Samantha', 'Microsoft Aria', 'Microsoft Jenny', 'Microsoft Zira', 'Karen', 'Daniel'];
+      u.voice = voices.find(v => pref.some(n => v.name.includes(n))) || voices.find(v => /^en[-_]/.test(v.lang) && !/espeak/i.test(v.name)) || voices[0] || null;
+      const pitch = { cute: 1.25, hyper: 1.2, chill: 1.0, grumpy: 0.85, wise: 0.9, regal: 1.05, spooky: 0.8, cowboy: 0.9, dreamy: 1.1 }[animal(pet).voice] || 1.0;
+      u.pitch = pitch; u.rate = 1.0; speechSynthesis.speak(u);
+      if (!speakFallbackWarned) { speakFallbackWarned = true; toast('Using the browser voice: start the server (npm start) for the ElevenLabs voices.', 3600); }
+      return true;
     }
     return false;
   }
@@ -277,6 +289,10 @@
     $('hungerBar').style.width = me.hunger + '%';
     $('coins').textContent = me.coins;
     $('villageDot').hidden = !me.inboxCount;
+    // active curse: body attribute drives the CSS effects, the bar explains what is going on
+    document.body.dataset.curse = me.activeCurse ? me.activeCurse.id : '';
+    const cb = $('cursebar'); cb.hidden = !me.activeCurse;
+    if (me.activeCurse) cb.innerHTML = `${ic(me.activeCurse.icon, 18)} <span>CURSED: ${esc(me.activeCurse.name)} by ${esc(me.activeCurse.from)}</span> <small>${esc(me.activeCurse.desc)} Finish a quest to break it.</small>`;
     // vacation banner
     const v = me.vacation;
     $('vacBanner').hidden = !(v && v.active);
@@ -398,7 +414,7 @@
     const r = await API.chat(text, chatHistory.slice(-10, -1));
     th.remove(); $('chatSend').disabled = false;
     chatHistory.push({ role: 'pet', text: r.reply }); chatHistory = chatHistory.slice(-24);
-    chatBubble('pet', r.reply); Audio8.play('squeak');
+    chatBubble('pet', r.reply); Audio8.cry(me.pet.species);
     stage.set(r.mood === 'sad' ? 'sad' : 'happy', 1500);
     speak(r.reply, me.pet, r.mood === 'excited' ? 'excited' : r.mood === 'sad' ? 'sad' : r.mood === 'happy' ? 'happy' : 'neutral');
   }
@@ -418,11 +434,13 @@
       if (m.kind === 'curse') { icon = ic(m.curse.icon, 26); title = `${m.from} cursed you`; text = `${m.curse.name}: ${m.curse.desc}`; btn = 'Accept'; }
       else if (m.kind === 'bless') { icon = ic('sparkle', 26, '#c9922a'); title = `${m.from} blessed you`; text = m.blessing.desc; btn = 'Accept'; }
       else if (m.kind === 'challenge') { icon = ic('star', 26, '#2b2140'); title = `${m.from} challenged you`; text = `${m.pet.name}'s ${Minigames.gameFor(m.pet.species).name} · ${m.triesLeft} tries · win ${m.wager} coins`; btn = 'Play'; }
+      else if (m.kind === 'gift') { icon = ic('egg', 26, '#c9922a', '#ffcf4d'); title = m.title || 'A gift'; text = m.text || ''; btn = 'Open'; }
       else { icon = ic('chat', 26); title = m.from; text = m.text; btn = 'OK'; }
       d.innerHTML = `<span class="bigicon">${icon}</span><div class="grow"><b></b><span></span></div><button class="btn sm ${m.kind === 'challenge' ? 'pink' : 'lilac'}">${btn}</button>`;
       d.querySelector('b').textContent = title; d.querySelector('span:not(.bigicon)').textContent = text;
       d.querySelector('button').onclick = async () => {
         if (m.kind === 'challenge') return playChallenge(m);
+        if (m.kind === 'gift') return openGift(m);
         Audio8.play(m.kind === 'curse' ? 'curse' : m.kind === 'bless' ? 'bless' : 'tap');
         const r = await API.acceptInbox(m.id); await refreshMe(); renderQuests();
         if (m.kind === 'curse') say(r && r.shielded ? `Hex Shield! ${m.from}'s curse bounced off.` : `${me.pet.name} has been cursed. Ugh.`);
@@ -430,6 +448,24 @@
       };
       box.appendChild(d);
     });
+  }
+
+  // welcome package / gifts: a box you open, items revealed one by one
+  async function openGift(m) {
+    Audio8.play('open');
+    const label = it => it.kind === 'coins' ? `${it.amount} coins` : it.kind === 'key' ? `${it.qty || 1} raid key` : it.kind === 'egg' ? `${it.rarity || 'common'} egg`
+      : `${(it.kind === 'curse' ? API.CURSES : API.BLESSINGS).find(x => x.id === it.id)?.name || it.id} ×${it.qty || 1}`;
+    const iconOf = it => it.kind === 'coins' ? ic('coin', 28, '#c9922a', '#ffcf4d') : it.kind === 'key' ? ic('pin', 28, '#2b2140', '#ffcf4d') : it.kind === 'egg' ? ic('egg', 28, '#5ab0ff')
+      : ic((it.kind === 'curse' ? API.CURSES : API.BLESSINGS).find(x => x.id === it.id)?.icon || 'star', 28);
+    const items = m.items || [];
+    const html = `<div class="big">${esc(m.title || 'A gift')}</div><p class="sub">${esc(m.from)} sent you this.</p><div class="caps" id="giftCaps" style="grid-template-columns:repeat(3,1fr)"></div>`;
+    const p = showInfo(html, [['Take it all', 'pink', null]], el => {
+      const caps = el.querySelector('#giftCaps');
+      items.forEach((it, i) => { const d = document.createElement('div'); d.className = 'cap common'; d.style.animationDelay = (i * 0.15) + 's'; d.innerHTML = `${iconOf(it)}<span class="lb">${esc(label(it))}</span>`; caps.appendChild(d); setTimeout(() => Audio8.play('xp'), i * 150); });
+    });
+    await p;
+    await API.acceptInbox(m.id); Audio8.play('reward'); confetti.burst(70, ['#ffcf4d', '#fff', '#ff9a3c']);
+    await refreshMe(); renderQuests();
   }
 
   // ------------------------------------------------------------------
@@ -526,7 +562,7 @@
     if (!t) {
       // offline demo: a believable transcript
       const q = activeQuest, place = q.place.name;
-      t = ({ food: `Okay I am at ${place} for the ${q.title.toLowerCase()} quest. I ordered the thing with no name and it was actually incredible.`,
+      t = ({ food: `Okay I am at ${place} for the ${q.title.toLowerCase()} quest. I ordered the thing with no name and it was actually incredible, I rate it a nine out of ten.`,
         social: `I am at ${place}. Did the ${q.title.toLowerCase()} quest: I talked to Priya, she is building a laundry-folding robot and loved it.`,
         outdoor: `Made it to ${place} for ${q.title.toLowerCase()}. It is beautiful out here, I took it all in and I am glad I walked.`,
         creative: `I am at ${place} doing ${q.title.toLowerCase()}. I picked one thing, it is mostly blue and I think it is about being tired.` })[q.type];
@@ -619,8 +655,8 @@
     if (res.evolution) steps.push(() => {
       flash(); Audio8.play('evolve'); stage.set('happy', 4000);
       const ev = res.evolution;
-      const from = Object.assign({}, me.pet, { species: ev.from, rarity: ev.fromRarity }), to = Object.assign({}, me.pet, { species: ev.to, rarity: ev.toRarity });
-      $('rwStep').innerHTML = `<div class="big">What?! ${esc(me.pet.name)} is evolving!</div><div class="evo"><canvas id="evoA" width="112" height="140"></canvas><span class="arrow">→</span><canvas id="evoB" width="112" height="140"></canvas></div><div class="big" style="font-size:12px">${esc(ev.toName)}</div><p class="sub">${esc(Animals.A[ev.to].flavor)}<br><b>Resolution upgrade: ${Animals.RES[ev.fromRarity]}px → ${Animals.RES[ev.toRarity]}px</b></p>`;
+      const from = Object.assign({}, me.pet, { species: ev.from, rarity: ev.fromRarity, stage: ev.fromStage || 1 }), to = Object.assign({}, me.pet, { species: ev.to, rarity: ev.toRarity, stage: ev.toStage || 2 });
+      $('rwStep').innerHTML = `<div class="big">What?! ${esc(me.pet.name)} is evolving!</div><div class="evo"><canvas id="evoA" width="112" height="140"></canvas><span class="arrow">→</span><canvas id="evoB" width="112" height="140"></canvas></div><div class="big" style="font-size:12px">${esc(ev.toName)}</div><p class="sub">Same ${esc(Animals.A[ev.to].name)}, all grown up.<br><b>Resolution upgrade: ${Animals.RES[ev.fromRarity]}px → ${Animals.RES[ev.toRarity]}px</b></p>`;
       Sprites.drawPet($('evoA').getContext('2d'), from, 0, 20, 7, { anim: 'sad' }); const cb = $('evoB').getContext('2d');
       let n = 0; const iv = setInterval(() => { cb.clearRect(0, 0, 112, 140); if (n++ % 2) Sprites.drawPet(cb, to, 0, 20, 7); else { cb.fillStyle = '#fff'; cb.fillRect(0, 0, 112, 140); } if (n > 9) { clearInterval(iv); const hv = setInterval(() => { if (!cb.canvas.isConnected) return clearInterval(hv); cb.clearRect(0, 0, 112, 140); Sprites.drawPet(cb, to, 0, 20, 7, { anim: 'happy', t: performance.now() }); }, 80); confetti.burst(140); } }, 120);
     });
@@ -639,7 +675,6 @@
   // ------------------------------------------------------------------
   // Nest / collection / dex
   // ------------------------------------------------------------------
-  let clsFilter = 'all';
   function petCard(p, opts = {}) {
     const d = document.createElement('div'); const r = Animals.normRarity(p.rarity || animal(p).rarity);
     d.className = `critter r-${r}` + (opts.locked ? ' locked' : '');
@@ -649,7 +684,7 @@
     const a = animal(p);
     d.insertAdjacentHTML('beforeend', `<div class="nm"></div><div class="sp"></div><span class="rar ${r}">${r}</span>${p.isNew ? '<span class="new">NEW</span>' : ''}${p.shiny ? '<span class="shiny">SHINY</span>' : ''}`);
     d.querySelector('.nm').textContent = opts.locked ? '???' : (p.name || a.name);
-    d.querySelector('.sp').textContent = opts.locked ? `${Animals.CLASSES[a.cls].name} · ${Animals.RES[r]}px` : `${a.name}${p.active ? ' · active' : ''}`;
+    d.querySelector('.sp').textContent = opts.locked ? `${Animals.RES[r]}px` : `${a.name}${(p.stage || 1) >= 2 ? ' · stage 2' : ''}${p.active ? ' · active' : ''}`;
     return d;
   }
   async function renderZoo() {
@@ -667,13 +702,8 @@
     });
     // owned
     const all = (z.active ? [Object.assign({}, z.active, { active: true })] : []).concat(z.pets);
-    const fl = $('clsFilters'); fl.innerHTML = '';
-    ['all'].concat(Object.keys(Animals.CLASSES)).forEach(k => {
-      const b = document.createElement('button'); b.textContent = k === 'all' ? 'All' : Animals.CLASSES[k].name; b.classList.toggle('on', clsFilter === k);
-      b.onclick = () => { clsFilter = k; Audio8.play('tap'); renderZoo(); }; fl.appendChild(b);
-    });
     const zg = $('zooGrid'); zg.innerHTML = '';
-    const shown = all.filter(p => clsFilter === 'all' || animal(p).cls === clsFilter)
+    const shown = all.slice()
       .sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0) || RAR.indexOf(Animals.normRarity(b.rarity)) - RAR.indexOf(Animals.normRarity(a.rarity)));
     shown.forEach(p => { const d = petCard(p); d.onclick = () => openPet(p); zg.appendChild(d); });
     $('zooEmpty').hidden = all.length > 1;
@@ -682,10 +712,10 @@
     const ids = Object.keys(Animals.A);
     $('dexCount').textContent = `${owned.size} / ${ids.length}`;
     const dg = $('dexGrid'); dg.innerHTML = '';
-    ids.filter(id => clsFilter === 'all' || Animals.A[id].cls === clsFilter)
+    ids.slice()
       .sort((a, b) => RAR.indexOf(Animals.A[a].rarity) - RAR.indexOf(Animals.A[b].rarity))
       .forEach(id => { const has = owned.has(id); const d = petCard({ species: id, rarity: Animals.A[id].rarity, name: Animals.A[id].name }, { locked: !has });
-        d.onclick = () => { Audio8.play('tap'); toast(has ? `${Animals.A[id].name}: ${Animals.A[id].flavor}` : `Unknown ${Animals.CLASSES[Animals.A[id].cls].name} Familiar. Hatches from ${Animals.A[id].rarity} eggs.`); };
+        d.onclick = () => { Audio8.play('tap'); toast(has ? `${Animals.A[id].name}: ${Animals.A[id].flavor}` : `Unknown Familiar. Hatches from ${Animals.A[id].rarity} eggs.`); };
         dg.appendChild(d); });
   }
 
@@ -704,7 +734,8 @@
         const hv = setInterval(() => { if (ov.hidden) return clearInterval(hv); c.clearRect(0, 0, 192, 240); Sprites.drawPet(c, pet, 0, 40, 12, { anim: 'happy', t: performance.now() }); }, 80);
         const a = animal(pet);
         $('eggHint').hidden = true; $('eggResult').hidden = false;
-        $('eggResultText').innerHTML = `<b>${esc(pet.name)}</b> the <b>${esc(a.name)}</b> joined your collection.${pet.isNew ? ' <b>New to your Dex!</b>' : ''}<br><span class="rar ${pet.rarity}">${pet.rarity}</span> <span class="rar common">${Animals.CLASSES[a.cls].name}</span> ${pet.shiny ? '<span class="rar legendary">shiny</span>' : ''}<br><span class="sub">${Animals.RES[pet.rarity]}px sprite · minigame: ${esc(Minigames.gameFor(a.id).name)}</span>`;
+        $('eggResultText').innerHTML = `<b>${esc(pet.name)}</b> the <b>${esc(a.name)}</b> joined your collection.${pet.isNew ? ' <b>New to your Dex!</b>' : ''}<br><span class="rar ${pet.rarity}">${pet.rarity}</span> ${pet.shiny ? '<span class="rar legendary">shiny</span>' : ''}<br><span class="sub">${Animals.RES[pet.rarity]}px sprite · minigame: ${esc(Minigames.gameFor(a.id).name)}</span>`;
+        Audio8.cry(pet.species);
       }
     };
     $('eggClose').onclick = () => { ov.hidden = true; renderZoo(); };
@@ -716,7 +747,7 @@
     Audio8.play('open');
     const a = animal(p), r = Animals.normRarity(p.rarity);
     $('petTitle').textContent = `${p.name} · ${a.name}`;
-    $('petFacts').innerHTML = `<span class="rar ${r}">${r}</span><span class="rar common">${Animals.CLASSES[a.cls].name}</span><span class="chip">${Animals.RES[r]}px</span><span class="chip">${ic('star', 12)} ${esc(Minigames.gameFor(a.id).name)}${a.minigame === 'rodeo' ? ' (hard)' : ''}</span>${p.shiny ? '<span class="rar legendary">shiny</span>' : ''}`;
+    $('petFacts').innerHTML = `<span class="rar ${r}">${r}</span>${(p.stage || 1) >= 2 ? '<span class="rar legendary">stage 2</span>' : ''}<span class="chip">${Animals.RES[r]}px</span><span class="chip">${ic('star', 12)} ${esc(Minigames.gameFor(a.id).name)}${a.minigame === 'rodeo' ? ' (hard)' : ''}</span>${p.shiny ? '<span class="rar legendary">shiny</span>' : ''}`;
     $('petFlavor').textContent = a.flavor;
     const c = $('petBig').getContext('2d');
     clearInterval(petAnim); petAnim = setInterval(() => { if ($('ovPet').hidden) return clearInterval(petAnim); c.clearRect(0, 0, 192, 192); Sprites.drawPet(c, p, 0, 0, 12, { t: performance.now(), anim: 'idle', blink: performance.now() % 3000 < 150 }); }, 80);
@@ -952,7 +983,7 @@
           pets.map(p => ({ pet: p, title: `${p.name} · ${animal(p).name}`, sub: `${Minigames.gameFor(p.species).name} · ${Animals.normRarity(p.rarity)}`, right: 'Send',
             onPick: async () => { const r = await API.sendChallenge(f.id, p.id); Audio8.play(r.ok ? 'accept' : 'error'); toast(r.message, 3600); renderVillage(); } })));
       };
-      d.querySelector('[data-act=visit]').onclick = () => { Audio8.play('squeak'); toast(`${f.pet.name} did a little dance for you. ${f.name} got a notification.`); };
+      d.querySelector('[data-act=visit]').onclick = () => { Audio8.cry(f.pet.species); toast(`${f.pet.name} did a little dance for you. ${f.name} got a notification.`); };
       list.appendChild(d);
     });
   }
@@ -1019,6 +1050,10 @@
     const root = document.createElement('div'); root.className = 'tut';
     root.innerHTML = `<div class="hole"></div><div class="tip"><canvas width="64" height="64"></canvas><div><div class="step"></div><p></p><div class="row"><button class="btn sm ghost" data-a="skip">Skip</button><button class="btn sm pink" data-a="next">Next</button></div></div></div>`;
     document.body.appendChild(root);
+    // the tutorial drives the scrolling itself: lock the page and swallow wheel/touch scrolls
+    document.body.classList.add('tut-on');
+    const block = e => { e.preventDefault(); };
+    root.addEventListener('wheel', block, { passive: false }); root.addEventListener('touchmove', block, { passive: false });
     const hole = root.querySelector('.hole'), tip = root.querySelector('.tip'), pc = root.querySelector('canvas').getContext('2d');
     const anim = setInterval(() => { pc.clearRect(0, 0, 64, 64); Sprites.drawPet(pc, me.pet, 0, 0, 4, { t: performance.now(), anim: 'happy', fx: false }); }, 90);
     return new Promise(resolve => {
@@ -1040,7 +1075,7 @@
         tip.style.animation = 'none'; void tip.offsetWidth; tip.style.animation = '';
         Audio8.play('tap');
       }
-      async function end() { clearInterval(anim); root.remove(); await API.setTutorialDone(true); await showTab('home'); resolve(); }
+      async function end() { clearInterval(anim); root.remove(); document.body.classList.remove('tut-on'); await API.setTutorialDone(true); await showTab('home'); resolve(); }
       root.querySelector('[data-a=next]').onclick = () => { i++; if (i >= steps.length) { Audio8.play('reward'); confetti.burst(80); toast('Tutorial done. Your free Lucky Capsule pull is waiting in the Shop!', 3600); end(); } else show(); };
       root.querySelector('[data-a=skip]').onclick = end;
       show();
