@@ -38,7 +38,7 @@ More pets, more habitats, and more minigames. We want group quests with friends,
    ```bash
    git clone https://github.com/KernyMC/hacktx.git
    cd hacktx
-   git switch familiars-v2
+   git switch systems
    ```
 2. Add your API keys. Copy `.env.example` to `.env` and fill in your SerpApi and Gemini keys. <!-- CHECK: confirm the file name server/server.js actually reads -->
    ```bash
