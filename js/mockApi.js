@@ -749,8 +749,8 @@
     async planTogether() {
       const payload = villagePayload();
       const j = await remoteJSON('/api/village/plan', payload, 30000);
-      if (j && j.ok && Array.isArray(j.plans) && j.plans.length) return { plans: j.plans, engine: j.engine || 'muse' };
-      return { plans: localPlans(payload), engine: 'template' };
+      if (j && j.ok && Array.isArray(j.plans) && j.plans.length) return { plans: j.plans, engine: j.engine || 'muse', reason: j.reason || '' };
+      return { plans: localPlans(payload), engine: 'template', reason: j ? 'server answered without plans' : 'server unreachable' };
     },
     /** POST /village/plans: propose a plan to the village (friends reply in the inbox) */
     async proposePlan(plan) {

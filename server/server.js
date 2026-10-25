@@ -667,11 +667,13 @@ function fallbackChronicle(b) {
 const hasMuse = () => !!env('MODEL_API_KEY');
 async function museJSON(system, user, temperature = 0.7) {
   const base = env('MUSE_BASE_URL', 'https://api.meta.ai/v1').replace(/\/$/, '');
-  const r = await fetchWithTimeout(`${base}/chat/completions`, {
+  const call = (jsonMode) => fetchWithTimeout(`${base}/chat/completions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env('MODEL_API_KEY')}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: env('MUSE_MODEL', 'muse-spark-1.3'), temperature, max_tokens: 900, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
+    body: JSON.stringify(Object.assign({ model: env('MUSE_MODEL', 'muse-spark-1.3'), temperature, max_tokens: 900, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }, jsonMode ? { response_format: { type: 'json_object' } } : {})),
   }, 25000);
+  let r = await call(true);
+  if (r.status === 400 || r.status === 422) { log(`Muse rejected JSON mode (${r.status}); retrying without response_format`); r = await call(false); }
   if (!r.ok) throw await upstreamError(r, 'Muse');
   const j = await r.json();
   const text = (((j.choices || [])[0] || {}).message || {}).content || '';
@@ -704,7 +706,7 @@ async function handlePlan(req, res) {
     sendJson(res, 200, { ok: true, plans, engine: 'muse' });
   } catch (e) {
     logErr('village plan failed:', e.message);
-    sendJson(res, 200, { ok: true, plans: fallbackPlans(b), engine: 'template' });
+    sendJson(res, 200, { ok: true, plans: fallbackPlans(b), engine: 'template', reason: String(e.message || e).slice(0, 160) });
   }
 }
 
@@ -720,7 +722,7 @@ async function handleChronicle(req, res) {
     sendJson(res, 200, { ok: true, title: String(j.title || 'The Village Chronicle').slice(0, 60), paragraphs, engine: 'muse' });
   } catch (e) {
     logErr('village chronicle failed:', e.message);
-    sendJson(res, 200, Object.assign({ ok: true, engine: 'template' }, fallbackChronicle(b)));
+    sendJson(res, 200, Object.assign({ ok: true, engine: 'template', reason: String(e.message || e).slice(0, 160) }, fallbackChronicle(b)));
   }
 }
 

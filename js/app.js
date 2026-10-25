@@ -992,7 +992,7 @@
     btn.disabled = true; btn.textContent = `${me.pet.name} is reading the village's week...`; Audio8.play('tap'); stage.set('happy', 2500);
     const r = await API.planTogether();
     box.dataset.proposing = '1'; box.innerHTML = '';
-    const head = document.createElement('div'); head.className = 'pm'; head.innerHTML = `<b>${r.plans.length} plans for this village</b><br><span class="eng" style="margin:0">${r.engine === 'muse' ? 'WRITTEN BY MUSE SPARK (META)' : 'OFFLINE PLAN: ADD MODEL_API_KEY FOR MUSE'}</span>`; box.appendChild(head);
+    const head = document.createElement('div'); head.className = 'pm'; head.innerHTML = `<b>${r.plans.length} plans for this village</b><br><span class="eng" style="margin:0">${r.engine === 'muse' ? 'WRITTEN BY MUSE SPARK (META)' : 'OFFLINE PLAN' + (r.reason ? ': ' + esc(r.reason).toUpperCase() : ': ADD MODEL_API_KEY FOR MUSE')}</span>`; box.appendChild(head);
     r.plans.forEach(p => box.appendChild(planCard(p, { onSend: async (plan, b) => { b.disabled = true; const s = await API.proposePlan(plan); Audio8.play('accept'); confetti.burst(40, ['#b79cff', '#fff', '#6fe3b1']); toast(s.message, 3200); delete box.dataset.proposing; await refreshMe(); renderVillage(); } })));
     btn.disabled = false; btn.textContent = 'Plan again';
   };
