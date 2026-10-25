@@ -54,6 +54,7 @@
   const PAL = {
     k: C.ink, p: C.pink, w: C.white, g: C.grass, G: C.grass2, y: C.gold, b: C.brown, B: C.brown2,
     s: C.stone, S: C.stone2, r: C.red, o: C.orange, l: C.lilac, m: C.mint, c: C.sky,
+    n: C.sand, N: C.sand2, i: C.sky2, u: '#3f8f4a', d: '#4b3024',
   };
   const SPR = {
     berry: ['....kG..', '...kGG..', '.kkkkkk.', 'kppppwpk', 'kppppppk', 'kppppppk', '.kppppk.', '..kkkk..'],
