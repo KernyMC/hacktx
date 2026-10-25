@@ -213,6 +213,45 @@
   // ------------------------------------------------------------------
   const INK = '#2b2140';
   const COLOR = {
+    quill: { p: { w: '#FFF8EA', b: '#B79CFF', c: '#A0582A', a: '#5A3FC0' }, g: [
+      '.........oo.',
+      '........owwo',
+      '.......owwbo',
+      '......owwbo.',
+      '.....owwbo..',
+      '....owwbo...',
+      '...owwbo....',
+      '..owbbo.....',
+      '..oco...oooo',
+      '.oco...oaaao',
+      'oco....oaaao',
+      'oo.....ooooo'] },
+    coins: { p: { a: '#FFC247', b: '#C9922A', w: '#FFF3C4' }, g: [
+      '.......ooo..',
+      '......oawao.',
+      '......oaabo.',
+      '.......ooo..',
+      '............',
+      '..oooooooo..',
+      '.oaaaaaaaao.',
+      '.obbbbbbbbo.',
+      '.oaaaaaaaao.',
+      '.obbbbbbbbo.',
+      '.oaawaaaaao.',
+      '..oooooooo..'] },
+    pouch: { p: { a: '#C98A4E', b: '#8A5A2E', w: '#E8C08A', c: '#FFC247' }, g: [
+      '............',
+      '....oooo....',
+      '....obbo....',
+      '...oooooo...',
+      '..oaaaaaao..',
+      '.oaawaaaaao.',
+      '.oaaaccaabo.',
+      '.oaaaccaabo.',
+      '.oaaaaaaabo.',
+      '.obaaaaabbo.',
+      '..obbbbbbo..',
+      '...oooooo...'] },
     gift: { p: { a: '#FF6F9C', b: '#C9426F', c: '#FFD23F', d: '#E39A12' }, g: [
       '..oo....oo..',
       '.ocdo..odco.',
@@ -593,10 +632,10 @@
 
   function svg(name, size = 16, color = 'currentColor', color2 = null) {
     let g = G[name] || G.star, fill = ch => (ch === '+' ? (color2 || '#ffffff') : color);
-    if (COLOR[name] && !(theme && THEMED.includes(name))) {
+    // colour icons win everywhere (nav, prices, inbox); the per-animal glyphs only fill names without one
+    if (COLOR[name]) {
       const c = COLOR[name]; g = c.g; fill = ch => (ch === 'o' ? INK : c.p[ch]);
-    }
-    if (theme && THEMED.includes(name)) {
+    } else if (theme && THEMED.includes(name)) {
       g = theme.grids[name];
       const pal = { o: '#2b2140', a: theme.a, f: theme.f };
       fill = ch => pal[ch];

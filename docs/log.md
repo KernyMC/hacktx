@@ -188,3 +188,6 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   themed glyphs (home, quests, shop, book, coin) are unchanged. New `gift` (inbox packages) and `key` (raid
   keys, was a map pin). Icon calls at 26/28 px snapped to 24 px (2 screen px per icon pixel);
   `drawIconOnCanvas` scales 12-cell icons into the old 8-cell boxes. "Reroll" is now a die.
+- Icons, follow-up: colour icons now take priority over the per-animal 9x9 glyphs everywhere (the axolotl's
+  read as pink squares in the nav and on prices); the animal's identity stays in the CSS theme and habitat.
+  New `quill` (Ye Olde Bard), `coins` (Coin Rain) and `pouch` (Tiny Coins) replace the themed book/coin.
