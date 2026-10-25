@@ -172,26 +172,11 @@
   }
 
   // ------------------------------------------------------------------
-  // Speech (ElevenLabs TTS via server, browser voice fallback)
+  // Speech: narrator and TTS are OFF (text chat only). speak() is a no-op kept for call sites.
   // ------------------------------------------------------------------
-  let speaking = null, speakFallbackWarned = false;
-  async function speak(text, pet = me.pet, mood = 'neutral') {
-    if (speaking) { speaking.pause(); speaking = null; }
-    const blob = await API.say(text, animal(pet).voice, mood);
-    if (blob) { speaking = new Audio(URL.createObjectURL(blob)); speaking.play().catch(() => {}); return true; }
-    if ('speechSynthesis' in window) {
-      // browser fallback (ElevenLabs unreachable): pick the best English voice available and keep pitch natural
-      speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/\[[^\]]{1,24}\]\s*/g, ''));
-      const voices = speechSynthesis.getVoices();
-      const pref = ['Google US English', 'Samantha', 'Microsoft Aria', 'Microsoft Jenny', 'Microsoft Zira', 'Karen', 'Daniel'];
-      u.voice = voices.find(v => pref.some(n => v.name.includes(n))) || voices.find(v => /^en[-_]/.test(v.lang) && !/espeak/i.test(v.name)) || voices[0] || null;
-      const pitch = { cute: 1.25, hyper: 1.2, chill: 1.0, grumpy: 0.85, wise: 0.9, regal: 1.05, spooky: 0.8, cowboy: 0.9, dreamy: 1.1 }[animal(pet).voice] || 1.0;
-      u.pitch = pitch; u.rate = 1.0; speechSynthesis.speak(u);
-      if (!speakFallbackWarned) { speakFallbackWarned = true; toast('Using the browser voice: start the server (npm start) for the ElevenLabs voices.', 3600); }
-      return true;
-    }
-    return false;
-  }
+
+  let speaking = null;
+  async function speak() { return false; }
 
   // ------------------------------------------------------------------
   // Tabs
@@ -360,11 +345,10 @@
     chatHistory.push({ role: 'pet', text: r.reply }); chatHistory = chatHistory.slice(-24);
     chatBubble('pet', r.reply); Audio8.happy(me.pet.species);
     stage.set(r.mood === 'sad' ? 'sad' : 'happy', 1500);
-    speak(r.reply, me.pet, r.mood === 'excited' ? 'excited' : r.mood === 'sad' ? 'sad' : r.mood === 'happy' ? 'happy' : 'neutral');
   }
   $('btnTalk').addEventListener('pointerdown', e => e.stopPropagation());
   $('btnTalk').onclick = openChat;
-  $('chatClose').onclick = () => { $('ovChat').hidden = true; Audio8.play('close'); if (speaking) { speaking.pause(); speaking = null; } };
+  $('chatClose').onclick = () => { $('ovChat').hidden = true; Audio8.play('close');  };
   $('ovChat').addEventListener('click', e => { if (e.target === $('ovChat')) $('chatClose').onclick(); });
   $('chatForm').addEventListener('submit', e => { e.preventDefault(); sendChat($('chatInput').value); });
 
@@ -431,20 +415,29 @@
       (q.blessings || []).map(id => { const b = API.BLESSINGS.find(x => x.id === id); return b ? `<span class="tag bless">${ic(b.icon, 12)} ${esc(b.name)}</span> ` : ''; }).join('');
     $('qReroll').disabled = !!q.rerolled;
     $('photoPreview').hidden = true; $('photoInput').value = '';
-    $('voiceDone').hidden = true; $('recBars').hidden = true; $('voiceHint').hidden = false; $('recBtn').hidden = false; $('recBtn').textContent = 'Hold to record';
     const curse = q.cursed ? me.activeCurse : null;
-    $('voiceHint').textContent = curse && curse.proof === 'voice' ? `Cursed: ${curse.desc}` : 'Hold to record. Say what you did. ElevenLabs transcribes it, the game master judges it.';
-    $('tabPhoto').disabled = q.forcedProof === 'voice'; $('tabVoice').disabled = q.forcedProof === 'photo';
-    setProofTab(q.forcedProof || (q.cursed ? 'voice' : 'photo'));
+    const cap = captionBox(); cap.value = '';
+    cap.placeholder = curse && curse.caption ? `Cursed: ${curse.caption}` : 'Tell the game master what you did (one or two sentences).';
+    setProofTab('photo');
     $('qSubmit').disabled = true;
     $('ovQuest').hidden = false;
   }
-  function closeQuest() { $('ovQuest').hidden = true; Audio8.play('close'); stopRecording(true); }
+  function closeQuest() { $('ovQuest').hidden = true; Audio8.play('close'); }
   $('qClose').onclick = closeQuest;
   $('ovQuest').addEventListener('click', e => { if (e.target === $('ovQuest')) closeQuest(); });
   $('tabPhoto').onclick = () => setProofTab('photo');
-  $('tabVoice').onclick = () => setProofTab('voice');
-  $('qSpeak').onclick = async () => { Audio8.play('tap'); const ok = await speak(activeQuest.text, me.pet, 'excited'); if (!ok) toast('No voice available on this device.'); };
+  // voice notes and the read-aloud button are OFF: proof = photo + a typed caption the judge also reads
+  $('tabVoice').hidden = true; $('proofVoice').hidden = true; $('qSpeak').hidden = true; $('tabPhoto').style.gridColumn = '1 / -1';
+  function captionBox() {
+    let t = $('qCaption');
+    if (!t) {
+      t = document.createElement('textarea'); t.id = 'qCaption'; t.maxLength = 240; t.rows = 2;
+      t.style.cssText = 'width:100%;padding:8px 10px;border:3px solid var(--ink);background:#fff;font:inherit;font-size:15px;resize:none';
+      $('proofPhoto').appendChild(t);
+      t.addEventListener('input', () => { if (proof) proof.caption = t.value.trim(); });
+    }
+    return t;
+  }
   function setProofTab(t) {
     proofTab = t;
     $('tabPhoto').classList.toggle('active', t === 'photo'); $('tabVoice').classList.toggle('active', t === 'voice');
@@ -460,70 +453,12 @@
       const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
       const data = c.toDataURL('image/jpeg', 0.85); URL.revokeObjectURL(img.src);
-      $('photoPreview').src = data; $('photoPreview').hidden = false; proof = { type: 'photo', data }; $('qSubmit').disabled = false; Audio8.play('accept');
+      $('photoPreview').src = data; $('photoPreview').hidden = false; proof = { type: 'photo', data, caption: captionBox().value.trim() }; $('qSubmit').disabled = false; Audio8.play('accept');
     };
     img.onerror = () => toast('Could not read that image.');
     img.src = URL.createObjectURL(f);
   });
 
-  // voice: hold-to-record with a real MediaRecorder → ElevenLabs Scribe (mock transcript if offline)
-  let recStart = 0, recTimer = null, rec = null, recReady = null;
-  function recBegin(e) {
-    e.preventDefault(); if (recStart) return;
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) { /* older browsers */ }
-    recStart = Date.now(); Audio8.play('tick');
-    $('recBars').hidden = false; $('voiceHint').hidden = true; $('voiceDone').hidden = true; $('recBtn').textContent = 'Recording… release to stop';
-    recTimer = setInterval(() => { $('recBtn').textContent = `Recording ${fmt(Date.now() - recStart)} · release to stop`; }, 200);
-    rec = null;
-    recReady = (async () => {
-      if (!navigator.mediaDevices || !window.MediaRecorder) return null;
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const r = new MediaRecorder(stream); const chunks = [];
-        r.ondataavailable = ev => ev.data.size && chunks.push(ev.data);
-        r.done = new Promise(res => { r.onstop = () => { stream.getTracks().forEach(t => t.stop()); res(new Blob(chunks, { type: r.mimeType || 'audio/webm' })); }; });
-        r.start(); rec = r; return r;
-      } catch (err) { return null; }
-    })();
-  }
-  function stopRecording(discard) {
-    if (rec && rec.state === 'recording') rec.stop();
-    if (discard) { recStart = 0; clearInterval(recTimer); }
-  }
-  async function recEnd() {
-    if (!recStart) return;
-    const len = Date.now() - recStart; recStart = 0; clearInterval(recTimer);
-    $('recBars').hidden = true; $('recBtn').textContent = 'Record again';
-    // don't hang on a pending mic-permission prompt: give it a moment, then fall back
-    const pending = recReady;
-    const r = await Promise.race([pending, sleep(500).then(() => null)]);
-    if (r && r.state === 'recording') r.stop();
-    else pending.then(late => { if (late && late.state === 'recording') late.stop(); });
-    if (len < 600) { $('voiceHint').hidden = false; $('voiceHint').textContent = 'Too short. Hold the button and talk.'; Audio8.play('error'); return; }
-    $('voiceHint').hidden = false; $('voiceHint').textContent = 'Transcribing…';
-    let t = null, engine = 'mock';
-    if (r) { const blob = await r.done; const res = await API.transcribe(blob); if (res && res.text) { t = res.text.trim(); engine = 'elevenlabs'; } }
-    if (!t) {
-      // offline demo: a believable transcript
-      const q = activeQuest, place = q.place.name;
-      t = ({ food: `Okay I am at ${place} for the ${q.title.toLowerCase()} quest. I ordered the thing with no name and it was actually incredible, I rate it a nine out of ten.`,
-        social: `I am at ${place}. Did the ${q.title.toLowerCase()} quest: I talked to Priya, she is building a laundry-folding robot and loved it.`,
-        outdoor: `Made it to ${place} for ${q.title.toLowerCase()}. It is beautiful out here, I took it all in and I am glad I walked.`,
-        creative: `I am at ${place} doing ${q.title.toLowerCase()}. I picked one thing, it is mostly blue and I think it is about being tired.` })[q.type];
-      const curse = activeQuest.cursed ? me.activeCurse.id : null;
-      if (curse === 'pirate') t = 'Arr, matey. ' + t.replace(/\bI\b/g, 'this old sea dog') + ' Arr!';
-      if (curse === 'shout') t = t.toUpperCase() + '!!!';
-      if (curse === 'rhyme') t = 'I went to the place and I did the thing, then I told my pet and it started to sing.';
-    }
-    $('voiceHint').hidden = true;
-    $('voiceLen').textContent = fmt(len) + (engine === 'elevenlabs' ? ' · ElevenLabs' : ' · offline mock');
-    $('voiceTranscript').textContent = '"' + t + '"'; $('voiceDone').hidden = false;
-    proof = { type: 'voice', data: { durationMs: len, transcript: t } }; $('qSubmit').disabled = false; Audio8.play('accept');
-  }
-  const fmt = ms => { const s = Math.round(ms / 1000); return `0:${String(s).padStart(2, '0')}`; };
-  $('recBtn').addEventListener('pointerdown', recBegin);
-  ['pointerup', 'pointercancel'].forEach(ev => $('recBtn').addEventListener(ev, recEnd));
-  $('recBtn').addEventListener('contextmenu', e => e.preventDefault());
 
   $('qReroll').onclick = async () => {
     Audio8.play('tap'); const q = await API.rerollQuest(activeQuest.id); if (q) { openQuest(q); toast('New quest rolled.'); renderQuests(); }
@@ -533,7 +468,7 @@
     if (!proof) return;
     const q = activeQuest, pf = proof; closeQuest();
     $('ovJudging').hidden = false;
-    $('judgeLine').textContent = pf.type === 'photo' ? `Checking the photo against ${q.place.name}…` : 'Judging your voice note…';
+    $('judgeLine').textContent = `Checking the photo against ${q.place.name}…`;
     const jc = $('judgeCanvas').getContext('2d'); let jt = 0;
     const jraf = setInterval(() => { jc.clearRect(0, 0, 128, 160); jt += 60; Sprites.drawPet(jc, me.pet, 0, 24 + Math.sin(jt / 200) * 4, 8, { t: jt, blink: (jt % 1800) < 150 }); $('dots').textContent = '.'.repeat(1 + (Math.floor(jt / 300) % 3)); }, 60);
     const res = await API.completeQuest(q.id, pf);
@@ -707,7 +642,7 @@
     $('petActive').onclick = async () => { await API.setActivePet(p.id); Audio8.play('reward'); $('ovPet').hidden = true; await refreshMe(); stage.set('happy', 1500); toast(`${p.name} is now your active Familiar. New look!`); renderZoo(); };
     $('petPlay').onclick = () => { $('ovPet').hidden = true; playPetGame(p); };
     $('petChallenge').onclick = () => { $('ovPet').hidden = true; pickFriendToChallenge(p); };
-    $('petVoice').onclick = () => speak(`Hi! I'm ${p.name}, the ${a.name}. ${a.flavor}`, p, 'happy');
+    $('petVoice').hidden = true;
     $('ovPet').hidden = false;
   }
   $('petClose').onclick = () => { $('ovPet').hidden = true; Audio8.play('close'); };
@@ -973,8 +908,8 @@
       d.querySelector('p').textContent = p.text;
       pages.appendChild(d);
     });
-    $('bookCopy').textContent = 'Read aloud';
-    $('bookCopy').onclick = async () => { Audio8.play('accept'); const ok = await speak(b.pages.map(p => p.text).join(' ').slice(0, 400)); if (!ok) toast('No voice available.'); };
+    $('bookCopy').textContent = 'Copy chapter';
+    $('bookCopy').onclick = async () => { const text = `${b.title}\n\n` + b.pages.map(p => p.text).join('\n\n'); try { await navigator.clipboard.writeText(text); toast('Chapter copied.'); } catch (e) { toast('Select the text to copy it.'); } Audio8.play('accept'); };
     $('bookShare').onclick = () => { Audio8.play('bless'); confetti.burst(40); toast('Posted to the village. Leo already replied "no way".'); };
   }
 

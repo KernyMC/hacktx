@@ -79,15 +79,15 @@
 
   // proof: which proof type the curse forces ('voice' | 'photo' | null)
   const CURSES = [
-    { id: 'pirate',      name: 'Pirate Voice', icon: 'skull',   price: 30, proof: 'voice', desc: 'Their quest reads like a pirate and the voice note must be in pirate voice.' },
-    { id: 'rhyme',       name: 'Rhyme Time',   icon: 'note',    price: 30, proof: 'voice', desc: 'Their proof voice note has to rhyme.' },
+    { id: 'pirate',      name: 'Pirate Voice', icon: 'skull',   price: 30, proof: null,    desc: 'Their quest reads like a pirate and the proof caption must be written in pirate talk.', caption: 'write your caption like a pirate (arr, matey, ye)' },
+    { id: 'rhyme',       name: 'Rhyme Time',   icon: 'note',    price: 30, proof: null,    desc: 'Their proof caption has to rhyme.', caption: 'make your caption rhyme' },
     { id: 'hop',         name: 'Hop Hex',      icon: 'frog',    price: 25, proof: null,    desc: 'They have to hop the last 10 steps to the quest location.' },
-    { id: 'shout',       name: 'Megaphone',    icon: 'chat',    price: 30, proof: 'voice', desc: 'Quest text is ALL CAPS and the voice note must be shouted.' },
-    { id: 'shakespeare', name: 'Ye Olde Bard', icon: 'book',    price: 35, proof: 'voice', desc: 'Quest text turns Shakespearean. Proof must be spoken like a bard.' },
+    { id: 'shout',       name: 'Megaphone',    icon: 'chat',    price: 30, proof: null,    desc: 'Quest text is ALL CAPS and the caption must be SHOUTED.', caption: 'WRITE YOUR CAPTION IN ALL CAPS' },
+    { id: 'shakespeare', name: 'Ye Olde Bard', icon: 'book',    price: 35, proof: null,    desc: 'Quest text turns Shakespearean. The caption must be written like a bard.', caption: 'write your caption like Shakespeare (thee, thou, forsooth)' },
     { id: 'backwards',   name: 'Backwords',    icon: 'reroll',  price: 35, proof: null,    desc: 'Quest text is scrambled backwards. Good luck reading it.' },
-    { id: 'opera',       name: 'Opera Night',  icon: 'note',    price: 40, proof: 'voice', desc: 'The voice note must be sung like an opera.' },
-    { id: 'mime',        name: 'Mime Time',    icon: 'hand',    price: 35, proof: 'photo', desc: 'Voice proofs are banned. Photo only, and they must be doing a silly pose.' },
-    { id: 'whisper',     name: 'Library Hex',  icon: 'mic',     price: 25, proof: 'voice', desc: 'Voice note must be whispered like they are in a library.' },
+    { id: 'opera',       name: 'Opera Night',  icon: 'note',    price: 40, proof: null,    desc: 'The caption must read like an aria: dramatic, with at least one "ooo".', caption: 'write your caption as a dramatic aria' },
+    { id: 'mime',        name: 'Mime Time',    icon: 'hand',    price: 35, proof: null,    desc: 'The photo must include a silly pose. Not a word in the caption.' },
+    { id: 'whisper',     name: 'Library Hex',  icon: 'mic',     price: 25, proof: null,    desc: 'The caption must be whispered: all lowercase, no exclamation marks.', caption: 'whisper it: all lowercase, no exclamation marks' },
     { id: 'tiny',        name: 'Tiny Coins',   icon: 'coin',    price: 45, proof: null,    desc: 'Their next quest pays half the coins. Petty, but effective.' },
   ];
   const BLESSINGS = [
@@ -400,14 +400,15 @@
       const started = Date.now();
       const q = S.quests.find(x => x.id === id);
       if (!q || q.status !== 'open') return { ok: false, message: 'Quest not found.' };
-      if (S.activeCurse && S.activeCurse.proof && proof.type !== S.activeCurse.proof)
-        return { ok: false, rejected: true, message: `Cursed! ${S.activeCurse.name} only accepts a ${S.activeCurse.proof} proof.`, reasons: [] };
+      if (S.activeCurse && S.activeCurse.caption && !(proof.caption && proof.caption.trim().split(/\s+/).length >= 3))
+        return { ok: false, rejected: true, message: `Cursed! ${S.activeCurse.name}: write a caption with your photo (${S.activeCurse.caption}).`, reasons: [] };
 
       const verdict = await remoteJSON('/api/proof/verify', {
         type: proof.type, quest: { title: q.title, text: q.text, type: q.type, place: q.place },
         curse: S.activeCurse ? { id: S.activeCurse.id, name: S.activeCurse.name, desc: S.activeCurse.desc } : null,
         petName: S.pet.name,
         image: proof.type === 'photo' ? proof.data : undefined,
+        caption: proof.caption || undefined,
         transcript: proof.type === 'voice' ? proof.data.transcript : undefined,
       });
       await delay(Math.max(0, 1100 - (Date.now() - started)));   // let the judging animation breathe

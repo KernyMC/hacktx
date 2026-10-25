@@ -303,6 +303,8 @@ function buildPrompt(p) {
   if (c) lines.push(`ACTIVE CURSE: ${c.name || c.id} (${c.id}) — ${c.desc || ''}`);
   lines.push('', 'Rules:');
   if (p.type === 'photo') {
+    if (p.caption) lines.push(`The player also typed this CAPTION with the photo: """${String(p.caption).slice(0, 400)}"""`);
+    if (c && p.caption) lines.push(`- The curse applies to the CAPTION: pirate = pirate words/speech (arr, matey, ye, ahoy); rhyme = the lines rhyme; shout = ALL CAPS; shakespeare = thee/thou/bard style; whisper = all lowercase and soft; opera = dramatic aria. If the caption clearly ignores the curse, ok=false and say so. For hop/mime/tiny judge the photo (silly pose, hopping) and be lenient.`);
     lines.push(
       '- ok=true if the photo plausibly shows the place/kind of place, the activity, or something clearly connected to doing the quest there. Indoor/outdoor details, food, signage, people (from the back), art, etc. all count.',
       '- ok=false if it is a screenshot of the app/quest text itself, a screenshot of a phone/computer screen, a blank/black/extremely blurry image, a meme, a stock-looking image, or obviously unrelated to the quest.',
@@ -437,7 +439,7 @@ async function handleVerify(req, res) {
   const type = p.type === 'photo' ? 'photo' : p.type === 'voice' ? 'voice' : null;
   if (!type) throw new HttpError(400, 'type must be "photo" or "voice"');
   const petName = String(p.petName || 'Your familiar').slice(0, 40);
-  const input = { type, quest: p.quest || {}, curse: p.curse || null, petName, transcript: p.transcript || '' };
+  const input = { type, quest: p.quest || {}, curse: p.curse || null, petName, transcript: p.transcript || '', caption: String(p.caption || '').slice(0, 400) };
   const img = type === 'photo' ? parseDataUrl(p.image) : null;
   if (type === 'photo' && img && !/^image\//.test(img.mime)) img.mime = 'image/jpeg';
 
@@ -452,6 +454,10 @@ async function handleVerify(req, res) {
       catch (e) { logErr('Gemini verify failed, falling back to heuristics:', e.message); }
     }
     if (!result) result = heuristicPhoto(input, img);
+    if (result.ok && input.curse && input.caption && result.engine === 'heuristic') {
+      const cc = heuristicVoice(Object.assign({}, input, { transcript: input.caption }));
+      if (!cc.ok && cc.reasons.some((r) => /curse/i.test(r))) result = cc;
+    }
   } else {
     if (hasGemini() && WORDS(input.transcript).length >= 2) {
       try { result = await verifyWithGemini(input, null); }
