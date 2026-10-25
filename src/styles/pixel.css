@@ -1,0 +1,56 @@
+/* Pixel frames. Colors come from the active skin's CSS variables (see theme.ts). */
+
+.px-panel {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow:
+    3px 0 0 0 var(--outline), -3px 0 0 0 var(--outline), 0 3px 0 0 var(--outline), 0 -3px 0 0 var(--outline),
+    inset 3px 3px 0 var(--panel-light), inset -3px -3px 0 var(--panel-dark);
+}
+
+.px-btn,
+.px-plaque {
+  font-family: var(--font-pixelify), monospace;
+  background: var(--button);
+  color: var(--button-text);
+  box-shadow:
+    3px 0 0 0 var(--outline), -3px 0 0 0 var(--outline), 0 3px 0 0 var(--outline), 0 -3px 0 0 var(--outline),
+    inset 3px 3px 0 var(--button-light), inset -3px -3px 0 var(--button-dark);
+}
+
+.px-btn {
+  cursor: pointer;
+}
+
+.px-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow:
+    3px 0 0 0 var(--outline), -3px 0 0 0 var(--outline), 0 3px 0 0 var(--outline), 0 -3px 0 0 var(--outline),
+    inset 3px 3px 0 var(--button-dark);
+}
+
+.px-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.px-btn:focus-visible,
+.px-focus:focus-visible {
+  outline: 3px dashed var(--accent);
+  outline-offset: 5px;
+}
+
+/* Secondary button: panel colors instead of button colors. */
+.px-btn-soft {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow:
+    3px 0 0 0 var(--outline), -3px 0 0 0 var(--outline), 0 3px 0 0 var(--outline), 0 -3px 0 0 var(--outline),
+    inset 3px 3px 0 var(--panel-light), inset -3px -3px 0 var(--panel-dark);
+}
+
+.px-title {
+  font-family: var(--font-pixelify), monospace;
+  color: var(--panel-light);
+  text-shadow: 2px 2px 0 var(--outline);
+}
