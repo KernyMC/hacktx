@@ -1237,6 +1237,8 @@
   async function runHatch() {
     const ov = $('ovHatch'), cv = $('hatchCanvas'), c = cv.getContext('2d');
     let taps = 0;
+    const sp = API.rollStarter(), spName = Animals.A[sp].name;
+    $('hatchSpecies').textContent = `It's ${/^[aeiou]/i.test(spName) ? 'an' : 'a'} ${spName}! What do you call it?`;
     const draw = (cr) => { c.clearRect(0, 0, 192, 240); Sprites.drawEgg(c, 'common', 0, 40, 12, cr); };
     draw(0); ov.hidden = false;
     $('hatchName').placeholder = await API.suggestName();
@@ -1244,15 +1246,15 @@
       Audio8.unlock(); taps++; Audio8.play('crack'); cv.classList.remove('wob'); void cv.offsetWidth; cv.classList.add('wob'); draw(taps);
       $('hatchHint').textContent = `${3 - taps} tap${3 - taps === 1 ? '' : 's'} to go`;
       if (taps >= 3) {
-        cv.onclick = null; flash(); Audio8.hatch('axolotl'); confetti.burst(100);
-        const bc = { species: 'axolotl', rarity: 'common' }; let bt = 0;
+        cv.onclick = null; flash(); Audio8.hatch(sp); confetti.burst(100);
+        const bc = { species: sp, rarity: 'common' }; let bt = 0;
         const biv = setInterval(() => { if (ov.hidden) return clearInterval(biv); c.clearRect(0, 0, 192, 240); bt += 100; Sprites.drawPet(c, bc, 0, 40, 12, { anim: 'happy', t: bt }); }, 100);
         $('hatchStep1').hidden = true; $('hatchStep2').hidden = false; $('hatchName').focus();
       }
     };
     $('hatchGo').onclick = async () => {
       const name = $('hatchName').value.trim() || $('hatchName').placeholder;
-      await API.hatch({ name }); ov.hidden = true; Audio8.play('reward');
+      await API.hatch({ name, species: sp }); ov.hidden = true; Audio8.play('reward');
       if (DEV) { await unlockAll(); return; }
       await refreshMe(); renderQuests(); say(`Hi! I'm ${name}. Let me show you around!`, 3000); stage.set('happy', 1500);
       await sleep(1200); runTutorial();

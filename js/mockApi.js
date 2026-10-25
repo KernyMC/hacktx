@@ -411,9 +411,12 @@
     getFeed() { return (S.feed || []).slice(); },
 
     /** POST /pet/hatch  { name } */
-    async hatch({ name }) {
+    /** the first egg hatches a random common animal (rarity = resolution: every starter is 20 px) */
+    rollStarter() { return rnd(Object.keys(Animals.A).filter(k => Animals.A[k].rarity === 'common')); },
+    async hatch({ name, species }) {
       await delay(200);
-      S.pet = { id: uid(), name: name || rnd(PET_NAMES), species: 'axolotl', rarity: 'common', bornAt: Date.now() };
+      if (!Animals.A[species] || Animals.A[species].rarity !== 'common') species = API.rollStarter();
+      S.pet = { id: uid(), name: name || rnd(PET_NAMES), species, rarity: 'common', bornAt: Date.now() };
       makeQuests();
       // first-run social hooks: a friend has already cursed you and challenged you
       S.inbox.push({ id: uid(), kind: 'gift', from: 'HackTX', title: 'Welcome package', text: 'A care package for your first day. Open it!',

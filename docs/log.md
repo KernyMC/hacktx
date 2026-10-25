@@ -267,3 +267,11 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   `ai-backend` agent and `server/README.md` (Muse routes and quirks), `SPECS.md` §15 (what is built).
 - ADR 0006 (Muse for the social features via Chat Completions) and ADR 0007 (PWA, Vercel single function,
   simulated village activity).
+
+## 2026-10-25 (night) — Random starter
+
+- The first egg now hatches a random common animal (axolotl, cat, dog, bunny, chick, hamster, frog,
+  mouse, duckling) instead of always the axolotl: `API.rollStarter()` picks it when the hatch screen
+  opens, the text names it ("It's a Puddle Frog!"), and `API.hatch({ name, species })` validates it is
+  common (rarity = resolution, every starter is 20 px). The audit's "make active" step now compares pet ids
+  instead of assuming the starter is an axolotl. Audit 40/40.

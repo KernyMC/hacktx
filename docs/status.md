@@ -15,6 +15,7 @@ Last full update: 2026-10-25 (night), branch `systems`, live at https://hacktx-e
 - [x] Rewards: XP/levels, coins, random-rarity eggs, raid damage; animated reward sequence.
 - [x] Eggs incubate only with real quests (needed = 2 + eggs already in the nest); evolution = same pet,
   stage 2 (crown, palette, +1 resolution tier).
+- [x] Starter egg hatches a random common animal (9 possible), not always the axolotl.
 - [x] Real day streak (`S.lastQuestDay`); level and streak chips explain themselves on tap.
 
 **Collection and art**

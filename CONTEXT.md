@@ -5,7 +5,7 @@ The game was called "Familiars" until Oct 25; code identifiers and storage keys 
 
 | Term | What it is |
 |---|---|
-| **Pixling / pet** | The pet. Object `{ id, name, species, rarity, stage, shiny, bornAt }`. Everyone hatches as `axolotl`. |
+| **Pixling / pet** | The pet. Object `{ id, name, species, rarity, stage, shiny, bornAt }`. The first egg hatches a random common animal (`API.rollStarter()`). |
 | **Active pet** | The Pixling on the stage. It themes the app (habitat, colours, tab-bar glyphs). Changed from the Nest. |
 | **Species** | One of the 33 animals in `js/animals.js`. Fixed rarity, minigame engine and voice preset. |
 | **Rarity / tier** | `common` · `uncommon` · `rare` · `mythic` · `legendary`. Sets the sprite resolution (20/24/32/40/48 px). `epic` is legacy = `mythic`. |
