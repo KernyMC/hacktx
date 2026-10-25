@@ -372,6 +372,23 @@ body[data-cls=legends] .topbar .name, body[data-cls=legends] .topbar .sub { colo
 .vacopts button.on { background: var(--gold); }
 .zzz { position: absolute; font-family: var(--display); font-size: 12px; color: var(--ink); animation: floatUp 2.4s ease-out infinite; pointer-events: none; }
 
+/* minimap (pixel, no tiles): you in the centre, the quest pin at its real bearing + distance */
+.minimap { position: relative; border: var(--bevel); background: #cfe9c2; margin: 0 0 10px; }
+.minimap canvas { width: 100%; height: 140px; display: block; }
+.minimap .mm-lbl { position: absolute; right: 6px; bottom: 4px; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.place .btn { flex: none; }
+/* talk */
+.stage .talk { position: absolute; left: 12px; bottom: 8px; }
+.chat .chatlog { display: flex; flex-direction: column; gap: 8px; max-height: 44vh; overflow: auto; padding: 4px 0 8px; }
+.msg { max-width: 85%; padding: 8px 10px; border: 2px solid var(--ink); font-size: 16px; line-height: 1.3; }
+.msg.you { align-self: flex-end; background: var(--gold); }
+.msg.pet { align-self: flex-start; background: #fff; display: grid; grid-template-columns: 36px 1fr; gap: 8px; align-items: start; }
+.msg.pet canvas { width: 36px; height: 36px; }
+.msg.pet.thinking { color: var(--ink-2); font-style: italic; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
+.chips button { font-size: 13px; font-weight: 700; padding: 4px 8px; border: 2px solid var(--ink); background: var(--panel-2); }
+#chatInput { flex: 1; min-width: 0; padding: 10px; border: var(--bevel); background: #fff; }
+
 /* pet detail */
 .petcard { text-align: center; }
 .petcard canvas.big { width: 192px; height: 192px; display: block; margin: 4px auto; }
@@ -413,6 +430,7 @@ body[data-cls=legends] .topbar .name, body[data-cls=legends] .topbar .sub { colo
     <canvas id="stageCanvas" width="400" height="230" aria-label="Your Familiar"></canvas>
     <div class="bubble hide" id="bubble"></div>
     <div class="tap-hint">tap to pet</div>
+    <button class="btn sm ghost talk" id="btnTalk"><i data-icon="chat"></i> Talk</button>
   </section>
 
   <main id="main">
@@ -434,7 +452,8 @@ body[data-cls=legends] .topbar .name, body[data-cls=legends] .topbar .sub { colo
         </div>
       </div>
       <div class="panel">
-        <div class="row"><h2 class="grow">Today's quests</h2><span class="lbl row" id="questLoc" style="gap:4px" data-tut="quests"><i data-icon="pin" data-size="12" data-color="#ff6f9c" data-color2="#fff"></i>near GDC, Austin</span></div>
+        <div class="row"><h2 class="grow">Today's quests</h2><button class="lbl row" id="questLoc" style="gap:4px;background:none;border:0;padding:0" data-tut="quests" title="Refresh nearby places"><i data-icon="pin" data-size="12" data-color="#ff6f9c" data-color2="#fff"></i><span id="questLocText">near GDC, Austin</span></button></div>
+        <div class="sub" id="questSource" style="font-size:13px"></div>
         <div id="questList" style="display:flex;flex-direction:column;gap:12px;padding-top:6px"></div>
       </div>
     </section>
@@ -516,7 +535,8 @@ body[data-cls=legends] .topbar .name, body[data-cls=legends] .topbar .sub { colo
     <div class="head"><h2 id="qTitle">Quest</h2><button class="btn sm ghost speak" id="qSpeak" aria-label="Read quest aloud"><i data-icon="note"></i> Listen</button><button class="iconbtn" id="qClose" aria-label="Close"><i data-icon="close"></i></button></div>
     <div id="qTags"></div>
     <p class="qtext" id="qText"></p>
-    <div class="place"><span class="pin"><i data-icon="pin" data-size="24" data-color="#ff6f9c" data-color2="#fff"></i></span><div><div class="pn" id="qPlace"></div><div class="pm" id="qPlaceMeta"></div></div></div>
+    <div class="place"><span class="pin"><i data-icon="pin" data-size="24" data-color="#ff6f9c" data-color2="#fff"></i></span><div class="grow"><div class="pn" id="qPlace"></div><div class="pm" id="qPlaceMeta"></div></div><a class="btn sm ghost" id="qMaps" target="_blank" rel="noopener" hidden>Open in Maps</a></div>
+    <div class="minimap" id="qMapWrap" hidden><canvas id="qMap" width="400" height="140"></canvas><span class="mm-lbl" id="qMapLbl"></span></div>
     <div class="row"><span class="chip">+<b id="qXp">0</b> XP</span><span class="chip"><i data-icon="egg" data-color="#5ab0ff"></i><b id="qEgg">50%</b></span><span class="grow"></span><button class="btn sm ghost" id="qReroll">Reroll</button></div>
     <div class="proof-tabs"><button id="tabPhoto" class="active"><i data-icon="camera"></i> Photo</button><button id="tabVoice"><i data-icon="mic"></i> Voice note</button></div>
     <div class="proofbox" id="proofPhoto">
@@ -595,6 +615,16 @@ body[data-cls=legends] .topbar .name, body[data-cls=legends] .topbar .sub { colo
       <button class="btn" id="petActive">Make active</button>
       <button class="btn ghost speak" id="petVoice"><i data-icon="note"></i> Hear voice</button>
     </div>
+  </div>
+</div>
+
+<!-- CHAT WITH YOUR PET -->
+<div class="overlay" id="ovChat" hidden>
+  <div class="sheet chat">
+    <div class="head"><h2 id="chatTitle">Talk to Mochi</h2><button class="iconbtn" id="chatClose" aria-label="Close"><i data-icon="close"></i></button></div>
+    <div class="chatlog" id="chatLog"></div>
+    <div class="chips" id="chatChips"></div>
+    <form class="row" id="chatForm"><input id="chatInput" maxlength="300" placeholder="Say something…" autocomplete="off"><button class="btn pink sm" type="submit" id="chatSend">Send</button></form>
   </div>
 </div>
 

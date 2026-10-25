@@ -200,13 +200,47 @@
     return RAR[Math.min(4, tierOf(out) + boost)];
   }
 
+  // seed places get real coordinates so the minimap and "Open in Maps" work offline too (origin: GDC, UT Austin)
+  const SEED_COORDS = { 'Kerbey Lane Cafe': [30.2985, -97.7414], 'GDC Atrium': [30.2862, -97.7365], 'UT Turtle Pond': [30.2873, -97.7398],
+    'The Drag (Guadalupe St)': [30.2878, -97.7421], 'Tapioca House': [30.2946, -97.7418], 'WEL Grand Hallway': [30.2868, -97.7378],
+    'UT Tower lawn': [30.2862, -97.7394], 'Blanton Museum of Art': [30.2810, -97.7376], 'Congress Ave Bridge': [30.2616, -97.7452], 'Veracruz All Natural': [30.2561, -97.7265] };
+  const ORIGIN = { lat: 30.2862, lng: -97.7365 };
+  function enrichPlace(place) {
+    const c = SEED_COORDS[place.name]; if (!c || place.bearing != null) return place;
+    const toRad = d => d * Math.PI / 180, [lat, lng] = c;
+    const dLat = toRad(lat - ORIGIN.lat), dLng = toRad(lng - ORIGIN.lng);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(ORIGIN.lat)) * Math.cos(toRad(lat)) * Math.sin(dLng / 2) ** 2;
+    const distMi = 2 * 3958.8 * Math.asin(Math.sqrt(h));
+    const y = Math.sin(dLng) * Math.cos(toRad(lat)), x = Math.cos(toRad(ORIGIN.lat)) * Math.sin(toRad(lat)) - Math.sin(toRad(ORIGIN.lat)) * Math.cos(toRad(lat)) * Math.cos(dLng);
+    return Object.assign({}, place, { lat, lng, distMi: +distMi.toFixed(2), bearing: Math.round((Math.atan2(y, x) * 180 / Math.PI + 360) % 360),
+      mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' Austin TX')}` });
+  }
   function questFrom(q, extra = {}) {
-    return Object.assign({ id: uid(), type: q.type, title: q.title, place: q.place, xp: q.xp, eggChance: q.eggChance,
-      text: fill(q.text, S.pet, q.place), status: 'open' }, extra);
+    const place = enrichPlace(q.place);
+    return Object.assign({ id: uid(), type: q.type, title: q.title, place, xp: q.xp, eggChance: q.eggChance,
+      text: fill(q.text, S.pet, place), status: 'open' }, extra);
   }
   function makeQuests() {
     const types = ['food', 'social', 'outdoor', 'creative'].sort(() => Math.random() - 0.5).slice(0, 3);
     S.quests = types.map(t => questFrom(rnd(QUEST_POOL.filter(p => p.type === t))));
+    S.questSource = 'seed';
+  }
+  // Real quests: SerpApi places near the player, written by Gemini in the pet's voice (server/server.js).
+  // Keeps the seed quests when the server/SerpApi is unavailable.
+  async function fetchRealQuests(loc) {
+    if (!S.pet || !loc) return false;
+    const a = Animals.A[S.pet.species] || {};
+    const qs = new URLSearchParams({ lat: loc.lat, lng: loc.lng, pet: S.pet.name, species: a.name || S.pet.species, flavor: a.flavor || '', curse: S.activeCurse ? S.activeCurse.name : '' });
+    try {
+      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 25000);
+      const r = await fetch(`${API_BASE}/api/quests?${qs}`, { signal: ctl.signal }); clearTimeout(tm);
+      if (!(r.headers.get('content-type') || '').includes('json')) return false;
+      const j = await r.json();
+      if (!j.ok || !Array.isArray(j.quests) || !j.quests.length) return false;
+      S.quests = j.quests.map(q => questFrom(q, { real: true }));
+      S.questSource = 'serpapi'; S.questWriter = j.writer; S.questDay = new Date().toDateString();
+      save(); return true;
+    } catch (e) { return false; }
   }
 
   function publicQuest(q) {
@@ -301,11 +335,38 @@
 
     async suggestName() { await delay(30); return rnd(PET_NAMES); },
 
-    /** GET /quests?lat&lng  (SerpApi Places + Muse Spark in prod) */
-    async getQuests() {
-      await delay(100);
+    /** GET /quests?lat&lng — SerpApi places + Gemini text when the server runs; seed pool otherwise */
+    async getQuests(loc) {
+      await delay(60);
       if (!S.quests.length && S.pet) makeQuests();
+      const fresh = S.questSource === 'serpapi' && S.questDay === new Date().toDateString();
+      if (loc && !fresh && S.quests.every(q => q.status === 'open')) await fetchRealQuests(loc);
       return S.quests.map(publicQuest);
+    },
+    /** POST /quests/refresh — pull a new set of real places (only while nothing is done yet) */
+    async refreshQuests(loc) {
+      if (S.quests.some(q => q.status !== 'open')) return { ok: false, message: 'Finish today\'s quests first.' };
+      S.questSource = 'seed';
+      const ok = await fetchRealQuests(loc);
+      if (!ok) { makeQuests(); save(); }
+      return { ok: true, source: S.questSource, quests: S.quests.map(publicQuest) };
+    },
+    questInfo() { return { source: S.questSource || 'seed', writer: S.questWriter || null }; },
+
+    /** POST /chat { message } — talk to your pet (Gemini in character, canned lines offline) */
+    async chat(message, history) {
+      const a = Animals.A[S.pet.species] || {};
+      const r = await remoteJSON('/api/chat', { message, history,
+        pet: { name: S.pet.name, species: a.name || S.pet.species, flavor: a.flavor || '', mood: currentMood(), hunger: S.hunger, level: S.level },
+        quests: S.quests.map(q => ({ title: q.title, type: q.type, status: q.status, place: { name: q.place.name } })) }, 30000);
+      if (r && r.ok) return r;
+      const open = S.quests.find(q => q.status === 'open');
+      const lines = [
+        open ? `I cannot think straight without wifi, but I remember one thing: ${open.title.toLowerCase()} at ${open.place.name}. Go?` : 'All quests done? Then this is cuddle time.',
+        `${S.pet.name} tilts head. Say that again, but outside?`,
+        S.hunger < 40 ? 'Did you say snack? I definitely heard snack.' : 'I am listening. I am also thinking about the turtle pond.',
+      ];
+      return { ok: true, reply: rnd(lines), mood: 'neutral', engine: 'fallback' };
     },
 
     /** POST /quests/:id/reroll — one free reroll per quest */

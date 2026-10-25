@@ -245,5 +245,7 @@ See `CLAUDE.md` → "UPDATE (Oct 25, v2)" for the full list. Summary of new API 
 | `joinRaid(id)` | costs raid keys |
 | `startVacation(hours)`, `endVacation()` | `POST /vacation`, `DELETE /vacation` |
 | `setTutorialDone()` | `PATCH /me` |
+| `getQuests(loc)`, `refreshQuests(loc)` | `GET /api/quests?lat&lng` (SerpApi + Gemini) — **live** |
+| `chat(message, history)` | `POST /api/chat` (Gemini, pet in character) — **live** |
 
 Rarity is now 5 tiers (common/uncommon/rare/mythic/legendary) and sprite resolution = 20/24/32/40/48 px.
