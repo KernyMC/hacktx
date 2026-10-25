@@ -4,11 +4,14 @@ If this file and DESIGN.md disagree, this file wins. DESIGN.md is the research a
 
 ## Look and feel
 
-- **One UI style for the whole app: Meadow Cottage chrome.** Wood plaques with a light/dark bevel, cream parchment panels, dark-brown outlines, notched pixel corners. Lives in `src/styles/theme.ts`.
-- **Pets differ only in sprite, palette, aura, particles and habitat.** Nothing else in the UI changes per pet, with one exception: the accent color (XP bar fill, active nav tab) tints toward the active pet's palette.
-- **Every pet has its own habitat background**, drawn as 16-bit pixel art on a low-res canvas (scaled up, `image-rendering: pixelated`). Each habitat has 4 time-of-day looks.
-- **Fonts are all pixel fonts.** Display: Pixelify Sans. Body: VT323 at 18px or more on mobile, line height 1.3 or more.
-- **Pixel grid rules.** UI chrome uses 3px pixels. Sprites and habitats scale by whole numbers only. No blur, no smooth radial glows (glows are hard-edged bands).
+- **No single fixed UI direction. Every pet has its own skin.** The active pet re-skins the whole app. A skin is:
+  - **UI colors**: outline, panel, panel light/dark bevel, button, text, accent and accent shine. These go to panels, buttons, the XP bar, quest cards and the nav.
+  - **Icon set**: its own hand-drawn pixel icons in the pet's motif (nav: home, quests, shop, book; plus a coin). Pip's coin is a seed, for example, and Marina's quest icon is a shell.
+  - **Habitat**: its own background scene, drawn as 16-bit pixel art on a low-res canvas, with 4 time-of-day looks.
+- **What stays the same across skins**: the layout, the way frames are built (stepped outlines with notched pixel corners, 3px light/dark bevels), the fonts, and the motion rules. That keeps the app feeling like one game while each pet feels like its own world.
+- **Fonts are 16-bit pixel fonts.** Display: Pixelify Sans. Body: VT323 at 18px or more on mobile, line height 1.3 or more.
+- **Pixel grid rules.** UI chrome uses 3px pixels. Sprites, icons and habitats scale by whole numbers only. No blur, no smooth glows (glows are hard-edged bands).
+- Skins live in `src/styles/skins.ts`. The CSS variables and frame classes that apply them live in `src/styles/`.
 
 ## Time of day
 
@@ -125,7 +128,7 @@ Each pet defines two anchor points on its own grid: `head` (top center of the he
 
 ## Screens (in build order)
 
-1. **Kit** (`/dev/kit`): theme, UI components, all sprites, habitats at all 4 times, accessories, particles, sounds.
+1. **Kit** (`/dev/kit`): skin switcher, UI components in every skin, all sprites and icon sets, habitats at all 4 times, accessories, particles, sounds.
 2. **Egg reveal**: a full-screen overlay component, used by the tutorial and the shop.
 3. **Home** (`/`): habitat with the pet, tap to pet (squish, hearts, sound), speech bubble, XP bar, today's quests, bottom nav.
 4. Later: Shop, Collection book, Tutorial flow, curses and blessings wired into quests.
