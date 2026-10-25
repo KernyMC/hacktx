@@ -667,19 +667,25 @@ function fallbackChronicle(b) {
 const hasMuse = () => !!env('MODEL_API_KEY');
 async function museJSON(system, user, temperature = 0.7) {
   const base = env('MUSE_BASE_URL', 'https://api.meta.ai/v1').replace(/\/$/, '');
-  const call = (jsonMode) => fetchWithTimeout(`${base}/chat/completions`, {
+  // Muse Spark reasons before it answers and the reasoning counts against max_tokens: keep the budget
+  // generous and the effort low, or the JSON never arrives. Extras are dropped on a 400/422 retry.
+  const call = (extras) => fetchWithTimeout(`${base}/chat/completions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env('MODEL_API_KEY')}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(Object.assign({ model: env('MUSE_MODEL', 'muse-spark-1.3'), temperature, max_tokens: 900, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }, jsonMode ? { response_format: { type: 'json_object' } } : {})),
-  }, 25000);
-  let r = await call(true);
-  if (r.status === 400 || r.status === 422) { log(`Muse rejected JSON mode (${r.status}); retrying without response_format`); r = await call(false); }
+    body: JSON.stringify(Object.assign({ model: env('MUSE_MODEL', 'muse-spark-1.3'), temperature, max_tokens: 6000, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }, extras)),
+  }, 50000);
+  let r = await call({ response_format: { type: 'json_object' }, reasoning_effort: 'low' });
+  if (r.status === 400 || r.status === 422) { log(`Muse rejected the request options (${r.status}); retrying plain`); r = await call({}); }
   if (!r.ok) throw await upstreamError(r, 'Muse');
-  const j = await r.json();
-  const text = (((j.choices || [])[0] || {}).message || {}).content || '';
+  const raw = await r.text();
+  let j; try { j = JSON.parse(raw); } catch { throw new Error(`Muse answered non-JSON: ${raw.slice(0, 120)}`); }
+  const choice = (j.choices || [])[0] || {}, msg = choice.message || {};
+  const text = typeof msg.content === 'string' ? msg.content : Array.isArray(msg.content) ? msg.content.map((p) => p.text || '').join('') : '';
+  if (!text.trim()) throw new Error(`Muse returned no content (finish=${choice.finish_reason || '?'}, keys=${Object.keys(msg).join('/')})`);
   const clean = String(text).replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
   const start = clean.indexOf('{'), end = clean.lastIndexOf('}');
-  return JSON.parse(start >= 0 ? clean.slice(start, end + 1) : clean);
+  try { return JSON.parse(start >= 0 ? clean.slice(start, end + 1) : clean); }
+  catch { throw new Error(`Muse JSON unreadable (finish=${choice.finish_reason || '?'}): ${clean.slice(0, 100)}`); }
 }
 const villageBrief = (b) => {
   const me = b.me || {}, pet = me.pet || {};
