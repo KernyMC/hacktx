@@ -12,7 +12,7 @@ One file per animal: `art/animals/<id>.px.js`. It must define four anims and one
 // selout/outline grows the canvas by 1px on each side, so draw on an inner canvas of N-2.
 const N = 24, S = N - 2
 for (const mood of ["idle", "happy", "eat", "sad"])
-  anim(`<id>_${mood}`, { w: S, h: S, frames: 4, selout: "k" }, (c) => draw(c, c.frame, mood))
+  anim(`<id>_${mood}`, { w: S, h: S, frames: 4, outline: "k" }, (c) => draw(c, c.frame, mood))
 sheet("<id>", [`<id>_idle`, `<id>_happy`, `<id>_eat`, `<id>_sad`], { cols: 4, pad: 0 })
 ```
 
@@ -28,7 +28,11 @@ The result `art/out/<id>/<id>.png` must be exactly (4·N) × (4·N) px.
 - **Palette**: use the animal's colours from `js/animals.js` (`pal.b` body, `pal.d` markings, `pal.a` belly/light,
   `pal.c` inner ear/beak/horns, `pal.n` nose). Build ramps with `shades("1234", pal.b)` etc. so shadows go cool and
   lights warm. 2–4 shades per material. Ink `k: "#2b2140"`, eye white `w: "#ffffff"`, blush `"#ff8fab"`.
-- **Light from top-left**: lit side `light`, right/underside `shade`. Never pillow-shade. `selout: "k"`.
+- **Light from top-left**: lit side `light`, right/underside `shade`. Never pillow-shade.
+- **Outline: use `outline: "k"` (solid ink #2b2140), NOT `selout`.** The game draws pets over pastel skies and parchment
+  panels; a soft coloured outline disappears there. The rest of the UI (icons, eggs) has solid ink outlines too.
+- **Silhouette first.** Pets are shown at 160 px on the stage and 72 px in cards: the shape alone must say "hedgehog"
+  (spiky back), "axolotl" (three gill fronds per side), "bunny" (long ears). Add the species' signature feature big.
 - **Face**: two dark eyes with a 1px white glint (2px tall at N≥24, 3px at N≥40), small nose/mouth, blush dots.
   Higher tiers get more detail: fur texture, markings, a second shade step, a rim highlight (legendary: gold `#ffe9a3` rim on the right edge).
 - **Animations** (4 frames each, the game plays them at its own speed):

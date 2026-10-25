@@ -236,16 +236,24 @@
    * @param opts     { blink:boolean, t:number, flip:boolean }
    */
   // Drawn sheets are downsampled to the rarity tier resolution so "rarer = sharper" holds for them too.
-  // Off by default: downsampled 80px sheets lose their outline and clash with the procedural set.
-  // Set Sprites.USE_SHEETS = true to use assets/sprites/<species>.png when present.
+  // pxl sheets (assets/sprites/manifest.json) are drawn at native resolution; a species without a sheet
+  // falls back to the procedural animal. Set Sprites.USE_SHEETS = false to force procedural everywhere.
   const TIER_CACHE = new Map();
   function drawSheetAtTier(ctx, sheet, pet, x, y, px, opts) {
     const N = global.Animals.RES[global.Animals.normRarity(pet.rarity)];
     const { image, meta } = sheet;
     const anim = meta.anims[opts.anim] || meta.anims.idle;
     const frame = Math.floor((opts.t || 0) / (1000 / (anim.fps || 6))) % anim.frames;
-    const key = pet.species + "|" + N + "|" + anim.row + "|" + frame;
+    const key = pet.species + "|" + N + "|" + anim.row + "|" + frame + (pet.shiny ? "|s" : "");
     let cv = TIER_CACHE.get(key);
+    if (!cv && meta.frameW === N) {
+      // native-resolution pxl sheet: copy the cell as-is (shiny pets get a hue shift)
+      cv = document.createElement("canvas"); cv.width = N; cv.height = N;
+      const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
+      if (pet.shiny) c.filter = "hue-rotate(160deg)";
+      c.drawImage(image, frame * meta.frameW, anim.row * meta.frameH, meta.frameW, meta.frameH, 0, 0, N, N);
+      TIER_CACHE.set(key, cv);
+    }
     if (!cv) {
       cv = document.createElement("canvas"); cv.width = N; cv.height = N;
       const c = cv.getContext("2d"); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = "high";
@@ -382,8 +390,14 @@
     eat:   { row: 2, frames: 4, fps: 6 },
     sad:   { row: 3, frames: 4, fps: 3 },
   } };
-  function loadAll(base = 'assets/sprites/', list = ['axolotl', 'cat', 'dog']) {
-    return Promise.allSettled(list.map(sp => loadSheet(sp, base + sp + '.png', Object.assign({ baseHue: BASE_HUE[sp] }, SHEET_META))));
+  // Sheets drawn with pxl (tools/pack_sprites.js writes manifest.json: { id: { cell: N } }, 4 cols × 4 rows of N×N cells).
+  // Legacy 80px ChatGPT sheets are still accepted when a species is missing from the manifest.
+  async function loadAll(base = 'assets/sprites/', list = []) {
+    let manifest = {};
+    try { const r = await fetch(base + 'manifest.json', { cache: 'no-cache' }); if (r.ok) manifest = await r.json(); } catch (e) { /* static host without manifest */ }
+    const jobs = Object.entries(manifest).map(([sp, m]) => loadSheet(sp, base + sp + '.png', Object.assign({}, SHEET_META, { frameW: m.cell, frameH: m.cell, baseHue: BASE_HUE[sp] })));
+    list.filter(sp => !manifest[sp]).forEach(sp => jobs.push(loadSheet(sp, base + sp + '.png', Object.assign({ baseHue: BASE_HUE[sp] }, SHEET_META))));
+    return Promise.allSettled(jobs);
   }
 
   const QUEST_TYPE_TO_SPECIES = { food: 'cat', social: 'dog', outdoor: 'golem', creative: 'owl' };
@@ -393,7 +407,7 @@
     if (g.length !== SIZE || g.some(r => r.length !== SIZE)) throw new Error('Bad sprite grid: ' + k);
   });
 
-  const api = { USE_SHEETS: false, SIZE, BODIES, HATS, SPECIES, QUEST_TYPE_TO_SPECIES, RARITY_HUE,
+  const api = { USE_SHEETS: true, SIZE, BODIES, HATS, SPECIES, QUEST_TYPE_TO_SPECIES, RARITY_HUE,
     BASE_HUE, SHEET_META, makePalette, drawPet, petCanvas, drawEgg, registerSheet, loadSheet, loadAll, SHEETS };
   if (global.Animals) api.SPECIES = global.Animals.A;
   global.Sprites = api;
