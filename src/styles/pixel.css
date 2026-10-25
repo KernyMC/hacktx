@@ -10,7 +10,7 @@
 
 .px-btn,
 .px-plaque {
-  font-family: var(--font-pixelify), monospace;
+  font-family: "Tiny5", var(--font-pixelify), monospace;
   background: var(--button);
   color: var(--button-text);
   box-shadow:
@@ -50,7 +50,7 @@
 }
 
 .px-title {
-  font-family: var(--font-pixelify), monospace;
+  font-family: "Tiny5", var(--font-pixelify), monospace;
   color: var(--panel-light);
   text-shadow: 2px 2px 0 var(--outline);
 }
