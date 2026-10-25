@@ -269,8 +269,8 @@
         <div class="xp">+${q.xp}<br>XP</div>`;
       b.querySelector('.title').textContent = q.title + (q.status === 'done' ? ' (done)' : '');
       b.querySelector('.meta').textContent = `${TYPE_NAME[q.type]} · ${q.place.name} · ${q.place.dist}`;
-      if (q.cursed) b.insertAdjacentHTML('beforeend', `<span class="tag curse">${ic(me.activeCurse.icon, 12)} cursed</span>`);
-      else if (q.blessed) b.insertAdjacentHTML('beforeend', `<span class="tag bless">${ic('sparkle', 12)} blessed</span>`);
+      if (q.cursed) b.insertAdjacentHTML('beforeend', `<span class="tag curse">${ic(me.activeCurse.icon, 12)} ${esc(me.activeCurse.name)} mode</span>`);
+      else if (q.blessed) { const names = (q.blessings || []).map(id => (API.BLESSINGS.find(x => x.id === id) || {}).badge).filter(Boolean); b.insertAdjacentHTML('beforeend', `<span class="tag bless">${ic('sparkle', 12)} ${esc(names.join(' · ') || 'blessed')}</span>`); }
       if (q.status === 'open') b.addEventListener('click', () => openQuest(q));
       list.appendChild(b);
     });
@@ -529,7 +529,7 @@
     const steps = [];
     steps.push(() => {
       Audio8.play('reward'); Audio8.happy(me.pet.species); stage.set(q.type === 'food' ? 'eat' : 'happy', 3000); confetti.burst(60);
-      $('rwStep').innerHTML = `<div class="big">Quest complete!</div><p class="verdict"></p><div class="xpnum" id="xpCount">+0 XP</div>${res.blessed ? `<span class="tag bless">${ic('sparkle', 12)} blessed</span> ` : ''}${res.curseLifted ? '<span class="tag curse">curse broken</span>' : ''}<p class="sub">${coinIc()} +${res.coinsGained} coins${res.raidDamage ? ` · ${ic('monster', 14)} ${res.raidDamage} raid damage` : ''}${res.engine && res.engine !== 'mock' ? ` · judged by ${res.engine === 'gemini' ? 'Gemini' : 'the game master'}` : ''}</p>`;
+      $('rwStep').innerHTML = `<div class="big">Quest complete!</div><p class="verdict"></p><div class="xpnum" id="xpCount">+0 XP</div>${res.blessed ? `<span class="tag bless">${ic('sparkle', 12)} ${esc((res.blessingsUsed || []).map(id => (API.BLESSINGS.find(x => x.id === id) || {}).badge || id).join(' · '))}</span> ` : ''}${res.curseLifted ? '<span class="tag curse">curse broken</span>' : ''}<p class="sub">${coinIc()} +${res.coinsGained} coins${res.raidDamage ? ` · ${ic('monster', 14)} ${res.raidDamage} raid damage` : ''}${res.engine && res.engine !== 'mock' ? ` · judged by ${res.engine === 'gemini' ? 'Gemini' : 'the game master'}` : ''}</p>`;
       $('rwStep').querySelector('.verdict').textContent = '"' + res.message + '"';
       countUp($('xpCount'), res.xpGained);
     });
@@ -596,8 +596,8 @@
       const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64; cv.style.width = '72px'; cv.style.height = '72px';
       Sprites.drawEgg(cv.getContext('2d'), e.rarity, 0, 0, 4, 0);
       d.appendChild(cv);
-      d.insertAdjacentHTML('beforeend', `<span class="rar ${e.rarity}">${e.rarity}</span>${e.shiny ? '<span class="shiny">SHINY</span>' : ''}<div class="sp">${ready ? 'Ready to hatch!' : `${e.progress}/${e.needed} quests or wins`}</div><div class="meter pr"><i style="width:${e.progress / e.needed * 100}%"></i></div>`);
-      d.onclick = () => ready ? hatchEgg(e) : (Audio8.play('tap'), toast(`Complete ${e.needed - e.progress} more quest${e.needed - e.progress > 1 ? 's' : ''} or minigame win${e.needed - e.progress > 1 ? 's' : ''} to hatch this egg.`));
+      d.insertAdjacentHTML('beforeend', `<span class="rar ${e.rarity}">${e.rarity}</span>${e.shiny ? '<span class="shiny">SHINY</span>' : ''}<div class="sp">${ready ? 'Ready to hatch!' : `${e.progress}/${e.needed} quests`}</div><div class="meter pr"><i style="width:${e.progress / e.needed * 100}%"></i></div>`);
+      d.onclick = () => ready ? hatchEgg(e) : (Audio8.play('tap'), toast(`Complete ${e.needed - e.progress} more quest${e.needed - e.progress > 1 ? 's' : ''} to hatch this egg. Minigames do not count.`));
       eg.appendChild(d);
     });
     // owned
@@ -670,7 +670,7 @@
   // Minigames + duels
   // ------------------------------------------------------------------
   async function playPetGame(p) {
-    const a = animal(p), diff = RAR.indexOf(Animals.normRarity(p.rarity)) + 1;
+    const a = animal(p), diff = Math.min(5, RAR.indexOf(Animals.normRarity(p.rarity)) + 2);   // harder: a notch above the rarity tier
     const res = await Minigames.open({ engine: a.minigame, pet: p, difficulty: diff, title: `${p.name}'s ${Minigames.gameFor(a.id).name}`, subtitle: a.minigame === 'rodeo' ? 'Legendary trial' : `${cap(Animals.normRarity(p.rarity))} difficulty`, practice: true });
     const r = await API.reportMinigame(p.id, res.win);
     if (res.win && r.reward) { toast(`Win! +${r.reward.coins} coins${r.reward.warmed ? `, ${r.reward.warmed} egg${r.reward.warmed > 1 ? 's' : ''} warmed` : ''}. ${r.left} rewarded wins left today.`); confetti.burst(50); }

@@ -91,10 +91,10 @@
     { id: 'tiny',        name: 'Tiny Coins',   icon: 'coin',    price: 45, proof: null,    desc: 'Their next quest pays half the coins. Petty, but effective.' },
   ];
   const BLESSINGS = [
-    { id: 'double',   name: 'Double XP',     icon: 'star',    price: 40, desc: 'Next quest gives 2x XP.' },
-    { id: 'lucky',    name: 'Lucky Clover',  icon: 'egg',     price: 50, desc: 'Next quest is guaranteed to drop an egg.' },
-    { id: 'rarityup', name: 'Golden Touch',  icon: 'sparkle', price: 90, desc: 'Next egg dropped is one rarity higher.' },
-    { id: 'coinrain', name: 'Coin Rain',     icon: 'coin',    price: 35, desc: 'Next quest pays 3x coins.' },
+    { id: 'double',   name: 'Double XP',     icon: 'star',    price: 40, badge: '2x XP', desc: 'Next quest gives 2x XP.' },
+    { id: 'lucky',    name: 'Lucky Clover',  icon: 'egg',     price: 50, badge: 'egg guaranteed', desc: 'Next quest is guaranteed to drop an egg.' },
+    { id: 'rarityup', name: 'Golden Touch',  icon: 'sparkle', price: 90, badge: 'rarity +1', desc: 'Next egg dropped is one rarity higher.' },
+    { id: 'coinrain', name: 'Coin Rain',     icon: 'coin',    price: 35, badge: '2x coins', desc: 'Next quest pays 2x coins.' },
     { id: 'shield',   name: 'Hex Shield',    icon: 'orb',     price: 45, desc: 'Blocks the next curse someone sends.' },
     { id: 'incubate', name: 'Warm Nest',     icon: 'flame',   price: 40, desc: 'All eggs in the nest get +1 incubation right now.' },
     { id: 'reroll',   name: 'Fresh Start',   icon: 'reroll',  price: 20, desc: 'Gives every open quest a new free reroll.' },
@@ -298,8 +298,8 @@
 
   function newEgg(rarity, source, shiny = false) {
     // the nest only has so much warmth: every two eggs already incubating slow a new one down by one step
-    const crowd = Math.floor(S.eggs.length / 2);
-    const e = { id: uid(), rarity, progress: 0, needed: EGG_NEEDS + (rarity === 'legendary' ? 1 : 0) + crowd, shiny, source };
+    // 1 egg = 2 quests; every egg already in the nest adds one more quest to the new one
+    const e = { id: uid(), rarity, progress: 0, needed: EGG_NEEDS + S.eggs.length, shiny, source };
     S.eggs.push(e); return e;
   }
   function allPets() { return (S.pet ? [S.pet] : []).concat(S.zoo); }
@@ -338,7 +338,7 @@
       S.inbox.push({ id: uid(), kind: 'gift', from: 'HackTX', title: 'Welcome package', text: 'A care package for your first day. Open it!',
         items: [{ kind: 'coins', amount: 1200 }, { kind: 'curse', id: 'pirate', qty: 1 }, { kind: 'curse', id: 'rhyme', qty: 1 }, { kind: 'curse', id: 'hop', qty: 1 }, { kind: 'blessing', id: 'double', qty: 1 }, { kind: 'key', qty: 1 }] });
       S.inbox.push({ id: uid(), kind: 'curse', from: 'Leo', curse: CURSES[0] });
-      S.inbox.push({ id: uid(), kind: 'challenge', from: 'Leo', pet: clone(FRIENDS_SEED[0].pet), engine: Animals.A[FRIENDS_SEED[0].pet.species].minigame, difficulty: 4, triesLeft: 3, wager: 60 });
+      S.inbox.push({ id: uid(), kind: 'challenge', from: 'Leo', pet: clone(FRIENDS_SEED[0].pet), engine: Animals.A[FRIENDS_SEED[0].pet.species].minigame, difficulty: 5, triesLeft: 3, wager: 80 });
       save();
       return S.pet;
     },
@@ -427,7 +427,7 @@
       const used = S.blessings.slice(); S.blessings = [];
       const has = b => used.includes(b);
       let xp = q.xp; if (has('double')) xp *= 2;
-      let coins = Math.round(xp / 2); if (has('coinrain')) coins *= 3;
+      let coins = Math.round(xp / 2); if (has('coinrain')) coins *= 2;
       const curse = S.activeCurse; if (curse && curse.id === 'tiny') coins = Math.round(coins / 2);
       const curseLifted = !!curse; S.activeCurse = null;
 
@@ -623,14 +623,13 @@
       if (S.games.day !== today) S.games = { day: today, rewarded: 0 };
       const p = allPets().find(x => x.id === petId);
       if (!win) { save(); return { ok: true, reward: null }; }
-      // every win warms the nest; only the coin payout is capped per day
-      S.eggs.forEach(e => { e.progress = Math.min(e.needed, e.progress + 1); });
+      // minigames never incubate eggs (only real quests do); they lift mood and pay a few capped coins
       S.mood = Math.min(100, S.mood + 8);
-      const readyEggs = S.eggs.filter(e => e.progress >= e.needed).length;
+      const readyEggs = 0;
       let coins = 0;
       if (S.games.rewarded < 5) { S.games.rewarded++; coins = 15 + tierOf(p ? p.rarity : 'common') * 15; S.coins += coins; }
       save();
-      return { ok: true, reward: { coins, warmed: S.eggs.length, readyEggs }, left: Math.max(0, 5 - S.games.rewarded) };
+      return { ok: true, reward: { coins, warmed: 0, readyEggs }, left: Math.max(0, 5 - S.games.rewarded) };
     },
 
     /** POST /friends/:id/challenge { petId } — friend gets 3 tries at your pet's minigame */
@@ -644,7 +643,7 @@
       const a = Animals.A[p.species];
       const d = { id: uid(), friendId, friendName: f.name, petName: p.name, species: p.species, rarity: p.rarity, engine: a.minigame,
         engineName: (global.Minigames && Minigames.gameFor ? Minigames.gameFor(p.species).name : a.minigame),
-        difficulty: Math.min(5, tierOf(p.rarity) + 2), triesLeft: 3, status: 'pending', at: Date.now() };   // duels are one notch harder than practice
+        difficulty: Math.min(5, tierOf(p.rarity) + 3), triesLeft: 3, status: 'pending', at: Date.now() };   // duels: two notches above the rarity tier
       S.duels.unshift(d); S.duels = S.duels.slice(0, 8); save();
       return { ok: true, duel: d, message: `Sent! ${f.name} has 3 tries to beat ${p.name}'s ${d.engineName}. If they fail all 3, you win coins.` };
     },
@@ -666,7 +665,7 @@
       await delay(100);
       const f = rnd(S.friends.filter(x => !x.vacation));
       if (onVacation()) return { ok: false, blocked: true, message: `${f.name} tried to challenge you, but you are on vacation. Request bounced.` };
-      const diff = Math.min(5, tierOf(f.pet.rarity) + 2);
+      const diff = Math.min(5, tierOf(f.pet.rarity) + 3);
       S.inbox.push({ id: uid(), kind: 'challenge', from: f.name, pet: clone(f.pet), engine: Animals.A[f.pet.species].minigame, difficulty: diff, triesLeft: 3, wager: 20 + diff * 15 });
       save(); return { ok: true, message: `${f.name} challenged you to ${f.pet.name}'s minigame.` };
     },
