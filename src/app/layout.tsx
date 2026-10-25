@@ -1,10 +1,20 @@
 import type { Metadata } from "next";
 import { Pixelify_Sans, VT323 } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 const pixelify = Pixelify_Sans({
   variable: "--font-pixelify",
   subsets: ["latin"],
+});
+
+// Digits only: Pixelify Sans draws 5 exactly like S, so numbers come from Tiny5 (OFL, subset to 0-9).
+const tiny5 = localFont({
+  src: "../styles/fonts/Tiny5-digits.ttf",
+  variable: "--font-digits",
+  declarations: [{ prop: "unicode-range", value: "U+0030-0039" }],
+  // No metric-matched fallback face: it would cover letters too and hide Pixelify Sans.
+  adjustFontFallback: false,
 });
 
 const vt323 = VT323({
@@ -22,13 +32,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${pixelify.variable} ${vt323.variable} h-full antialiased`}
+      className={`${pixelify.variable} ${vt323.variable} ${tiny5.variable} h-full antialiased`}
     >
-      <head>
-        {/* Digits only: Pixelify Sans draws 5 exactly like S, so numbers come from Tiny5. */}
-        {/* eslint-disable-next-line @next/next/no-page-custom-font -- root layout, so it loads on every page */}
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tiny5&text=0123456789&display=swap" />
-      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

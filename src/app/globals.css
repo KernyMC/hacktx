@@ -2,7 +2,7 @@
 @import "../styles/pixel.css";
 
 @theme inline {
-  --font-display: "Tiny5", var(--font-pixelify);
+  --font-display: var(--font-digits), var(--font-pixelify);
   --font-body: var(--font-vt323);
 }
 
