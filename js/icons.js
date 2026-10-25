@@ -630,12 +630,14 @@
     return true;
   }
 
-  function svg(name, size = 16, color = 'currentColor', color2 = null) {
+  // themed = true: the per-animal glyph wins (the bottom tab bar keeps each pet's own icons)
+  function svg(name, size = 16, color = 'currentColor', color2 = null, themed = false) {
     let g = G[name] || G.star, fill = ch => (ch === '+' ? (color2 || '#ffffff') : color);
-    // colour icons win everywhere (nav, prices, inbox); the per-animal glyphs only fill names without one
-    if (COLOR[name]) {
+    // colour icons everywhere (prices, inbox, shop...), except where the per-animal glyph is asked for (tab bar)
+    const useTheme = theme && THEMED.includes(name) && (themed || !COLOR[name]);
+    if (COLOR[name] && !useTheme) {
       const c = COLOR[name]; g = c.g; fill = ch => (ch === 'o' ? INK : c.p[ch]);
-    } else if (theme && THEMED.includes(name)) {
+    } else if (useTheme) {
       g = theme.grids[name];
       const pal = { o: '#2b2140', a: theme.a, f: theme.f };
       fill = ch => pal[ch];
@@ -659,7 +661,8 @@
   function mount(root = document) {
     root.querySelectorAll('i[data-icon]').forEach(el => {
       const size = el.dataset.size || 16;
-      el.innerHTML = svg(el.dataset.icon, size, el.dataset.color || 'currentColor', el.dataset.color2 || null);
+      const themed = 'themed' in el.dataset || !!el.closest('.tabs');
+      el.innerHTML = svg(el.dataset.icon, size, el.dataset.color || 'currentColor', el.dataset.color2 || null, themed);
     });
   }
 

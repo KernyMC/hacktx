@@ -191,3 +191,6 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
 - Icons, follow-up: colour icons now take priority over the per-animal 9x9 glyphs everywhere (the axolotl's
   read as pink squares in the nav and on prices); the animal's identity stays in the CSS theme and habitat.
   New `quill` (Ye Olde Bard), `coins` (Coin Rain) and `pouch` (Tiny Coins) replace the themed book/coin.
+- Icons, user correction: the bottom tab bar keeps each pet's own 9x9 glyphs (Richard's per-animal sets);
+  `Icons.svg(..., themed=true)` and `mount()` inside `.tabs` (or `data-themed`) pick the themed glyph, every
+  other place uses the colour icons.
