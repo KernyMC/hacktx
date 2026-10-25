@@ -1,120 +1,65 @@
-# Familiars — project context for Claude Code
+# Familiars — HackTX 2026 (#OnceUponAHack)
 
-Read this first. It is the full history of decisions from the design session, so you can continue without re-asking.
+Context router. This file is loaded whole every session — keep it short.
+Detail lives in `docs/`, `SPECS.md` and the agents in `.claude/agents/`.
 
-## What this is
+**What it is**: a cute 16-bit pet you can only raise by doing real-world quests. An AI game master
+turns real places nearby (SerpApi) into quests; proof is a photo or a voice note judged by Gemini;
+rewards are XP, random-rarity eggs and evolutions. Friends' pets live in a shared village
+(curses, blessings, boss raids, minigame duels).
 
-**Familiars** is a HackTX 2026 (UT Austin, theme #OnceUponAHack, 24h, Oct 24–25 2026) hackathon project.
-A cute 16-bit pet you can only raise by doing real-world quests. An AI game master turns real places near you into quests; proof is a photo or a voice note; rewards are XP, random-rarity eggs and evolutions. Friends' pets live in a shared village where you curse, bless and raid together.
+Tracks: **Best Overall**, **Jester's Court (Most Entertaining)**, **Meta**, **SerpApi**.
+Deadlines: soft submit Sat 11:30 pm · final Sun 11:30 am · judging Sun 2–5 pm (Welch) · `hacktx26.devpost.com`.
 
-Tracks we are targeting (max 3 sponsored + Best Overall):
-- **Best Overall (Cinderella's Castle)** — MacBook Pro M5 Pro. Judged on design, complexity, impact, unique vision.
-- **Jester's Court (Most Entertaining)** — PS5.
-- **Meta** — "bring people closer together with AI"; uses Muse Spark (text), Muse Image, Muse Voice Transcribe. Top 3 go to Menlo Park.
-- **SerpApi** — SerpApi must play a meaningful role (Maps/Places/Events feed every quest).
-- Freebies: `.TECH` domain (`familiars.tech`), Gemini as vision fallback, Vultr hosting, Tiger Data (Postgres).
+## Commits on GitHub
 
-Deadlines: soft submission Sat 11:30 pm, final Sun 11:30 am, judging Sun 2–5 pm (Welch), Devpost `hacktx26.devpost.com`.
+Commits are authored as the user (KernyMC), never with Claude as co-author. Working branch:
+`familiars-v2` (the `richard` branch holds a teammate's other project — do not touch it).
+Ask before committing unless the user already said "push everything".
 
-Full product/tech spec: **`SPECS.md`** (data model, API contract, AI prompts, design system, demo script). Keep it updated.
+## Where to look
 
-## State of the code (front-end is DONE, backend is NOT started)
+| You need | Go to |
+|---|---|
+| What is done / in progress / pending | `docs/status.md` |
+| Decision history and findings per session | `docs/log.md` |
+| Why something was decided (irreversible + non-obvious) | `docs/adr/` |
+| Domain glossary (Familiar, rarity, class, curse, raid key, gacha…) | `CONTEXT.md` |
+| Product spec, data model, API contract, prompts | `SPECS.md` |
+| How to run and test (npm start, Playwright, #dev) | `docs/dev.md` |
+| 3-minute demo script for judges | `docs/demo.md` |
+| Drawing or fixing sprites (pxl) | `.claude/agents/pixel-artist.md` + `art/BRIEF.md` |
+| ElevenLabs voices / transcription | `.claude/agents/elevenlabs.md` |
+| Gemini (Vertex), SerpApi, server routes | `.claude/agents/ai-backend.md` + `server/README.md` |
 
-No build step. Static files, open with any static server (`npx serve .` — the user is on Windows without Python).
+## Code map (no build step, Node ≥ 18, zero dependencies)
 
 ```
-index.html          markup + all CSS (single committed pixel theme, mobile-first 430px, phone frame on desktop)
-js/icons.js         8x8 pixel icons rendered as inline SVG. NO EMOJI anywhere in the UI (user requirement).
-js/sprites.js       pet rendering: 16-bit sprite sheets (preferred) with procedural 16x16 fallback; eggs; hats; palettes
-js/audio.js         WebAudio chiptune SFX, no audio files
-js/mockApi.js       THE ONLY FILE THE BACKEND REPLACES. Every function = one endpoint (see SPECS.md §8). localStorage key `familiars.v1`
-js/app.js           UI controller: hatch → home/stage → quest sheet → proof → judging → reward sequence → evolution; Nest; Village; Story; Settings
-assets/sprites/     16-bit sheets (320x320 PNG, 4x4 cells of 80px). Currently: axolotl.png, cat.png, dog.png
-tools/slice_sheet.py  chroma-keys magenta + slices a ChatGPT-generated 4x4 sheet into assets/sprites
-SPECS.md            product + technical spec
+index.html        markup + all CSS (HackTX theme: starry night, burnt orange, parchment)
+js/animals.js     the 30 animals (shapes + procedural rasterizer; fallback when a sheet is missing)
+js/sprites.js     drawing entry point: loads assets/sprites/manifest.json (4x4 pxl sheets), eggs
+js/minigames.js   7 minigame engines (rodeo = legendary)
+js/mockApi.js     game state + API contract; calls the server, falls back to mocks without it
+js/app.js         UI controller (every screen and flow)
+server/server.js  static files + Gemini (proofs, quests, chat) + ElevenLabs + SerpApi
+art/              pxl sources for sprites (art/animals/*.px.js) · art/out is gitignored
+tools/pxl         vendored pxl tool · tools/pack_sprites.js packs sheets into assets/
 ```
 
-Screens built and working: Hatch, Home (animated stage + quests + inbox banner), Quest sheet (photo upload / hold-to-record voice with mock transcript, reroll), Judging, Reward sequence (verdict → XP count-up → level up → egg drop with rarity → evolution cutscene), Nest (eggs incubate, tap-to-hatch, collection), Village (lawn canvas, boss raid with HP, friends with Curse/Bless/Visit, curse picker), Story (illustrated chapter of your day), Settings (sound, **Demo: force legendary drop**, reset).
+## Hard rules (non-negotiable)
 
-Demo tuning constants in `mockApi.js`: `EVOLVE_AT = 2` quests, `EGG_NEEDS = 2`, rarity roll 3% legendary / 12% epic / 30% rare / rest common, first quest always drops an egg.
+- **No emoji anywhere in the UI.** Icons via `Icons.svg()` / `<i data-icon="...">`.
+- **The Texas Longhorn is the ONLY legendary.** Austin-flavored collection.
+- **Rarity = resolution**: common 20 px · uncommon 24 · rare 32 · mythic 40 · legendary 48. See ADR 0001.
+- **Zero npm dependencies.** The server is plain Node with `fetch`. Do not add packages without asking.
+- **Keys live only in `.env`** (gitignored). Never in the front-end, never in commits. `.env.example` is versioned.
+- **Every AI call has a local fallback**: the demo must never depend on wifi.
+- **Never invent places**: quests only use places returned by SerpApi (or the fixed demo pool).
+- **Art is made with pxl, not ChatGPT sheets**: see ADR 0001. Faces use the standard `face()` from `art/BRIEF.md`.
+- **No Google Maps Platform**: SerpApi already provides the data; the map is a pixel minimap. See ADR 0003.
 
-## Sprite pipeline (important, the user generates art with ChatGPT)
+## At the end of a session with relevant work
 
-Contract for every sheet: **4 columns × 4 rows, equal cells, solid magenta #FF00FF background**.
-Pets: row 1 idle (4f), row 2 happy jump (4f), row 3 eating (4f), row 4 sleepy (4f).
-Eggs: row 1 wobble (4f), row 2 crack stages (intact, small crack, big cracks, split with light), row 3 hatch burst (4f), row 4 glow pulse (4f).
-
-Process a new sheet: `python tools/slice_sheet.py <generated.png> assets/sprites/<name>.png 80` → register in `Sprites.loadAll()` list in `js/sprites.js` (meta = `SHEET_META`, `baseHue` in `BASE_HUE`). Animations are selected with `drawPet(..., { anim: 'idle'|'happy'|'eat'|'sad', t })`.
-Rarity variants are done by `ctx.filter = hue-rotate(pet.hue - baseHue)`: epic = +150 ("shiny"), legendary = +40 (golden). Hats are ignored for sheet-based species.
-Note: the magenta key is strict (`r>200, b>200, g<80, |r-b|<45`) because the axolotl's pink gills were being erased with a looser threshold.
-
-### Species today
-- `axolotl` — every pet hatches as this (baby). Base hue 340.
-- `cat` ("Snack Cat") — evolves from **food** quests. Base hue 30.
-- `dog` ("Party Pup") — evolves from **social** quests. Base hue 30.
-- `golem` ("Moss Golem", outdoor) and `owl` ("Night Owl", creative) — still procedural; waiting for sheets.
-Mapping in `Sprites.QUEST_TYPE_TO_SPECIES`.
-
-### Planned collection: 20 animals by rarity (user already has the prompts; files will arrive as PNGs)
-Common (8): `common_cat` ✅, `common_dog` ✅, `common_bunny`, `common_duckling`, `common_hamster`, `common_hedgehog`, `common_frog`, `common_turtle`
-Rare (7): `rare_redpanda`, `rare_penguin`, `rare_fennec`, `rare_otter`, `rare_raccoon`, `rare_capybara`, `rare_owl`
-Epic (4): `epic_armadillo`, `epic_bat`, `epic_chameleon`, `epic_snowleopard`
-Legendary (1): `legendary_longhorn` — **a Texas Longhorn bull (Austin, TX); must be the only legendary**
-Eggs: `egg_common`, `egg_rare`, `egg_epic`, `egg_legendary`
-
-When they arrive: slice each, add a `RARITY_POOL = { common:[...], rare:[...], epic:[...], legendary:['longhorn'] }` in `mockApi.js` and make `hatchEgg()` pick only from the egg's tier (longhorn only from a legendary egg). Replace procedural `drawEgg` with the egg sheets (idle wobble in Nest, crack stages on tap, burst on hatch, glow when ready). Hue-rotate is then no longer needed for rarity (art carries it) — keep it only as a fallback.
-
-## Decisions the user made (do not undo)
-1. 16-bit look, cute animals, ChatGPT-generated sheets (not AI-drawn at runtime, not procedural once sheets exist).
-2. **No emojis anywhere.** Use `Icons.svg()` / `<i data-icon="...">`.
-3. Legendary = Texas Longhorn bull, Austin-flavored collection (armadillo, Congress Bridge bat, UT turtle pond turtle).
-4. Front-end first with mocked data; backend afterwards by replacing `js/mockApi.js` with `fetch` calls. Keep function names.
-5. User will add **ElevenLabs**: (a) Speech-to-Text (Scribe) to transcribe the voice-note proof — replaces the mock transcript in `recEnd()` in `app.js`; (b) Text-to-Speech so the pet reads the quest aloud (one voice per species) — add a play button in the quest sheet. API key must live in the backend (`POST /speech/transcribe`, `POST /speech/say`); front-end switches the recorder to a real `MediaRecorder`.
-
-## Backend plan (not started)
-Suggested: Supabase (Postgres + Auth + Realtime for village/curses) or Tiger Data, thin Node/Express or Next.js API routes, SerpApi for places/events, Meta Muse Spark/Image/Voice Transcribe, Gemini Flash as vision fallback, ElevenLabs for speech, deploy on Vultr. Endpoint list and the exact LLM prompts are in `SPECS.md` §8–9.
-
-## 3-minute demo script
-1. Egg → judge taps it → names the axolotl.
-2. Home: three quests from real places; accept Leo's pirate curse → quest text turns pirate.
-3. Voice-note proof in pirate voice → judging → reward sequence (turn on *force legendary* in Settings first).
-4. Second quest with a photo → evolution cutscene.
-5. Village: curse Leo back, join the raid. Story: read the chapter aloud.
-Everything is mocked locally so the demo never depends on wifi.
-
----
-
-## UPDATE (Oct 25, v2) — read this, it supersedes parts of the above
-
-**Run:** `npm start` (Node 18+, zero dependencies) → http://localhost:8080. Serves the front-end AND the AI routes. Keys live in `.env` (gitignored; template in `.env.example`). Opening with a plain static server still works: every AI call falls back to local mocks.
-
-### New files
-- `js/animals.js` — the collection (30 animals) as shape lists + a rasterizer. **Resolution scales with rarity:** common 20px · uncommon 24 · rare 32 · mythic 40 · legendary 48. Higher tiers also get more shading tones, dithering, sel-out outlines, gold rim light, sparkles. Each animal has `rarity, cls, minigame, voice, pal, shapes, face`.
-- `js/minigames.js` — `Minigames.open({engine, pet, difficulty 1-5, title, subtitle, triesLeft, practice}) → {win, score}`. Engines: catch, hop, memory, timing, whack, dodge, rodeo (Longhorn's legendary trial, hard).
-- `server/server.js` — static + `POST /api/proof/verify` (Gemini, heuristic fallback, duplicate-photo check), `POST /api/speech/transcribe` (ElevenLabs Scribe), `POST /api/speech/say` (ElevenLabs TTS, voice presets cute/chill/grumpy/wise/hyper/regal/spooky/cowboy/dreamy), `GET /api/health`.
-  Gemini: the provided key is a **Vertex AI express key (`AQ.` prefix)** → server auto-uses `aiplatform.googleapis.com` with `gemini-3-flash-preview` (the only model that key can reach). `AIza` keys use AI Studio.
-
-### Rarity / classes (replaces common/rare/epic/legendary)
-5 tiers: common, uncommon, rare, mythic, legendary (legacy 'epic' maps to mythic). Longhorn is still the ONLY legendary.
-Classes: Farm, Wild, Prairie, Water, + special **Austin Legends** (Congress Bat, Jackalope, Texas Longhorn). The **active pet themes the whole app**: class scenery on the stage (barn / forest / mesas+bluebonnets / pond / Austin dusk skyline with bats) + CSS vars from the animal palette + per-class panel styling (`body[data-cls]`).
-Evolution: axolotl → cat/dog/turtle/owl by dominant quest type, and goes common → uncommon (visible resolution upgrade).
-
-### Sprite sheets decision change
-`Sprites.USE_SHEETS = false` by default: the 80px ChatGPT sheets downsampled to tier resolution looked muddy and clashed with the procedural set. Flip to `true` in `js/sprites.js` to use `assets/sprites/<species>.png` (downsampled to the tier res).
-
-### New systems (all in mockApi.js, same function-per-endpoint style)
-- Proof checking: `completeQuest` calls `/api/proof/verify`; rejected proofs → `{ok:false, rejected:true, message, reasons}`, no XP, quest stays open. Photos downscaled to 1024px JPEG client-side. Voice uses real `MediaRecorder` → Scribe (mock transcript built from the quest if offline/no mic).
-- 10 curses (pirate, rhyme, hop, shout, shakespeare, backwards, opera, mime, whisper, tiny) — some force the proof type; 8 blessings (double, lucky, rarityup, coinrain, shield, incubate, reroll, cheer). Curses/blessings are inventory items.
-- Shop: eggs per tier, blessings (buy / use on me), curse scrolls, raid keys (1/2/3 per raid; 3 raids).
-- Gacha "Lucky Capsule": free daily pull, x1 100, x10 900; rates 52/27/14/6/1; pity mythic 20, legendary 60; x10 guarantees rare+; 1/16 shiny; common capsules can be items.
-- Minigame duels: send your pet's minigame to a friend (3 tries; they fail all 3 → you win coins). Incoming duels in the inbox with 3 tries. Minigame wins also incubate eggs (+coins, 5 rewarded/day).
-- Vacation: 12h–2 weeks or custom; mood decays 1.5/h; duel requests blocked; friends on vacation can't be dueled. Settings has "Skip 12 hours" + "Receive a duel" demo buttons.
-- Tutorial: 10-step spotlight walkthrough after hatch, replayable from Settings.
-- Starting coins 1200 (demo tuning). localStorage key is now `familiars.v2`.
-
-### v2.1 — SerpApi quests, minimap, chat (Oct 25)
-- `GET /api/quests?lat&lng&pet&species&flavor&curse` (server): SerpApi `google_maps` for 3 random categories (food/social/outdoor/creative keyword pools in `QUEST_CATEGORIES`) → filter ≤2.5 mi, prefer rating ≥4.3, no repeats → Gemini writes title/text/xp/eggChance in the pet's voice (template text if Gemini fails). Cached 10 min per rounded lat/lng. Returns `{ok:false, source:'seed'}` when SerpApi is missing/fails and the client keeps its seed quests. Place objects carry `lat, lng, distMi, bearing, mapsUrl, thumbnail, placeId`.
-- Client: `API.getQuests(loc)` pulls real quests once per day; tapping the pin by "Today's quests" calls `API.refreshQuests(loc)` (only while nothing is done). Location = `navigator.geolocation` with 4 s timeout, fallback GDC (30.2862, -97.7365). Seed places have coordinates (`SEED_COORDS`) so the minimap works offline.
-- **Minimap** (`drawMinimap` in app.js): pixel canvas, no map tiles. You in the centre, the pin at the real bearing/distance, compass, "Open in Maps" link. Decision: no Google Maps Platform (needs billing, clashes with pixel look, and SerpApi already provides the place data).
-- **Chat with your pet**: "Talk" button on the stage → `POST /api/chat` (Gemini, in character, knows mood/hunger/today's quests, steers you outside; canned lines offline). Replies are spoken with ElevenLabs TTS when available. Not a friend-to-friend chat (needs realtime backend).
-- `.env` keys: `SERPAPI_API_KEY` added. serpapi.com and api.elevenlabs.io could not be reached from the dev sandbox, so those two were tested only for clean fallback; Gemini chat/quest-writing/proof-judging were tested live.
+Update `docs/status.md` (if something changed state) and append a short entry to `docs/log.md`
+(date + what was done/decided + why, if not obvious). If you made a hard-to-reverse decision, write an
+ADR in `docs/adr/`. Not needed for trivial changes.

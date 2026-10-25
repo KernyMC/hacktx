@@ -1,11 +1,10 @@
 // Familiars: hedgehog (N=24). Built with pxl. Shared helpers + draw().
 const N = 24, PAL = { b: '#f2d6b0', d: '#8a5a3c', a: '#fff1de', c: '#ffa9c0', n: '#2b2140' }
 // ---- shared Familiars helpers (identical in every animal file) ----
-pal({ k: "#2b2140", w: "#ffffff", p: "#ff8fab", t: "#9fd8ff", g: "#ffe9a3" })
+pal({ k: "#2b2140", w: "#ffffff", q: "#ff8fab", t: "#9fd3ff", M: "#c8405e", T: "#ff9fb8", g: "#ffe9a3" })
 const SH = { spread: 0.42, shift: 20 }
 shades("1234", PAL.b, SH); shades("5678", PAL.d, SH); shades("abcd", PAL.a, SH); shades("efgh", PAL.c, SH); shades("ijmn", PAL.n, SH)
 const SC = N / 24, S = N - 2
-const EYE = { 20: [2, 3, 1], 24: [3, 3, 2], 32: [3, 4, 2], 40: [4, 5, 3], 48: [5, 6, 3] }[N]
 const R = (v) => Math.round(v)
 const rampOf = (k) => ["1234", "5678", "abcd", "efgh", "ijmn"].find((r) => r.includes(k)) || k
 // light from top-left: `k` is the mid key of a ramp; shadow lower-right, highlight upper-left
@@ -18,56 +17,52 @@ function blob(c, cx, cy, rx, ry, k, lit = 0.5) {
   c.shade((x, y) => inside(x, y) && d(x, y) > 1.45)
   if (lit) c.light((x, y) => inside(x, y) && d(x, y) < lit)
 }
-function eyes(c, lx, rx, y, mood, f, lid) {
-  const [ew, eh, gh] = EYE, gx = ew >= 4 ? 1 : 0, gy = eh - gh > 1 ? 1 : 0
-  for (const x of [lx, rx]) {
-    if (mood === "idle" && f === 1) { c.hline(x, y + eh - 1, ew, "k"); continue }
-    if (mood === "happy" && f >= 2) {                       // ^ ^ eyes
-      const m = Math.floor(ew / 2)
-      for (let i = 0; i <= m; i++) { c.px(x + i, y + eh - 1 - i, "k"); c.px(x + ew - 1 - i, y + eh - 1 - i, "k") }
+// ---- STANDARD FACE (copy verbatim into every animal file) ----------------------------
+// cx: face centre x · ey: eye row (top of the eyes) · mood: idle|happy|eat|sad · f: frame 0..3
+// S = inner canvas size. Eyes/mouth scale with S. Needs palette keys k w q t M T.
+function face(c, cx, ey, mood, f, S) {
+  const big = S >= 30, huge = S >= 38
+  const ew = huge ? 4 : big ? 3 : 2, eh = huge ? 5 : big ? 3 : 2, gap = huge ? 9 : big ? 6 : 4
+  const lx = cx - gap / 2 - ew + 1, rx = cx + gap / 2
+  const blink = mood === "idle" && f === 2
+  const lid = mood === "sad"
+  for (const x0 of [lx, rx]) {
+    if (blink) { c.hline(x0, ey + eh - 1, ew, "k"); continue }
+    if (mood === "happy") {                    // ^ ^ eyes
+      if (huge) { c.px(x0, ey + 2, "k"); c.px(x0 + 1, ey + 1, "k"); c.px(x0 + 2, ey + 1, "k"); c.px(x0 + 3, ey + 2, "k") }
+      else if (big) { c.px(x0, ey + 1, "k"); c.px(x0 + 1, ey, "k"); c.px(x0 + 2, ey + 1, "k") }
+      else { c.px(x0, ey + 1, "k"); c.px(x0 + 1, ey, "k") }
       continue
     }
-    if (mood === "happy") { c.rect(x, y - 1, ew, eh + 1, "k"); c.rect(x + gx, y + gy - 1, 1, gh + 1, "w"); c.px(x + ew - 1, y + eh - 1, "w"); continue }
-    c.rect(x, y, ew, eh, "k")
-    if (mood === "sad") { const h = Math.ceil(eh / 2); c.rect(x, y, ew, h, lid); c.hline(x, y + h - 1, ew, "k"); c.vline(x + gx, y + h, Math.max(1, gh - 1), "w"); continue }
-    c.vline(x + gx, y + gy, gh, "w")
+    c.rect(x0, ey, ew, eh, "k")
+    if (lid) c.rect(x0, ey, ew, 1, c.at ? c.at(x0, ey - 1) || "k" : "k")   // droopy lid (no-op if at() missing)
+    c.px(x0, ey, "w")                           // glint
+    if (huge) c.px(x0 + ew - 1, ey + eh - 2, "w")
   }
-}
-function mouth(c, mx, my, mood, f, skin) {
-  const wd = N >= 40 ? 2 : 1, big = N >= 32
-  if (mood === "happy" || (mood === "eat" && f % 2 === 0)) {
-    const W = wd * 2 + 1, h = wd + 1 + (mood === "eat" ? 1 : 0)
-    c.rect(mx - wd, my, W, h, "k"); c.px(mx - wd, my + h - 1, skin); c.px(mx + wd, my + h - 1, skin)
-    c.hline(mx - wd + 1, my + h - 1, W - 2, "p")
-    return
+  const ny = ey + eh + (big ? 1 : 0)            // nose row
+  const my = ny + 1                             // mouth row
+  if (mood === "eat" && f % 2 === 0) {          // open mouth, tongue
+    c.rect(cx - 1, my, huge ? 4 : big ? 3 : 2, huge ? 3 : 2, "M"); c.px(cx, my + 1, "T"); if (huge) c.px(cx + 1, my + 2, "T")
+  } else if (mood === "sad") {                  // small frown
+    c.px(cx - 1, my + 1, "k"); c.px(cx, my, "k"); c.px(cx + 1, my + 1, "k")
+    c.px(lx - 1, ey + eh, "t"); if (f) c.px(lx - 1, ey + eh + 1, "t")        // tear
+  } else if (mood === "happy") {                // open smile
+    c.hline(cx - 1, my, 3, "k"); c.hline(cx - 1, my + 1, 3, "M"); if (big) c.hline(cx - 2, my - 1, 5, "k") && c.hline(cx - 1, my, 3, "M")
+  } else {                                      // "w" kitty mouth
+    c.px(cx - 1, my, "k"); c.px(cx + 1, my, "k"); c.px(cx, my - 1, "q")      // pink nose above
+    if (big) { c.px(cx - 2, my - 1, "k"); c.px(cx + 2, my - 1, "k") }
   }
-  if (mood === "eat") { c.hline(mx - wd, my, wd * 2 + 1, "k"); return }
-  if (mood === "sad") { if (big) { c.hline(mx - 1, my, 3, "k"); c.px(mx - 2, my + 1, "k"); c.px(mx + 2, my + 1, "k") } else { c.px(mx, my, "k"); c.px(mx - 1, my + 1, "k"); c.px(mx + 1, my + 1, "k") } return }
-  if (big) { c.hline(mx - 1, my + 1, 3, "k"); c.px(mx - 2, my, "k"); c.px(mx + 2, my, "k") } else { c.px(mx - 1, my, "k"); c.px(mx + 1, my, "k"); c.px(mx, my + 1, "k") }
+  const bx = big ? 2 : 1
+  c.rect(lx - bx - 1, ey + eh, bx, 1, "q"); c.rect(rx + ew + 1, ey + eh, bx, 1, "q")   // blush
 }
-function blush(c, lx, rx, y, mood, f, puff) {
-  const r = N >= 40 ? 1 : 0
-  for (const x of [lx, rx]) {
-    if (mood === "eat" && f % 2 === 1 && puff) c.ellipse(x, y, r + 1 + (N >= 32 ? 1 : 0), r + 1, puff)
-    if (r) c.circ(x, y, r, "p"); else c.hline(x, y, 2, "p")
-  }
-}
-function tear(c, x, y, f) { if (f >= 1) c.vline(x, y + f - 1, 2, "t") }
-function face(c, cx, ey, mood, f, o) {
-  const [ew, eh] = EYE
-  eyes(c, o.lx, o.rx, ey, mood, f, o.lid)
-  if (o.nose) c.rect(cx - Math.floor(o.nose[0] / 2), ey + eh + (o.noseDy ?? 0), o.nose[0], o.nose[1], o.noseKey ?? "k")
-  mouth(c, cx, ey + eh + (o.mouthDy ?? 1), mood, f, o.lid)
-  if (o.bx) blush(c, o.bx[0], o.bx[1], ey + eh - 1 + (o.bdy ?? 0), mood, f, o.puff)
-  if (mood === "sad") tear(c, o.rx + ew, ey + eh, f)
-}
+// cheek puffs while chewing (eat, odd frames), drawn before face()
+function puff(c, lx, rx, y, key) { const r = N >= 40 ? 2 : 1; c.ellipse(lx, y, r + 1, r, key); c.ellipse(rx, y, r + 1, r, key) }
 const JUMP = (f) => R([0, -2, -3, -1][f] * SC), BOB = (f) => [0, -1, -1, 0][f]
 function offsets(mood, f) {
   const J = mood === "happy" ? JUMP(f) : 0, B = J + (mood === "idle" ? BOB(f) : 0) + (mood === "sad" ? 1 : 0)
   return { J, B, H: B + (mood === "eat" ? [0, 1, 0, 1][f] : 0), E: mood === "happy" ? -1 : mood === "sad" ? 1 : mood === "idle" && f === 2 ? -1 : 0 }
 }
 // ---- end helpers ----
-EYE[0] = 2; EYE[1] = 2; EYE[2] = 1                       // hedgehog: small beady eyes
 function draw(c, f, mood) {
   const { J, B, H, E } = offsets(mood, f)
   const dark = (x, y) => "5678".includes(c.key(x, y) || "?")
@@ -88,10 +83,11 @@ function draw(c, f, mood) {
   c.circ(13, 10 + H + E, 1, "f"); c.px(14, 10 + H + E, "e")
   // cream face lower-left with a pointed snout
   blob(c, 8, 14 + H, 6, 5, "3", 0.4)
-  c.poly([4, 11 + H, 1, 15 + H, 1, 17 + H, 5, 19 + H], "3"); c.line(2, 17 + H, 4, 19 + H, "2")
-  c.rect(1, 15 + H, 2, 2, "k"); c.px(1, 15 + H, "w")          // dark nose with a glint
   c.shade([4, 9 + H, 10, 1])
-  face(c, 6, 11 + H, mood, f, { lx: 6, rx: 10, lid: "3", mouthDy: 2, bx: [8, 12], bdy: 2, puff: "4" })
+  c.poly([5, 15 + H, 2, 18 + H, 2, 19 + H, 8, 19 + H], "3"); c.line(3, 19 + H, 7, 19 + H, "2")   // pointed snout
+  c.rect(2, 17 + H, 2, 2, "k"); c.px(2, 17 + H, "w")                                            // dark nose
+  if (mood === "eat" && f % 2) puff(c, 4, 12, 14 + H, "4")
+  face(c, 8, 11 + H, mood, f, S)
   // feet (brown paws)
   c.ellipse(7, 20 + J, 2, 1, "6"); c.ellipse(14, 20 + J, 2, 1, "6"); c.px(6, 20 + J, "7"); c.px(13, 20 + J, "7")
 }
