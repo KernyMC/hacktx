@@ -79,3 +79,49 @@ chameleon · mythic · N=40 · wild · Prism Chameleon
 bat · mythic · N=40 · legends · Congress Bat
 jackalope · mythic · N=40 · legends · Jackalope
 longhorn · legendary · N=48 · legends · Texas Longhorn
+
+## Standard face (REQUIRED: copy this function verbatim into every animal file and call it; do not draw your own eyes/mouth)
+
+Palette keys it needs: `pal({ k: "#2b2140", w: "#ffffff", q: "#ff8fab", t: "#9fd3ff", M: "#c8405e", T: "#ff9fb8" })`.
+Call `face(c, cx, ey, mood, f, S)` AFTER drawing the head, with `cx` = head centre x and `ey` = the row where the eyes start (about 45% of the head height). Draw species features that cover the face (muzzle, mask, beak) BEFORE calling it; put the beak/snout just below the eye rows and skip nothing else.
+
+```js
+// ---- STANDARD FACE (copy verbatim into every animal file) ----------------------------
+// cx: face centre x · ey: eye row (top of the eyes) · mood: idle|happy|eat|sad · f: frame 0..3
+// S = inner canvas size. Eyes/mouth scale with S. Needs palette keys k w q t M T.
+function face(c, cx, ey, mood, f, S) {
+  const big = S >= 30, huge = S >= 38
+  const ew = huge ? 4 : big ? 3 : 2, eh = huge ? 5 : big ? 3 : 2, gap = huge ? 9 : big ? 6 : 4
+  const lx = cx - gap / 2 - ew + 1, rx = cx + gap / 2
+  const blink = mood === "idle" && f === 2
+  const lid = mood === "sad"
+  for (const x0 of [lx, rx]) {
+    if (blink) { c.hline(x0, ey + eh - 1, ew, "k"); continue }
+    if (mood === "happy") {                    // ^ ^ eyes
+      if (huge) { c.px(x0, ey + 2, "k"); c.px(x0 + 1, ey + 1, "k"); c.px(x0 + 2, ey + 1, "k"); c.px(x0 + 3, ey + 2, "k") }
+      else if (big) { c.px(x0, ey + 1, "k"); c.px(x0 + 1, ey, "k"); c.px(x0 + 2, ey + 1, "k") }
+      else { c.px(x0, ey + 1, "k"); c.px(x0 + 1, ey, "k") }
+      continue
+    }
+    c.rect(x0, ey, ew, eh, "k")
+    if (lid) c.rect(x0, ey, ew, 1, c.at ? c.at(x0, ey - 1) || "k" : "k")   // droopy lid (no-op if at() missing)
+    c.px(x0, ey, "w")                           // glint
+    if (huge) c.px(x0 + ew - 1, ey + eh - 2, "w")
+  }
+  const ny = ey + eh + (big ? 1 : 0)            // nose row
+  const my = ny + 1                             // mouth row
+  if (mood === "eat" && f % 2 === 0) {          // open mouth, tongue
+    c.rect(cx - 1, my, huge ? 4 : big ? 3 : 2, huge ? 3 : 2, "M"); c.px(cx, my + 1, "T"); if (huge) c.px(cx + 1, my + 2, "T")
+  } else if (mood === "sad") {                  // small frown
+    c.px(cx - 1, my + 1, "k"); c.px(cx, my, "k"); c.px(cx + 1, my + 1, "k")
+    c.px(lx - 1, ey + eh, "t"); if (f) c.px(lx - 1, ey + eh + 1, "t")        // tear
+  } else if (mood === "happy") {                // open smile
+    c.hline(cx - 1, my, 3, "k"); c.hline(cx - 1, my + 1, 3, "M"); if (big) c.hline(cx - 2, my - 1, 5, "k") && c.hline(cx - 1, my, 3, "M")
+  } else {                                      // "w" kitty mouth
+    c.px(cx - 1, my, "k"); c.px(cx + 1, my, "k"); c.px(cx, my - 1, "q")      // pink nose above
+    if (big) { c.px(cx - 2, my - 1, "k"); c.px(cx + 2, my - 1, "k") }
+  }
+  const bx = big ? 2 : 1
+  c.rect(lx - bx - 1, ey + eh, bx, 1, "q"); c.rect(rx + ew + 1, ey + eh, bx, 1, "q")   // blush
+}
+```
