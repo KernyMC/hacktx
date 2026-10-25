@@ -20,9 +20,12 @@
   const animal = p => Animals.A[p.species] || Animals.A.axolotl;
   const coinIc = (n = 14) => ic('coin', n, '#c9922a', '#ffcf4d');
 
+  // callers size icons as an 8-cell box of px; colour icons are 12 cells, so scale to fit that box (integer px, centred)
   function drawIconOnCanvas(c, name, x, y, px, color, color2 = '#fff8ea') {
     const tmp = document.createElement('div'); tmp.innerHTML = Icons.svg(name, 8, color, color2);
-    tmp.querySelectorAll('rect').forEach(r => { c.fillStyle = r.getAttribute('fill'); c.fillRect(x + r.getAttribute('x') * px, y + r.getAttribute('y') * px, px, px); });
+    const n = +(tmp.querySelector('svg').getAttribute('viewBox') || '0 0 8 8').split(' ')[2] || 8;
+    const k = Math.max(1, Math.floor(px * 8 / n)), off = Math.floor((px * 8 - k * n) / 2);
+    tmp.querySelectorAll('rect').forEach(r => { c.fillStyle = r.getAttribute('fill'); c.fillRect(x + off + r.getAttribute('x') * k, y + off + r.getAttribute('y') * k, k, k); });
   }
 
   let me = null;            // snapshot from API.getMe()
@@ -284,7 +287,7 @@
     quests.forEach(q => {
       const b = document.createElement('button');
       b.className = `quest type-${q.type}` + (q.status === 'done' ? ' done' : '');
-      b.innerHTML = `<div class="ic">${ic(TYPE_ICON[q.type], 26, '#2b2140', '#fff8ea')}</div>
+      b.innerHTML = `<div class="ic">${ic(TYPE_ICON[q.type], 24, '#2b2140', '#fff8ea')}</div>
         <div><div class="title"></div><div class="meta"></div></div>
         <div class="xp">+${q.xp}<br>XP</div>`;
       b.querySelector('.title').textContent = q.title + (q.status === 'done' ? ' (done)' : '');
@@ -400,11 +403,11 @@
       const d = document.createElement('div');
       d.className = 'banner ' + (m.kind === 'challenge' ? 'challenge' : m.kind === 'note' ? 'note' : '');
       let icon, title, text, btn;
-      if (m.kind === 'curse') { icon = ic(m.curse.icon, 26); title = `${m.from} cursed you`; text = `${m.curse.name}: ${m.curse.desc}`; btn = 'Accept'; }
-      else if (m.kind === 'bless') { icon = ic('sparkle', 26, '#c9922a'); title = `${m.from} blessed you`; text = m.blessing.desc; btn = 'Accept'; }
-      else if (m.kind === 'challenge') { icon = ic('star', 26, '#2b2140'); title = `${m.from} challenged you`; text = `${m.pet.name}'s ${Minigames.gameFor(m.pet.species).name} · ${m.triesLeft} tries · win ${m.wager} coins`; btn = 'Play'; }
-      else if (m.kind === 'gift') { icon = ic('egg', 26, '#c9922a', '#ffcf4d'); title = m.title || 'A gift'; text = m.text || ''; btn = 'Open'; }
-      else { icon = ic('chat', 26); title = m.from; text = m.text; btn = 'OK'; }
+      if (m.kind === 'curse') { icon = ic(m.curse.icon, 24); title = `${m.from} cursed you`; text = `${m.curse.name}: ${m.curse.desc}`; btn = 'Accept'; }
+      else if (m.kind === 'bless') { icon = ic('sparkle', 24, '#c9922a'); title = `${m.from} blessed you`; text = m.blessing.desc; btn = 'Accept'; }
+      else if (m.kind === 'challenge') { icon = ic('star', 24, '#2b2140'); title = `${m.from} challenged you`; text = `${m.pet.name}'s ${Minigames.gameFor(m.pet.species).name} · ${m.triesLeft} tries · win ${m.wager} coins`; btn = 'Play'; }
+      else if (m.kind === 'gift') { icon = ic('gift', 24); title = m.title || 'A gift'; text = m.text || ''; btn = 'Open'; }
+      else { icon = ic('chat', 24); title = m.from; text = m.text; btn = 'OK'; }
       d.innerHTML = `<span class="bigicon">${icon}</span><div class="grow"><b></b><span></span></div><button class="btn sm ${m.kind === 'challenge' ? 'pink' : 'lilac'}">${btn}</button>`;
       d.querySelector('b').textContent = title; d.querySelector('span:not(.bigicon)').textContent = text;
       d.querySelector('button').onclick = async () => {
@@ -424,7 +427,7 @@
     Audio8.play('open');
     const label = it => it.kind === 'coins' ? `${it.amount} coins` : it.kind === 'key' ? `${it.qty || 1} raid key` : it.kind === 'egg' ? `${it.rarity || 'common'} egg`
       : `${(it.kind === 'curse' ? API.CURSES : API.BLESSINGS).find(x => x.id === it.id)?.name || it.id} ×${it.qty || 1}`;
-    const iconOf = it => it.kind === 'coins' ? ic('coin', 28, '#c9922a', '#ffcf4d') : it.kind === 'key' ? ic('pin', 28, '#2b2140', '#ffcf4d') : it.kind === 'egg' ? ic('egg', 28, '#5ab0ff')
+    const iconOf = it => it.kind === 'coins' ? ic('coin', 24, '#c9922a', '#ffcf4d') : it.kind === 'key' ? ic('key', 24) : it.kind === 'egg' ? ic('egg', 24, '#5ab0ff')
       : ic((it.kind === 'curse' ? API.CURSES : API.BLESSINGS).find(x => x.id === it.id)?.icon || 'star', 28);
     const items = m.items || [];
     // a closed pixel gift box you tap; the lid pops and the items drop in one by one
@@ -765,7 +768,7 @@
     items.forEach(it => {
       const b = document.createElement('button'); b.disabled = !!it.disabled;
       let left = '';
-      if (it.icon) left = `<span class="bigicon" style="width:44px;height:44px">${ic(it.icon, 28)}</span>`;
+      if (it.icon) left = `<span class="bigicon" style="width:44px;height:44px">${ic(it.icon, 24)}</span>`;
       b.innerHTML = `${left || '<span></span>'}<span><b></b><small></small></span><span class="lbl">${esc(it.right || '')}</span>`;
       if (it.pet) { const cv = document.createElement('canvas'); cv.width = 44; cv.height = 44; Sprites.drawPet(cv.getContext('2d'), it.pet, 0, 0, 2.75, { fx: false }); b.replaceChild(cv, b.firstChild); }
       b.querySelector('b').textContent = it.title; b.querySelector('small').textContent = it.sub || '';
@@ -788,7 +791,7 @@
     document.querySelectorAll('#shopTabs button').forEach(b => b.classList.toggle('on', b.dataset.s === shopSection));
     const inv = shop.inventory;
     const nCurses = Object.values(inv.curses).reduce((a, b) => a + b, 0), nBless = Object.values(inv.blessings).reduce((a, b) => a + b, 0);
-    $('wallet').innerHTML = `<span class="chip">${coinIc()} <b>${shop.coins}</b></span><span class="chip">${ic('orb', 14)} ${nCurses} curses</span><span class="chip">${ic('sparkle', 14, '#c9922a')} ${nBless} blessings</span><span class="chip">${ic('pin', 14, '#2b2140', '#ffcf4d')} ${inv.keys} raid keys</span>`;
+    $('wallet').innerHTML = `<span class="chip">${coinIc()} <b>${shop.coins}</b></span><span class="chip">${ic('orb', 14)} ${nCurses} curses</span><span class="chip">${ic('sparkle', 14, '#c9922a')} ${nBless} blessings</span><span class="chip">${ic('key', 14)} ${inv.keys} raid keys</span>`;
     const g = shop.gacha;
     $('gachaOdds').textContent = `Odds: ${RAR.map(r => `${cap(r)} ${Math.round(g.rates[r] * 100)}%`).join(' · ')} · 1 in 16 shiny`;
     $('gachaPity').textContent = `Mythic+ guaranteed in ${g.pityMythicIn} · Legendary guaranteed in ${g.pityLegendaryIn} · x10 always has a Rare+`;
@@ -820,8 +823,8 @@
     });
     if (shopSection === 'curses') shop.curses.forEach(c => item(c.icon, c.name, c.desc, c.price, inv.curses[c.id] || 0, () => API.buy('curse', c.id)));
     if (shopSection === 'keys') {
-      item('pin', 'Raid key', 'Opens a raid. Bigger bosses need more keys, but drop rarer eggs.', shop.keyPrice, inv.keys, () => API.buy('key', 'key', 1));
-      item('pin', 'Key bundle x3', 'Enough for the Lady Bird Kraken. Saves 50 coins.', 250, null, () => API.buy('key', 'key', 3));
+      item('key', 'Raid key', 'Opens a raid. Bigger bosses need more keys, but drop rarer eggs.', shop.keyPrice, inv.keys, () => API.buy('key', 'key', 1));
+      item('key', 'Key bundle x3', 'Enough for the Lady Bird Kraken. Saves 50 coins.', 250, null, () => API.buy('key', 'key', 3));
     }
   }
 
@@ -873,7 +876,7 @@
       const d = document.createElement('div'); d.className = `cap ${x.rarity}`; d.style.animationDelay = (i * 0.12) + 's';
       const cv = document.createElement('canvas'); cv.width = 48; cv.height = 48; const cc = cv.getContext('2d');
       if (x.kind === 'egg') Sprites.drawEgg(cc, x.rarity, 0, 0, 3, 0);
-      else drawIconOnCanvas(cc, x.kind === 'curse' ? x.item.icon : x.kind === 'blessing' ? x.item.icon : x.kind === 'key' ? 'pin' : 'coin', 8, 8, 4, '#2b2140', '#ffcf4d');
+      else drawIconOnCanvas(cc, x.kind === 'curse' ? x.item.icon : x.kind === 'blessing' ? x.item.icon : x.kind === 'key' ? 'key' : 'coin', 8, 8, 4, '#2b2140', '#ffcf4d');
       d.appendChild(cv);
       d.insertAdjacentHTML('beforeend', `<span class="lb">${x.kind === 'egg' ? x.rarity + (x.shiny ? '*' : '') : x.kind === 'coins' ? '+' + x.amount : x.kind === 'key' ? 'key' : x.item.name.split(' ')[0]}</span>`);
       caps.appendChild(d);
@@ -985,7 +988,7 @@
     village.raids.forEach(r => {
       const inRaid = r.members.includes('me'), dead = r.hp <= 0;
       const d = document.createElement('div'); d.className = 'panel raid';
-      d.innerHTML = `<div class="row"><h2 class="grow"></h2><span class="chip" style="color:var(--ink)">${ic('pin', 14, '#2b2140', '#ffcf4d')} ${r.keys} key${r.keys > 1 ? 's' : ''}</span></div>
+      d.innerHTML = `<div class="row"><h2 class="grow"></h2><span class="chip" style="color:var(--ink)">${ic('key', 14)} ${r.keys} key${r.keys > 1 ? 's' : ''}</span></div>
         <div class="boss">${dead ? ic('skull', 64, '#fff', '#2b2140') : ''}</div>
         <div class="lbl" style="color:#fff">HP ${r.hp} / ${r.maxHp} · reward: ${esc(r.rewardText)}</div>
         <div class="meter hp"><i style="width:${r.hp / r.maxHp * 100}%"></i></div>

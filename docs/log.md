@@ -182,3 +182,9 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   animated. GitHub history: Claude co-author trailers removed from familiars-v2, systems and visuals
   (force-pushed, trees identical); the same rewrite of `richard` is on `richard-clean` because the sandbox
   refuses force-pushing the default branch.
+- Icons redrawn (user: "some are just black, no shape"): the generic one-colour 8x8 glyphs are replaced by
+  28 full-colour 12x12 pixel icons in `js/icons.js` (`COLOR` map: ink outline, highlight, shade, same look as
+  the sprites). `Icons.svg()` uses them whenever they exist and ignores the colour arguments; the per-animal
+  themed glyphs (home, quests, shop, book, coin) are unchanged. New `gift` (inbox packages) and `key` (raid
+  keys, was a map pin). Icon calls at 26/28 px snapped to 24 px (2 screen px per icon pixel);
+  `drawIconOnCanvas` scales 12-cell icons into the old 8-cell boxes. "Reroll" is now a die.
