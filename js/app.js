@@ -1161,6 +1161,40 @@
   $('tglSound').onclick = async () => { const on = !Audio8.isEnabled(); Audio8.setEnabled(on); $('tglSound').classList.toggle('on', on); await API.setSettings({ sound: on }); Audio8.play('tap'); };
   $('tglLegend').onclick = async () => { const on = !me.settings.forceLegendary; await API.setSettings({ forceLegendary: on }); $('tglLegend').classList.toggle('on', on); await refreshMe(); Audio8.play(on ? 'legendary' : 'tap'); };
   $('btnReset').onclick = async () => { await API.reset(); location.reload(); };
+
+  // Demo events (settings): every showable moment of the game, on demand, with its full animation
+  const DEMO_EVENTS = [
+    ['Welcome package', 'gift', 'lilac'], ['Friend curses you', 'curse', 'lilac'],
+    ['Friend blesses you', 'bless', 'lilac'], ['Duel request', 'duel', 'lilac'],
+    ['Egg ready to hatch', 'eggReady', 'mint'], ['Quest complete + egg', 'quest', 'mint'],
+    ['Level up', 'levelUp', 'mint'], ['Evolution', 'evolve', 'mint'],
+    ['Legendary egg drop', 'legendary', 'gold'], ['Raid boss defeated', 'raidWin', 'gold'],
+    ['Full show: level up, evolution, legendary egg, raid win', 'all', 'pink wide'],
+  ];
+  const QUEST_DEMOS = { quest: { egg: true }, levelUp: { levelUp: true }, evolve: { evolve: true }, legendary: { legendary: true }, raidWin: { raidWin: true },
+    all: { levelUp: true, evolve: true, legendary: true, raidWin: true } };
+  const dg = $('demoEvents');
+  DEMO_EVENTS.forEach(([label, kind, cls]) => {
+    const b = document.createElement('button'); b.className = 'btn sm ' + cls; b.textContent = label;
+    b.onclick = async () => {
+      $('ovSettings').hidden = true; Audio8.play('tap');
+      if (QUEST_DEMOS[kind]) {
+        const res = await API.demoQuest(QUEST_DEMOS[kind]);
+        if (!res.ok) return toast(res.message);
+        showTab('home');
+        await rewardSequence(res.quest, res); await refreshMe(); renderQuests();
+        if (res.reaction) setTimeout(() => toast(res.reaction), 800);
+        return;
+      }
+      if (kind === 'duel') { const r = await API.simulateIncomingChallenge(); Audio8.play(r.ok ? 'open' : 'error'); toast(r.message, 3600); await refreshMe(); return showTab('home'); }
+      const r = await API.demoEvent(kind); await refreshMe();
+      if (kind === 'eggReady') { toast('An egg is ready. Tap it in the Nest.', 3000); return showTab('zoo'); }
+      Audio8.play(kind === 'curse' ? 'curse' : kind === 'bless' ? 'bless' : 'open');
+      toast({ gift: 'A care package landed in your inbox.', curse: `${r.from} sent you a curse. Accept it on Home.`, bless: `${r.from} blessed you. Accept it on Home.` }[kind] || 'Done.', 3000);
+      showTab('home');
+    };
+    dg.appendChild(b);
+  });
   const DEV = location.hash === '#dev' || /[?&]dev\b/.test(location.search);
   async function unlockAll() {
     await API.unlockAll(); await refreshMe(); Audio8.play('legendary'); confetti.burst(120, ['#ffcf4d', '#fff', '#ff9a3c']);

@@ -234,6 +234,9 @@ main > .screen { padding: 0 14px; }
 .place .pn { font-weight: 700; }
 .place .pm { font-size: 13px; color: var(--ink-2); }
 .qtext { font-size: 18px; line-height: 1.4; }
+.demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.demo-grid .btn { font-size: 14px; padding: 8px 6px; text-align: center; }
+.demo-grid .btn.wide { grid-column: 1 / -1; }
 /* quest sheet: pet bubble, reward tiles, checklist */
 .qbubble { display: flex; gap: 10px; align-items: flex-start; }
 .qbubble canvas { flex: none; width: 72px; height: 72px; margin-top: -4px; image-rendering: pixelated; }
@@ -651,6 +654,7 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
     <div class="setting"><div>Demo: skip 12 hours<small>Fast-forward vacation to see mood drop.</small></div><button class="btn sm ghost" id="btnSkip">Skip</button></div>
     <div class="setting"><div>Tester account: unlock everything<small>All 30 animals, one ready egg per tier, 50k coins, 5 of every curse and blessing, 20 raid keys. Also via #dev in the URL.</small></div><button class="btn sm pink" id="btnUnlock">Unlock</button></div>
     <div class="setting"><div>Demo: force legendary drop<small>For judging. Every quest drops a legendary egg.</small></div><button class="toggle" id="tglLegend" aria-label="Toggle legendary"></button></div>
+    <div class="setting" style="display:block"><div>Demo events<small>Fire any moment of the game on demand, for judging. Each one plays its full animation.</small></div><div class="demo-grid" id="demoEvents"></div></div>
     <div class="setting"><div>Reset demo<small>Back to the egg.</small></div><button class="btn sm ghost" id="btnReset">Reset</button></div>
     <p class="sub" style="margin-top:12px">Familiars · HackTX 2026 · Proofs are judged by Gemini and voice notes transcribed by ElevenLabs when the server runs (npm start); otherwise everything is mocked locally.</p>
   </div>

@@ -396,14 +396,15 @@
      * The proof is judged by /api/proof/verify (Gemini vision / transcript judge,
      * heuristic fallback). Rejected proofs return ok:false + rejected:true and no XP.
      */
-    async completeQuest(id, proof) {
+    async completeQuest(id, proof, demo = null) {
+      // demo (settings > Demo events): skip the judge and force outcomes { egg, legendary, levelUp, evolve, raidWin }
       const started = Date.now();
       const q = S.quests.find(x => x.id === id);
       if (!q || q.status !== 'open') return { ok: false, message: 'Quest not found.' };
-      if (S.activeCurse && S.activeCurse.caption && !(proof.caption && proof.caption.trim().split(/\s+/).length >= 3))
+      if (!demo && S.activeCurse && S.activeCurse.caption && !(proof.caption && proof.caption.trim().split(/\s+/).length >= 3))
         return { ok: false, rejected: true, message: `Cursed! ${S.activeCurse.name}: write a caption with your photo (${S.activeCurse.caption}).`, reasons: [] };
 
-      const verdict = await remoteJSON('/api/proof/verify', {
+      const verdict = demo ? { ok: true, message: 'Demo run: the game master waves you through.', engine: 'mock' } : await remoteJSON('/api/proof/verify', {
         type: proof.type, quest: { title: q.title, text: q.text, type: q.type, place: q.place },
         curse: S.activeCurse ? { id: S.activeCurse.id, name: S.activeCurse.name, desc: S.activeCurse.desc } : null,
         petName: S.pet.name,
@@ -411,7 +412,7 @@
         caption: proof.caption || undefined,
         transcript: proof.type === 'voice' ? proof.data.transcript : undefined,
       });
-      await delay(Math.max(0, 1100 - (Date.now() - started)));   // let the judging animation breathe
+      if (!demo) await delay(Math.max(0, 1100 - (Date.now() - started)));   // let the judging animation breathe
       if (verdict && verdict.ok === false)
         return { ok: false, rejected: true, message: verdict.message || 'The game master is not convinced.', reasons: verdict.reasons || [], engine: verdict.engine };
 
@@ -427,6 +428,7 @@
       const used = S.blessings.slice(); S.blessings = [];
       const has = b => used.includes(b);
       let xp = q.xp; if (has('double')) xp *= 2;
+      if (demo && demo.levelUp) xp = Math.max(xp, LEVEL_XP(S.level) - S.xp);
       let coins = Math.round(xp / 2); if (has('coinrain')) coins *= 2;
       const curse = S.activeCurse; if (curse && curse.id === 'tiny') coins = Math.round(coins / 2);
       const curseLifted = !!curse; S.activeCurse = null;
@@ -444,7 +446,9 @@
 
       // egg drop
       let egg = null;
-      if (Math.random() < q.eggChance || has('lucky') || S.settings.forceLegendary || S.completed.length === 1) {
+      if (demo && demo.legendary) egg = newEgg('legendary', 'quest', false);
+      else if (demo && demo.egg) egg = newEgg(rollRarity(0), 'quest', false);
+      else if (Math.random() < q.eggChance || has('lucky') || S.settings.forceLegendary || S.completed.length === 1) {
         egg = newEgg(rollRarity(has('rarityup') ? 1 : 0), 'quest', Math.random() < GACHA.shinyChance);
       }
       S.eggs.forEach(e => { if (e !== egg) e.progress = Math.min(e.needed, e.progress + 1); });
@@ -453,7 +457,8 @@
       // evolution: the starter axolotl becomes an animal by your dominant quest type, one tier sharper
       let evolution = null;
       // evolution: the SAME pet grows into its stage-2 form (bigger, sharper, crowned), never another species
-      if ((S.pet.stage || 1) < 2 && S.completed.length >= EVOLVE_AT) {
+      if (demo && demo.evolve && (S.pet.stage || 1) >= 2) { S.pet.stage = 1; S.pet.rarity = RAR[Math.max(0, tierOf(Animals.normRarity(S.pet.rarity)) - 1)]; }   // replay the evolution for the demo
+      if ((S.pet.stage || 1) < 2 && (S.completed.length >= EVOLVE_AT || (demo && demo.evolve))) {
         const fromRarity = Animals.normRarity(S.pet.rarity), toRarity = RAR[Math.min(4, tierOf(fromRarity) + 1)];
         evolution = { species: S.pet.species, from: S.pet.species, to: S.pet.species, toName: `${Animals.A[S.pet.species].name} · Stage 2`, fromRarity, toRarity, fromStage: 1, toStage: 2 };
         S.pet.stage = 2; S.pet.rarity = toRarity;
@@ -461,6 +466,7 @@
 
       // raid damage for every raid you are in
       let raidDamage = 0; const raidWins = [];
+      if (demo && demo.raidWin) { const r = S.raids.find(x => x.hp > 0); if (r) { if (!r.members.includes('me')) r.members.push('me'); r.hp = 1; } }
       S.raids.forEach(r => {
         if (!r.members.includes('me') || r.hp <= 0) return;
         const dmg = Math.round(xp * 0.8); raidDamage += dmg; r.hp = Math.max(0, r.hp - dmg);
@@ -470,7 +476,29 @@
       const reaction = rnd(['Leo: "no way you actually did that"', 'Ana sent you a heart', 'Mia is suddenly questing too', 'Sam\'s owl hooted from vacation']);
       save();
       return { ok: true, message, xpGained: xp, coinsGained: coins, blessed: used.length > 0, blessingsUsed: used, curseLifted, levelUp, level: S.level,
-        egg, readyEggs, evolution, raidDamage, raidWins, reaction, engine: verdict ? verdict.engine : 'mock', state: snapshot() };
+        egg, readyEggs, evolution, raidDamage, raidWins, reaction, engine: verdict ? verdict.engine : 'mock', state: snapshot(), quest: publicQuest(q) };
+    },
+
+    /** DEV (settings > Demo events): complete the first open quest with forced outcomes, no proof needed */
+    async demoQuest(opts = {}) {
+      if (!S.quests.length) makeQuests();
+      if (!S.quests.some(x => x.status === 'open')) S.quests.forEach(x => { x.status = 'open'; });
+      const q = S.quests.find(x => x.status === 'open');
+      return API.completeQuest(q.id, { type: 'photo', data: '', caption: 'demo run' }, opts);
+    },
+    /** DEV (settings > Demo events): drop one social event into the game. kind: gift | curse | bless | eggReady | raidReady | coins */
+    async demoEvent(kind) {
+      await delay(60);
+      const f = rnd(S.friends);
+      if (kind === 'gift') S.inbox.unshift({ id: uid(), kind: 'gift', from: 'HackTX', title: 'Care package', text: 'The judges sent snacks. Open it!',
+        items: [{ kind: 'coins', amount: 500 }, { kind: 'curse', id: rnd(CURSES).id, qty: 1 }, { kind: 'blessing', id: rnd(BLESSINGS).id, qty: 1 }, { kind: 'key', qty: 1 }, { kind: 'egg', rarity: 'rare' }] });
+      if (kind === 'curse') S.inbox.unshift({ id: uid(), kind: 'curse', from: f.name, curse: rnd(CURSES) });
+      if (kind === 'bless') S.inbox.unshift({ id: uid(), kind: 'bless', from: f.name, blessing: rnd(BLESSINGS) });
+      if (kind === 'eggReady') { let e = S.eggs.find(x => x.progress < x.needed); if (!e) e = newEgg('rare', 'gift'); e.progress = e.needed; }
+      if (kind === 'raidReady') { const r = S.raids.find(x => x.hp > 0); if (r) { if (!r.members.includes('me')) r.members.push('me'); r.hp = 1; } }
+      if (kind === 'coins') S.coins += 500;
+      save();
+      return { ok: true, from: f.name };
     },
 
     /** POST /speech/transcribe (ElevenLabs Scribe). Returns {ok, text} or null if unavailable. */

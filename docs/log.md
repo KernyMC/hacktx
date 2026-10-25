@@ -174,3 +174,11 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   have their own 24 px sprites (hydra, golem, kraken) drawn in `app.js`. ElevenLabs is back on the client
   side: the quest "Listen" button and chat replies call `/api/speech/say` in the pet's voice preset, no
   browser fallback (quiet when the key/server is missing). Voice-note proofs stay off.
+- Demo events panel (settings): eleven buttons fire any showable moment on demand for judging: welcome
+  package, friend curse, friend blessing, duel request, egg ready, quest complete + egg, level up, evolution,
+  legendary egg, raid boss defeated, and a "full show" that chains level up + evolution + legendary + raid win
+  in one reward sequence. `API.demoQuest(opts)` completes the first open quest with the judge skipped and
+  forced outcomes; `API.demoEvent(kind)` drops inbox items / readies eggs and raids. Chat typing indicator
+  animated. GitHub history: Claude co-author trailers removed from familiars-v2, systems and visuals
+  (force-pushed, trees identical); the same rewrite of `richard` is on `richard-clean` because the sandbox
+  refuses force-pushing the default branch.
