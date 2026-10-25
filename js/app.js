@@ -182,15 +182,16 @@
 
   // Playback goes through WebAudio: the context is created/resumed synchronously inside the tap, so iOS
   // Safari still allows playback after the (async) fetch. An <audio> element created after an await is muted there.
-  let speaking = null, voiceCtx = null;
+  let speaking = null, voiceCtx = null, voiceDownUntil = 0;   // after a failed TTS call, stay quiet for a minute instead of hammering the server
   function unlockVoice() {
     try { voiceCtx = voiceCtx || new (window.AudioContext || window.webkitAudioContext)(); if (voiceCtx.state === 'suspended') voiceCtx.resume().catch(() => {}); } catch { voiceCtx = null; }
   }
   async function speak(text, pet = me.pet, mood = 'neutral') {
     unlockVoice();
     if (speaking) { try { speaking.stop(); } catch {} speaking = null; }
+    if (Date.now() < voiceDownUntil) return false;
     const blob = await API.say(text, animal(pet).voice, mood);
-    if (!blob) return false;
+    if (!blob) { if (/^(network|HTTP 5)/.test(API.lastSayError || '')) voiceDownUntil = Date.now() + 60000; return false; }
     try {
       const buf = await voiceCtx.decodeAudioData(await blob.arrayBuffer());
       const src = voiceCtx.createBufferSource(); src.buffer = buf; src.connect(voiceCtx.destination); src.start(); speaking = src;

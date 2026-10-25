@@ -51,3 +51,14 @@ doctype/head/body and replace each `<script src="js/x.js">` with its content.
 From the remote session `api.elevenlabs.io`, `serpapi.com` and `hacktx.com` are **not** reachable
 (proxy 403). `aiplatform.googleapis.com` is. That is why ElevenLabs and SerpApi are only validated on
 the user's machine.
+
+## QA scripts (Playwright + Chromium)
+
+```
+GEMINI_API_KEY=invalid-for-test PORT=8099 npm start      # deterministic heuristics, no AI calls
+node tools/qa/audit.js /tmp/qa                           # 40-step end-to-end tour: hatch, tutorial, gift, curse, quest + proof,
+                                                         # chat, nest, shop, gacha, village, story, settings, demo events, reset, #dev
+node tools/qa/allgames.js                                # every species' minigame at difficulty 5 with random input
+```
+Both print PASS/FAIL per step plus any page or console errors. Expected offline noise: `/api/speech/say` answers 502
+when ElevenLabs is unreachable (the client then stays quiet for a minute).

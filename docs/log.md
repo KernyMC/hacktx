@@ -211,3 +211,10 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   `trail` (Meerca Chase: snake-style snack trail; raccoon Trash Trail, grackle Food Truck Heist). The ten
   animals' `minigame` fields in `js/animals.js` point at the new engines. All 33 games pass a random-input
   smoke test in Chromium with no errors.
+- QA audit (user: "audit the code as a tester"): static checks (every script parses, no emoji in the UI, no API
+  keys in the front-end), API probes (health, quests with and without coords, chat, bad JSON, proof verify
+  with and without image, TTS, unknown route, static 404, dotfiles, path traversal, wrong method, 9 MB body:
+  all answer correctly), and a 40-step Playwright tour saved as `tools/qa/audit.js` plus the 33-game smoke
+  test `tools/qa/allgames.js` (documented in docs/dev.md). Result 40/40 and 33/33 clean. One real fix: the chat
+  re-requested the ElevenLabs voice on every reply even when the server answered 502; the client now backs
+  off for a minute after a network or 5xx failure.
