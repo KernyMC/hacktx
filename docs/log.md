@@ -256,3 +256,14 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   nobody loses progress. New app icon rendered from the sprite at an integer scale: sunset sky with stars,
   pink ground, happy axolotl inside the maskable safe zone (512, 192, 180 px). Service worker cache bumped.
   Wallet in the shop is a compact 4-counter strip.
+
+## 2026-10-25 (night) — Docs refresh for the next integration
+
+- Rewrote the memory docs so a fresh Claude Code session knows the current state: `CLAUDE.md` (name
+  Pixlings, branch `systems`, live URL, updated code map, rule to run the audit before pushing, storage
+  keys not renamed), `docs/status.md` (grouped done list, pending), `CONTEXT.md` (plan, chronicle,
+  notifications, difficulty, story card, demo events), `docs/dev.md` (local setup with every env var,
+  Vercel, phone/PWA testing, QA, how to add an integration), `docs/demo.md` (new 3-minute script),
+  `ai-backend` agent and `server/README.md` (Muse routes and quirks), `SPECS.md` §15 (what is built).
+- ADR 0006 (Muse for the social features via Chat Completions) and ADR 0007 (PWA, Vercel single function,
+  simulated village activity).

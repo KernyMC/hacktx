@@ -1,32 +1,35 @@
-# Domain glossary — Familiars
+# Domain glossary — Pixlings
 
 Terms as the code and the UI use them. If you rename something, rename it here too.
+The game was called "Familiars" until Oct 25; code identifiers and storage keys still use that word.
 
 | Term | What it is |
 |---|---|
-| **Familiar / pet** | The pet. Object `{ id, name, species, rarity, shiny, bornAt }`. Everyone hatches as `axolotl`. |
-| **Active pet** | The Familiar shown on the stage; it **themes the whole app** (sky, grass, colors). Changed from the Nest. |
-| **Species** | One of the 30 animals in `js/animals.js` (`cat`, `longhorn`…). Each species has a fixed rarity, class, minigame and voice. |
-| **Rarity / tier** | `common` · `uncommon` · `rare` · `mythic` · `legendary`. Sets the sprite resolution (20/24/32/40/48 px) and minigame difficulty (1–5). `epic` is legacy = `mythic`. |
-| **Class** | Habitat: `farm`, `wild`, `prairie`, `water` and the special `legends` (Austin Legends: bat, jackalope, longhorn). Sets scenery and palette. |
-| **Quest** | Daily quest (3 per day). Types: `food`, `social`, `outdoor`, `creative`. Comes from SerpApi + Gemini or the fixed pool (`QUEST_POOL`). |
-| **Proof** | Evidence for a quest: `photo` (dataURL, downscaled to 1024 px) or `voice` (transcript). Judged by `/api/proof/verify`. |
-| **Verdict** | Judge result: `{ ok, message, confidence, reasons, engine }`. `ok` requires `confidence ≥ 0.55`. Rejected = no XP, quest stays open. |
-| **Evolution** | The axolotl evolves after `EVOLVE_AT` quests into the animal of the dominant quest type (`Animals.EVOLVE_TO`) and becomes `uncommon`. |
-| **Egg** | `{ rarity, progress, needed, shiny, source }`. Incubates with quests or minigame wins. Hatches a species **from its own tier only**. |
-| **Shiny** | 1/16 variant with a hue shift (hue-rotate 160°). |
-| **Nest** | Screen with eggs + collection + Dex (silhouettes of what is missing). |
-| **Curse** | Sent to a friend (10 kinds). Rewrites the quest text and may force the proof type (`proof`). Broken by completing a quest. An inventory item (scroll). |
-| **Blessing** | 8 kinds: used on yourself or sent. E.g. `double` (2× XP), `lucky` (guaranteed egg), `rarityup`, `shield` (blocks the next curse). |
-| **Inbox** | Incoming messages: `curse`, `bless`, `challenge` (duel) and `note`. |
-| **Shop** | Eggs per tier, blessings, curse scrolls and **raid keys**. Currency: coins. |
-| **Lucky Capsule / gacha** | Capsule machine: 1 free per day, x1 = 100, x10 = 900. Rates 52/27/14/6/1. Pity: mythic at 20, legendary at 60; x10 guarantees rare+. |
-| **Raid** | Boss shared with friends. Joining costs 1–3 keys. Each completed quest deals `0.8 × xp`. Boss down = egg for everyone. |
-| **Duel / challenge** | You send your pet's minigame to a friend: they get 3 tries; if they fail all 3 you win coins. Incoming ones arrive in the inbox with 3 tries. |
-| **Minigame engine** | `catch`, `hop`, `memory`, `timing`, `whack`, `dodge`, `rodeo` (Longhorn only, hard). `Minigames.open()` returns `{ win, score }`. |
-| **Vacation** | Away mode: mood drops 1.5/h, no duel requests arrive, friends on vacation cannot be dueled. Doing a quest ends it. |
-| **Mood / hunger** | Bars 0–100. Mood < 35 makes the pet sad (anim `sad`). |
-| **Tester account (`#dev`)** | Unlocks all 30 animals, 50k coins, items and one ready egg per tier. Button in Settings or `#dev` in the URL. |
-| **Storybook** | Chapter of the day generated from the completed quests (Story screen). |
-| **Voice preset** | ElevenLabs voice personality per species: `cute`, `hyper`, `chill`, `grumpy`, `wise`, `regal`, `spooky`, `cowboy`, `dreamy`. |
-| **Sheet / manifest** | 4×4 sprite sheet (rows idle/happy/eat/sad, 4 frames) at native resolution; `assets/sprites/manifest.json` gives the cell size. |
+| **Pixling / pet** | The pet. Object `{ id, name, species, rarity, stage, shiny, bornAt }`. Everyone hatches as `axolotl`. |
+| **Active pet** | The Pixling on the stage. It themes the app (habitat, colours, tab-bar glyphs). Changed from the Nest. |
+| **Species** | One of the 33 animals in `js/animals.js`. Fixed rarity, minigame engine and voice preset. |
+| **Rarity / tier** | `common` · `uncommon` · `rare` · `mythic` · `legendary`. Sets the sprite resolution (20/24/32/40/48 px). `epic` is legacy = `mythic`. |
+| **Stage** | `1` or `2`. Evolution moves the same species to stage 2: crown, richer palette, one rarity tier up. |
+| **Habitat / phase** | Per-animal background scene; phase `dawn`/`day`/`sunset`/`night` from the clock or `Sprites.setPhaseOverride()`. |
+| **Quest** | Daily quest (3 per day). Types: `food`, `social`, `outdoor`, `creative`. From SerpApi + Gemini, or `QUEST_POOL` offline. |
+| **Proof** | Photo (dataURL) plus a caption. Judged by `/api/proof/verify`. Voice proofs exist server-side but are off in the UI. |
+| **Verdict** | `{ ok, message, confidence, reasons, engine }`. `ok` requires `confidence ≥ 0.55`. Rejected = no XP. |
+| **Egg** | `{ rarity, progress, needed, shiny, source }`. Only real quests incubate it; `needed = 2 + eggs already in the nest`. |
+| **Streak** | Consecutive days with at least one completed quest (`S.streak`, `S.lastQuestDay`). |
+| **Curse** | Sent to a friend. Rewrites their quest text and sets a caption rule (pirate, rhyme, whisper…) Gemini checks. Broken by a quest. |
+| **Blessing** | Used on yourself or sent: `double` (2x XP), `coinrain` (2x coins), `lucky` (sure egg), `rarityup`, `shield`, `incubate`. |
+| **Inbox** | Incoming `gift`, `curse`, `bless`, `challenge` (duel) and `note`. Every new item also becomes a notification. |
+| **Notification / feed** | Phone-style banner from `API.pollActivity()`: inbox items + simulated friend activity. History under the bell (`S.feed`). |
+| **Plan** | A group outing proposed by Muse: `{ title, place, when, who, why, type, pitch }`. "Send to the village" stores it in `S.plans`. |
+| **Village Chronicle** | Muse's shared weekly story of the whole village (`S.chronicle`, refreshed every 6 h or on demand). |
+| **Raid** | Boss shared with friends (hydra, golem, kraken). Joining costs keys. Each quest deals `0.8 × xp`. Boss down = egg for everyone. |
+| **Duel / challenge** | Your pet's minigame sent to a friend: 3 tries; fail all 3 and you win coins. Incoming ones arrive in the inbox. |
+| **Minigame engine** | 17 engines (`catch`, `hop`, `memory`, `timing`, `whack`, `dodge`, `rodeo`, `dig`, `fly`, `swim`, `stack`, `sneak`, `roll`, `herd`, `pads`, `fishing`, `trail`). Skins per species in `SKINS`. |
+| **Difficulty** | `Minigames.difficultyFor(species, { rarity, duel })`: the engine's base (1–5) +1 for rare+ pets, +1 in duels. Shown as stars. |
+| **Lucky Capsule / gacha** | 1 free pull a day, x1 = 100, x10 = 900. Pity: mythic at 20, legendary at 60; x10 guarantees rare+. |
+| **Story card** | The storybook or chronicle rendered as a 1080x1350 PNG for social media ("Share as image"). |
+| **Demo events** | Settings panel that fires any moment of the game for judges (`API.demoQuest`, `API.demoEvent`). |
+| **Tester account** | `#dev` or `?dev=1`: all 33 animals, 50k coins, items, one ready egg per tier. |
+| **Voice preset** | ElevenLabs personality per species: `cute`, `hyper`, `chill`, `grumpy`, `wise`, `regal`, `spooky`, `cowboy`, `dreamy`. |
+| **Sheet / manifest** | 4x4 sprite sheet (rows idle/happy/eat/sad) at native resolution; `assets/sprites/manifest.json`. |
+| **Engine (in responses)** | Who produced a result: `gemini`, `muse`, `serpapi`, `heuristic`, `template`, `seed`, `mock`. |

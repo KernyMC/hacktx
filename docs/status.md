@@ -1,56 +1,61 @@
 # Project status
 
 Living checklist. Update when something changes column — the "how" lives in `docs/log.md` or in the code.
+Last full update: 2026-10-25 (night), branch `systems`, live at https://hacktx-eight.vercel.app.
 
 ## Done
 
-- [x] Full mocked front-end (v1, Oct 24): hatch, home, quest sheet, judging, reward sequence,
-  evolution, nest, village (raid + friends), story, settings.
-- [x] **v2 (Oct 25)**: 30 animals in 5 rarities and 5 classes; rarity = resolution; the active pet
-  themes the app; shop; "Lucky Capsule" gacha with pity and shiny; 10 curses + 8 blessings as
-  inventory; 3 raids gated by keys; 7 minigames + duels; vacation mode; 10-step tutorial; tester
-  account (`#dev`).
-- [x] **Zero-dependency Node server** (`npm start`): static files + `/api/proof/verify` (Gemini, with
-  heuristic fallback and duplicate-photo detection), `/api/quests` (SerpApi + Gemini), `/api/chat`,
-  `/api/speech/transcribe`, `/api/speech/say`, `/api/health`.
-- [x] Gemini tested live with the Vertex key (`AQ.`) and `gemini-3-flash-preview`: judges photos and
-  voice notes, writes quests, chats in character.
-- [x] Pixel minimap on every quest + "Open in Maps"; real location with fallback to GDC.
-- [x] Chat with your pet ("Talk" on the stage), spoken reply via TTS.
-- [x] ElevenLabs voices per the official skill: `eleven_v4`, one premade voice per personality, audio
-  tags by mood, fallbacks; STT `scribe_v2` with keyterms.
-- [x] HackTX "Once Upon a Hack" visual theme: starry night + UT burnt orange + parchment; HackTX
-  ribbon; new tab bar with a gold "lantern" on the active tab.
-- [x] All 30 animals drawn with pxl and reviewed sprite by sprite (Oct 25): per-species face kinds (kitty/dog/bunny/snout/beak/wide/eyes) with nose and mouth placed on each muzzle.
-- [x] Art pipeline with pxl: `tools/pxl`, `art/BRIEF.md` (contract + style guide + standard `face()`),
-  `tools/pack_sprites.js`, loader in `js/sprites.js` via `manifest.json`.
-- [x] Documentation system (`CLAUDE.md` router, `CONTEXT.md`, `docs/`, `.claude/agents/`) created
-  Oct 25, mirroring the Galápagos & Beyond repo.
-- [x] **Visuals pass (Oct 25, branch `visuals`)**: classes removed; per-animal icon set + habitat with
-  dawn/day/sunset/night from the device clock (`Sprites.applyAnimalTheme`, `drawHabitat`); 100dvh shell;
-  `Audio8.pet/happy/hatch` per species, cry on tap + hatch; evolution = same animal with richer palette,
-  crown and aura (`Sprites.drawEvolved`); 3 new legendaries (Grackle, Golden Salamander, Horned Lizard, ADR 0005).
-- [x] Playable artifact (offline mode): https://claude.ai/artifact/JejDGqb8Us9a398MaWbHTc
+**Core loop**
+- [x] Real-world quests: 3 a day from SerpApi (`google_maps`) written in the pet's voice by Gemini; fixed
+  Austin pool offline. Quest sheet = pet speech bubble, go/do/prove checklist, real place + Maps link,
+  pixel minimap, XP/coins/egg tiles with blessing and curse multipliers.
+- [x] Proof = photo + typed caption, judged by Gemini (Vertex, `gemini-3-flash-preview`); rejects
+  screenshots, photos of screens, blurry/blank/reused shots (sha256); curses are judged on the caption.
+  Voice-note proofs are switched off in the UI (server route kept).
+- [x] Rewards: XP/levels, coins, random-rarity eggs, raid damage; animated reward sequence.
+- [x] Eggs incubate only with real quests (needed = 2 + eggs already in the nest); evolution = same pet,
+  stage 2 (crown, palette, +1 resolution tier).
+- [x] Real day streak (`S.lastQuestDay`); level and streak chips explain themselves on tap.
+
+**Collection and art**
+- [x] 33 animals, 5 rarities, rarity = resolution; 4 Austin legendaries; all sprites drawn with pxl and
+  rendered at integer scales (crisp everywhere). Unique boss sprites (hydra, golem, kraken).
+- [x] Per-animal habitats with dawn/day/sunset/night from the clock; Settings > Time of day override.
+- [x] 31 full-colour 12x12 icons; tab bar keeps each animal's own glyphs (readable accent for dark animals).
+- [x] Nest + dex + rarity filters; shop (compact wallet strip); Lucky Capsule gacha with pity and shiny.
+
+**Social (Meta track)**
+- [x] Village > "Plan something together": Muse Spark (Meta Model API) reads the village's week and plans
+  3 outings at real places, shown as invitation cards (crew as pet sprites); sending one notifies a friend.
+- [x] Story > "The Village Chronicle": Muse writes the shared weekly story; ElevenLabs reads it.
+- [x] Curses (judged on the caption), blessings, raid bosses with keys, minigame duels (3 tries).
+- [x] Phone-style notifications: friends' pet activity + inbox items as banners, bell history, real system
+  notifications via the service worker (Settings > Phone notifications).
+
+**Play**
+- [x] Chat with the pet (Gemini) with an animated typing indicator; ElevenLabs voice per species + mood.
+- [x] 17 minigame engines (incl. Club Penguin / Neopets style: ice fishing, round-up, sinking pads, hill
+  roll, snack trail; Longhorn rodeo); per-game difficulty 1–5 stars; lost hearts dim.
+- [x] Storybook + "Share as image" (1080x1350 card, Web Share API on phones, PNG download elsewhere).
+- [x] Vacation mode, welcome package, 5-step tutorial, tester account (`#dev` / `?dev=1`).
+- [x] Settings > Demo events: fire any moment (gift, curse, duel, egg, level up, evolution, legendary,
+  raid win, full show, friend notification) for judges.
+
+**Platform**
+- [x] Zero-dependency Node server; Vercel deploy (single function `api/index.js`, all env vars set).
+- [x] PWA: manifest, Pixlings icon, service worker (offline shell), full-screen layout on phones.
+- [x] Renamed to Pixlings in UI, manifest and AI prompts (storage keys unchanged on purpose).
+- [x] QA: `tools/qa/audit.js` 40/40, `tools/qa/allgames.js` 33/33 clean.
+- [x] Pitch deck (11 slides, artifact) + 44 s motion-graphics explainer (`pitch/pixling-explainer.mp4`).
 
 ## In progress
 
-- [x] **Minigames unique per species**: 12 engines, per-species skins, `Minigames.gameFor(species)` (Oct 25).
-- [x] Playtest round 1 fixes (11 items) + Richard's visuals pass merged (Oct 25). Still untested on a phone: 100dvh shell, touch in the new minigames.
-- [ ] Verify on the user's machine (this sandbox blocks those hosts): ElevenLabs v4 voices (does the
-  plan include v4? otherwise it falls back to flash), Scribe v2 transcription, real SerpApi quests.
+- [ ] Whatever integration the user is adding next (see `docs/log.md` for the latest entry).
 
 ## Pending
 
-- [ ] Real backend: auth + real friends + realtime village (Supabase or Tiger Data). Today friends
-  (Leo, Ana, Sam, Mia) and raids are mocked in `localStorage`.
-- [ ] Storybook with Muse Spark / Muse Image (Meta track). Today it is a local template.
-- [ ] Muse Voice Transcribe as an alternative to Scribe (Meta track).
-- [ ] UI icons (`js/icons.js`, 8×8) and eggs redrawn with pxl to match the new animals.
-- [ ] Deploy (Vultr) + `familiars.tech` domain.
-- [ ] Devpost + demo video + rehearse `docs/demo.md` twice.
-- [ ] Rotate the keys (ElevenLabs, Gemini, SerpApi) after the hackathon: they were pasted in chat.
-
-## systems branch (2026-10-25)
-- Done: steps 0-6 of the systems list; Vercel config (`api/[...path].js`, `vercel.json`); Village scene fix; quest sheet v2; Silkscreen display font.
-- Done: step 7 (time-of-day control, `Sprites.setPhaseOverride`). Minigame win-rate tuning is still by judgment, not measured.
-- Pending: verify Muse live on Vercel (`MODEL_API_KEY`), rotate all keys after judging.
+- [ ] Real multiplayer backend: friends, raids and activity are simulated in `localStorage` today.
+- [ ] Naming consistency: the deck and video say "Pixling", the app says "Pixlings" (user to decide).
+- [ ] Minigame difficulty is by judgment, not measured win rates.
+- [ ] Devpost submission + rehearse `docs/demo.md` twice.
+- [ ] Rotate every key after judging (ElevenLabs, Gemini, SerpApi, Muse): all were pasted in chat.

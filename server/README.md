@@ -1,21 +1,23 @@
-# Familiars backend
+# Pixlings backend
 
-A tiny Node server with no dependencies. It needs Node 18 or newer and no `npm install`. It serves the static front-end and proxies ElevenLabs (speech) and Gemini (proof checking).
+A tiny Node server with no dependencies. It needs Node 18 or newer and no `npm install`. It serves the static front-end and proxies Gemini (proofs, quests, chat), Muse / Meta Model API (village plans and chronicle), SerpApi (real places) and ElevenLabs (speech). `server.js` exports `handle()`, which Vercel runs from `api/index.js`.
 
 ## Run
 
 ```bash
 # from the project root (the folder with index.html)
 copy .env.example .env      # Windows   (macOS/Linux: cp .env.example .env)
-# fill in ELEVENLABS_API_KEY / GEMINI_API_KEY in .env
+# fill in GEMINI_API_KEY, SERPAPI_API_KEY, ELEVENLABS_API_KEY, MODEL_API_KEY in .env
 npm start                   # or: node server/server.js
 ```
 
 Then open http://localhost:8080/. To use a different port, set `PORT` in `.env` or in your shell.
 
-Both keys are optional:
+Every key is optional:
 - Without `GEMINI_API_KEY`, proofs are checked by offline heuristics. The response shows `engine: "heuristic"`.
-- Without `ELEVENLABS_API_KEY`, the speech routes return `503 {ok:false,error}`.
+- Without `ELEVENLABS_API_KEY`, the speech routes return `503 {ok:false,error}` (the client stays quiet).
+- Without `SERPAPI_API_KEY`, `/api/quests` returns `{ ok:false, source:'seed' }` and the client uses the fixed Austin pool.
+- Without `MODEL_API_KEY`, the village routes return template plans and chronicle (`engine: "template"`).
 
 Variables already set in your shell take priority over `.env`.
 
@@ -26,6 +28,8 @@ All JSON responses send `Access-Control-Allow-Origin: *`. Errors always come bac
 | Route | Request | Response |
 |---|---|---|
 | `GET /api/health` | – | `{ ok:true, elevenlabs:bool, gemini:bool, serpapi:bool, muse:bool }` |
+| `GET /api/quests?lat&lng&pet&species&flavor&curse` | – | `{ ok, quests:[...], source:'serpapi' }`. SerpApi `google_maps` × 3 categories → real places → Gemini writes them in the pet's voice (template text without Gemini). 10-min cache. `{ ok:false, source:'seed' }` without SerpApi. |
+| `POST /api/chat` | `{ pet, quests, history, message }` | `{ reply, mood, engine }`. Gemini in character; canned lines offline. |
 | `POST /api/village/plan` | `{ me, friends, week, places }` | `{ ok, plans:[{ title, place, when, who, why, type, pitch }], engine:'muse'\|'template' }`. Meta Model API (Muse Spark, Chat Completions in JSON mode) plans 3 group outings at real places for the friends who are available. Template plans without `MODEL_API_KEY`. |
 | `POST /api/village/chronicle` | `{ me, friends, week }` | `{ ok, title, paragraphs, engine }`. Muse writes the village's shared weekly story in the pet's voice; template offline. |
 | `POST /api/speech/transcribe[?lang=en]` | raw audio bytes as the body, `Content-Type: audio/webm` (or `audio/mp4`, `audio/ogg`, …), max 10 MB | `{ ok:true, text, language, words?:[{text,start,end}] }` |

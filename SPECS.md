@@ -249,3 +249,23 @@ See `CLAUDE.md` → "UPDATE (Oct 25, v2)" for the full list. Summary of new API 
 | `chat(message, history)` | `POST /api/chat` (Gemini, pet in character) — **live** |
 
 Rarity is now 5 tiers (common/uncommon/rare/mythic/legendary) and sprite resolution = 20/24/32/40/48 px.
+
+## 15. What is actually built (Oct 25, night — source of truth over §1–14)
+
+Live at https://hacktx-eight.vercel.app (branch `systems`). Status checklist: `docs/status.md`.
+
+| Area | Built as |
+|---|---|
+| Quests | `GET /api/quests`: SerpApi places → Gemini text in the pet's voice; `QUEST_POOL` offline. 3 a day. |
+| Proof | Photo + caption only in the UI (voice route kept). `POST /api/proof/verify`, Gemini, heuristic fallback. |
+| Chat | `POST /api/chat` (Gemini) + ElevenLabs voice per species preset (`API.say`). |
+| Village planner | `API.planTogether()` → `POST /api/village/plan` (Muse). `API.proposePlan(plan)` stores it and notifies. |
+| Chronicle | `API.villageChronicle(force)` → `POST /api/village/chronicle` (Muse), refreshed every 6 h. |
+| Notifications | `API.pollActivity({prime, force})` every 6 s → banners, bell feed (`S.feed`), SW system notifications. |
+| Demo | `API.demoQuest(opts)`, `API.demoEvent(kind)` from Settings > Demo events. |
+| Minigames | 17 engines, `Minigames.difficultyFor(species, {rarity, duel})`. |
+| Story card | `renderStoryCard` 1080x1350 canvas, Web Share API with files. |
+| Platform | PWA (`manifest.webmanifest`, `sw.js`), Vercel single function `api/index.js` (ADR 0007). |
+
+Health: `GET /api/health` → `{ ok, elevenlabs, gemini, serpapi, muse }`. Env vars: `docs/dev.md` §1.
+Friends, raids and their activity are still simulated in `localStorage` (`familiars.v2`).
