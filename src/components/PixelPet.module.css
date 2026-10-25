@@ -1,0 +1,49 @@
+.pet {
+  display: block;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pet:focus-visible {
+  outline: 3px dashed currentColor;
+  outline-offset: 6px;
+}
+
+/* Every motion moves in whole sprite pixels (--px) so nothing goes blurry. */
+.bounce {
+  animation: bounce 1.2s steps(1) infinite;
+}
+
+.hop {
+  animation: hop 1s steps(1) infinite;
+}
+
+.float {
+  animation: float 2.4s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(calc(var(--px) * -1)); }
+  50% { transform: translateY(calc(var(--px) * -2)); }
+  75% { transform: translateY(calc(var(--px) * -1)); }
+}
+
+@keyframes hop {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(calc(var(--px) * -1), calc(var(--px) * -2)); }
+  50% { transform: translate(0, 0); }
+  75% { transform: translate(var(--px), calc(var(--px) * -2)); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(calc(var(--px) * -3)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bounce, .hop, .float { animation: none; }
+}
