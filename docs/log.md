@@ -242,3 +242,12 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   evolution line in the storybook no longer says every pet "stopped being a tiny axolotl". The streak
   chip was a fixed seed value: it now counts consecutive days with a completed quest (`S.lastQuestDay`).
   Tapping the level or streak chip explains it.
+- Phone mode (user: "on mobile it should be full screen like an app, and show pets' notifications"):
+  under 560 px and in the installed app the desktop backdrop and side padding are gone and the app fills
+  the screen (safe areas respected). PWA: `manifest.webmanifest`, icons in `assets/` (from the axolotl
+  sprite), Apple meta tags, `sw.js` (network first, cache fallback, never caches /api, focuses the app on a
+  notification tap); Settings > Install. Notifications: `API.pollActivity()` every 6 s turns new inbox items
+  and simulated friend activity (quests, hatched eggs, hungry pets, raid hits, streaks, postcards from
+  vacation) into iOS-style banners that drop from the top with the friend's pet sprite; the bell keeps the
+  history; Settings > Phone notifications asks permission and sends real system notifications through the
+  service worker while the app is in the background. Demo events gained "Friend activity notification".

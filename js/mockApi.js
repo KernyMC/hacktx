@@ -202,6 +202,30 @@
     paragraphs.push(`Moral of the chapter: a Familiar grows fastest when the whole village goes outside together. ${pet} is already planning next week.`);
     return { title: 'The Village Chronicle', paragraphs, engine: 'template' };
   }
+  // Village activity: what friends' pets are doing, plus every new inbox item, delivered as notifications
+  function inboxEvent(m) {
+    const f = S.friends.find(x => x.name === m.from);
+    const base = { id: 'ib-' + m.id, at: Date.now(), from: m.from, pet: f ? clone(f.pet) : null, tab: 'home' };
+    if (m.kind === 'curse') return Object.assign(base, { icon: 'skull', title: `${m.from} cursed you`, text: `${m.curse.name}. Accept it on Home and break it with a quest.` });
+    if (m.kind === 'bless') return Object.assign(base, { icon: 'sparkle', title: `${m.from} blessed you`, text: m.blessing.desc });
+    if (m.kind === 'challenge') return Object.assign(base, { icon: 'star', title: `${m.from} challenged you`, text: `${m.pet.name}'s minigame, 3 tries, ${m.wager} coins on the line.`, pet: clone(m.pet) });
+    if (m.kind === 'gift') return Object.assign(base, { icon: 'gift', title: m.title || 'A gift arrived', text: m.text || 'Open it on Home.' });
+    return Object.assign(base, { icon: 'chat', title: m.from, text: m.text });
+  }
+  function friendEvent() {
+    const f = rnd(S.friends), pet = f.pet.name, place = rnd(FRIEND_WEEK.map(w => w.place).concat(QUEST_POOL.map(q => q.place.name)));
+    const T = f.vacation ? [
+      { icon: 'pin', title: `Postcard from ${f.name}`, text: `${pet} found a very serious cactus in Marfa. Back Tuesday.` },
+    ] : [
+      { icon: 'check', title: `${pet} finished a quest`, text: `${f.name} and ${pet} just proved a quest at ${place}.` },
+      { icon: 'egg', title: `${pet}'s nest is shaking`, text: `${f.name} hatched a ${rnd(['common', 'uncommon', 'rare', 'rare', 'mythic'])} egg. Go see who came out.` },
+      { icon: 'food', title: `${pet} is hungry`, text: `${f.name} is heading to ${place}. Tag along?` },
+      { icon: 'monster', title: `Raid update from ${f.name}`, text: `${pet} hit the Procrastination Hydra. The squad needs one more quest.` },
+      { icon: 'flame', title: `${f.name} is on fire`, text: `${pet} kept a ${f.streak + 1}-day streak alive at ${place}.` },
+      { icon: 'heart', title: `${pet} misses your pet`, text: `${f.name} says ${S.pet ? S.pet.name : 'your pet'} should come to ${place} next time.` },
+    ];
+    return Object.assign({ id: uid(), at: Date.now(), from: f.name, pet: clone(f.pet), tab: 'village' }, rnd(T));
+  }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* private mode: fine */ } }
 
   // ------------------------------------------------------------------
@@ -371,6 +395,21 @@
     /** GET /me */
     async getMe() { await delay(60); tickDuels(); return snapshot(); },
 
+    /** GET /activity: new notifications since the last poll (prime = mark what is already there as seen) */
+    async pollActivity({ prime = false, force = false } = {}) {
+      if (!S.pet) return [];
+      S.feed = S.feed || []; S.seenInbox = S.seenInbox || [];
+      if (!S.feedPrimed) { prime = true; S.feedPrimed = true; }   // the first poll after hatching only marks the welcome inbox as seen
+      const out = [];
+      S.inbox.forEach(m => { if (!S.seenInbox.includes(m.id)) { S.seenInbox.push(m.id); if (!prime) out.push(inboxEvent(m)); } });
+      const now = Date.now();
+      if (force || (!prime && S.nextActivity && now >= S.nextActivity)) out.push(friendEvent());
+      if (prime || force || !S.nextActivity || now >= S.nextActivity) S.nextActivity = now + 40000 + Math.random() * 40000;
+      out.forEach(e => S.feed.unshift(e)); S.feed = S.feed.slice(0, 40); S.seenInbox = S.seenInbox.slice(-80);
+      save(); return out;
+    },
+    getFeed() { return (S.feed || []).slice(); },
+
     /** POST /pet/hatch  { name } */
     async hatch({ name }) {
       await delay(200);
@@ -533,7 +572,7 @@
     /** DEV (settings > Demo events): drop one social event into the game. kind: gift | curse | bless | eggReady | raidReady | coins */
     async demoEvent(kind) {
       await delay(60);
-      const f = rnd(S.friends);
+      const f = rnd(S.friends.filter(x => !x.vacation));
       if (kind === 'gift') S.inbox.unshift({ id: uid(), kind: 'gift', from: 'HackTX', title: 'Care package', text: 'The judges sent snacks. Open it!',
         items: [{ kind: 'coins', amount: 500 }, { kind: 'curse', id: rnd(CURSES).id, qty: 1 }, { kind: 'blessing', id: rnd(BLESSINGS).id, qty: 1 }, { kind: 'key', qty: 1 }, { kind: 'egg', rarity: 'rare' }] });
       if (kind === 'curse') S.inbox.unshift({ id: uid(), kind: 'curse', from: f.name, curse: rnd(CURSES) });

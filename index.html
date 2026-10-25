@@ -5,7 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Familiars</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="icon" href="data:,">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="theme-color" content="#120d28">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Familiars">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Pixelify+Sans:wght@400;500;600;700&display=swap">
 <style>
@@ -73,6 +80,32 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
   body { padding-block: 24px; }
   .phone { height: calc(100% - 48px); height: calc(100dvh - 48px); border: 4px solid var(--ink); box-shadow: 0 0 0 3px var(--gold), 10px 10px 0 rgba(0,0,0,.45); border-radius: 6px; }
 }
+/* phones and the installed app: no desktop backdrop, the app fills the screen edge to edge */
+@media (max-width: 559px) {
+  body { padding: 0; background: var(--midnight); }
+  .phone { max-width: none; }
+  .ribbon { padding-top: calc(5px + env(safe-area-inset-top, 0px)); }
+}
+@media (display-mode: standalone) {
+  body { padding: 0; background: var(--midnight); }
+  .phone { max-width: none; height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
+  .ribbon { padding-top: calc(5px + env(safe-area-inset-top, 0px)); }
+}
+/* phone-style notifications from the village */
+.pushstack { position: absolute; left: 8px; right: 8px; top: calc(8px + env(safe-area-inset-top, 0px)); z-index: 60; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.push { pointer-events: auto; display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; background: #fff8ea; border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); padding: 8px 10px; cursor: pointer; text-align: left; width: 100%; }
+.pushstack .push { animation: pushIn .35s cubic-bezier(.2,.9,.3,1.2); }
+.pushstack .push.out { animation: pushOut .3s forwards; }
+.push canvas { width: 44px; height: 44px; image-rendering: pixelated; background: var(--panel-2); border: 2px solid var(--ink); }
+.push .app { font-family: var(--display); font-size: 7px; color: var(--ink-2); display: flex; justify-content: space-between; gap: 8px; }
+.push b { display: block; font-size: 15px; line-height: 1.2; margin-top: 3px; }
+.push span.tx { display: block; font-size: 13px; color: var(--ink-2); line-height: 1.25; }
+@keyframes pushIn { from { transform: translateY(-130%); opacity: 0; } }
+@keyframes pushOut { to { transform: translateY(-130%); opacity: 0; } }
+#feedList { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow: auto; padding: 2px 4px 6px 0; }
+#feedList .push { box-shadow: 2px 2px 0 var(--ink); }
+.bellbtn { position: relative; }
+.bellbtn .dot { position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; background: var(--pink); border: 2px solid var(--ink); }
 body.tut-on main { overflow: hidden; }
 .tut { touch-action: none; overscroll-behavior: contain; }
 /* HackTX ribbon above the top bar */
@@ -486,6 +519,7 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
 </head>
 <body>
 <div class="phone" id="phone">
+  <div class="pushstack" id="pushStack" aria-live="polite"></div>
   <div class="ribbon"><span class="star"><i data-icon="star" data-size="10" data-color="#ffc247"></i></span>HACKTX 2026 · <b>ONCE UPON A HACK</b><span class="star"><i data-icon="star" data-size="10" data-color="#ffc247"></i></span></div>
   <!-- top bar -->
   <header class="topbar">
@@ -496,6 +530,7 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
     <div class="stats">
       <span class="chip" id="chipLevel" title="Level: grows with XP from quests" role="button"><i data-icon="star"></i><b>1</b></span>
       <span class="chip" id="chipStreak" title="Day streak: days in a row with a completed quest" role="button"><i data-icon="flame" data-color="#ff6f9c" data-color2="#ffcf4d"></i><b>4</b></span>
+      <button class="iconbtn bellbtn" id="btnBell" aria-label="Notifications"><i data-icon="bell" data-size="20"></i><span class="dot" id="bellDot" hidden></span></button>
       <button class="iconbtn" id="btnSettings" aria-label="Settings"><i data-icon="gear" data-size="20"></i></button>
     </div>
   </header>
@@ -633,6 +668,15 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
   </div>
 </div>
 
+<!-- NOTIFICATIONS (what the village's pets are up to) -->
+<div class="overlay" id="ovFeed" hidden>
+  <div class="sheet">
+    <div class="head"><h2>Notifications</h2><button class="iconbtn" id="feedClose" aria-label="Close"><i data-icon="close"></i></button></div>
+    <p class="sub" style="margin:0 0 10px">What your village's pets have been up to.</p>
+    <div id="feedList"></div>
+  </div>
+</div>
+
 <!-- SHARE CARD (story / chronicle as an image for social media) -->
 <div class="overlay center" id="ovShare" hidden>
   <div class="card" style="max-width:420px">
@@ -682,6 +726,8 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
     <div class="setting"><div>Sound<small>8-bit bleeps</small></div><button class="toggle on" id="tglSound" aria-label="Toggle sound"></button></div>
     <div class="setting"><div>Vacation mode<small>Pets get slowly sadder while you are away. Duel requests are blocked.</small></div><button class="btn sm ghost" id="btnVacation">Plan</button></div>
     <div class="setting" style="display:block"><div>Time of day<small>The habitat and colours follow the clock: dawn, day, sunset, night. Pick one to show it off.</small></div><div class="seg" id="phaseOpts" style="margin-top:10px"><button data-ph="">Auto</button><button data-ph="dawn">Dawn</button><button data-ph="day">Day</button><button data-ph="sunset">Sunset</button><button data-ph="night">Night</button></div></div>
+    <div class="setting"><div>Phone notifications<small>Get a notification on this device when friends' pets do something, even with the app in the background.</small></div><button class="toggle" id="tglPush" aria-label="Toggle phone notifications"></button></div>
+    <div class="setting"><div>Install the app<small>Add Familiars to your home screen to play it full screen, like a native app.</small></div><button class="btn sm ghost" id="btnInstall">Install</button></div>
     <div class="setting"><div>Tutorial<small>Replay the walkthrough.</small></div><button class="btn sm ghost" id="btnTutorial">Replay</button></div>
     <div class="setting"><div>Demo: receive a duel request<small>A friend challenges you to their pet minigame.</small></div><button class="btn sm ghost" id="btnFakeDuel">Send</button></div>
     <div class="setting"><div>Demo: skip 12 hours<small>Fast-forward vacation to see mood drop.</small></div><button class="btn sm ghost" id="btnSkip">Skip</button></div>

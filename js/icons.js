@@ -213,6 +213,19 @@
   // ------------------------------------------------------------------
   const INK = '#2b2140';
   const COLOR = {
+    bell: { p: { a: '#FFC247', b: '#C9922A', w: '#FFF3C4' }, g: [
+      '.....oo.....',
+      '....oaao....',
+      '...oaawao...',
+      '..oaawaaao..',
+      '..oawaaaao..',
+      '..oaaaaaao..',
+      '..oaaaaabo..',
+      '.oaaaaaaabo.',
+      'oaaaaaaaaabo',
+      'oooooooooooo',
+      '....obbo....',
+      '.....oo.....'] },
     quill: { p: { w: '#FFF8EA', b: '#B79CFF', c: '#A0582A', a: '#5A3FC0' }, g: [
       '.........oo.',
       '........owwo',

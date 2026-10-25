@@ -1262,7 +1262,74 @@
   // ------------------------------------------------------------------
   $('chipLevel').onclick = () => { Audio8.play('tap'); toast(`Level ${me.level}. XP from real quests levels ${me.pet.name} up: ${me.xp} / ${me.xpNeeded || 100} to the next one.`, 3200); };
   $('chipStreak').onclick = () => { Audio8.play('tap'); toast(`${me.streak}-day streak: days in a row with at least one quest done. Miss a day and it resets.`, 3200); };
-  $('btnSettings').onclick = () => { Audio8.play('open'); syncPhaseOpts(); $('tglSound').classList.toggle('on', Audio8.isEnabled()); $('tglLegend').classList.toggle('on', me.settings.forceLegendary); $('btnVacation').textContent = me.vacation && me.vacation.active ? 'End' : 'Plan'; $('ovSettings').hidden = false; };
+  // ------------------------------------------------------------------
+  // Phone-style notifications: banners drop from the top, the bell keeps the history
+  // ------------------------------------------------------------------
+  const ago = t => { const s = Math.max(1, Math.round((Date.now() - t) / 1000)); return s < 60 ? 'now' : s < 3600 ? Math.round(s / 60) + 'm ago' : Math.round(s / 3600) + 'h ago'; };
+  function pushEl(e, live) {
+    const d = document.createElement('button'); d.className = 'push'; d.type = 'button';
+    d.innerHTML = `<canvas width="44" height="44"></canvas><div><div class="app"><span>FAMILIARS</span><span></span></div><b></b><span class="tx"></span></div>`;
+    d.querySelector('.app span:last-child').textContent = ago(e.at); d.querySelector('b').textContent = e.title; d.querySelector('.tx').textContent = e.text;
+    const c = d.querySelector('canvas').getContext('2d'); c.imageSmoothingEnabled = false;
+    if (e.pet) Sprites.drawPet(c, e.pet, 2, 2, 2.5, { fx: false, anim: 'happy' });
+    else drawIconOnCanvas(c, e.icon || 'bell', 6, 6, 4, '#2b2140');
+    if (e.pet && e.icon) drawIconOnCanvas(c, e.icon, 26, 26, 2, '#2b2140');
+    d.onclick = () => { if (live) dismissPush(d); $('ovFeed').hidden = true; if (e.tab && e.tab !== currentTab) showTab(e.tab); Audio8.play('tap'); };
+    return d;
+  }
+  function dismissPush(d) { if (!d.isConnected || d.classList.contains('out')) return; d.classList.add('out'); setTimeout(() => d.remove(), 300); }
+  let pushQueue = [], pushBusy = false;
+  function showPush(e) {
+    pushQueue.push(e); $('bellDot').hidden = false;
+    if (document.hidden && pushPermitted()) systemNotify(e);
+    pumpPush();
+  }
+  function pumpPush() {
+    if (pushBusy || !pushQueue.length || document.querySelector('.tut')) return;
+    pushBusy = true; const e = pushQueue.shift(), d = pushEl(e, true);
+    $('pushStack').appendChild(d); Audio8.play('xp');
+    let sy = null; d.addEventListener('pointerdown', ev => { sy = ev.clientY; }); d.addEventListener('pointerup', ev => { if (sy != null && sy - ev.clientY > 20) dismissPush(d); sy = null; });
+    setTimeout(() => { dismissPush(d); setTimeout(() => { pushBusy = false; pumpPush(); }, 350); }, 4200);
+  }
+  const pushPermitted = () => { try { return localStorage.getItem('familiars.push') === '1' && 'Notification' in window && Notification.permission === 'granted'; } catch { return false; } };
+  async function systemNotify(e) {
+    try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); const opts = { body: e.text, icon: 'assets/icon-192.png', badge: 'assets/icon-192.png', tag: e.id };
+      if (reg) reg.showNotification(e.title, opts); else new Notification(e.title, opts); } catch {}
+  }
+  async function pollActivity(opts) { if (!me || !me.pet) return; const evs = await API.pollActivity(opts); evs.forEach(showPush); }
+  setInterval(() => pollActivity(), 6000);
+  setTimeout(() => pollActivity({ prime: true }), 1500);
+  $('btnBell').onclick = () => {
+    Audio8.play('open'); $('bellDot').hidden = true; const list = $('feedList'); list.innerHTML = '';
+    const feed = API.getFeed();
+    if (!feed.length) list.innerHTML = '<div class="empty">Quiet village. Notifications from friends and their pets show up here.</div>';
+    feed.forEach(e => list.appendChild(pushEl(e, false)));
+    $('ovFeed').hidden = false;
+  };
+  $('feedClose').onclick = () => { $('ovFeed').hidden = true; Audio8.play('close'); };
+  $('ovFeed').addEventListener('click', e => { if (e.target === $('ovFeed')) $('feedClose').onclick(); });
+  $('tglPush').onclick = async () => {
+    const on = !$('tglPush').classList.contains('on');
+    if (on) {
+      if (!('Notification' in window)) return toast('This browser has no notifications. Install the app to the home screen first (iPhone needs that).', 4200);
+      const p = await Notification.requestPermission();
+      if (p !== 'granted') return toast('Notifications are blocked for this site. Allow them in the browser settings.', 3600);
+    }
+    try { localStorage.setItem('familiars.push', on ? '1' : '0'); } catch {}
+    $('tglPush').classList.toggle('on', on); Audio8.play(on ? 'accept' : 'tap');
+    if (on) systemNotify({ id: 'hello', title: 'Notifications on', text: `You will hear from the village when ${me.pet.name}'s friends do something.` });
+  };
+  // install prompt (Android / desktop Chrome); iPhone: Share > Add to Home Screen
+  let installEvt = null;
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
+  $('btnInstall').onclick = async () => {
+    if (installEvt) { installEvt.prompt(); const r = await installEvt.userChoice; installEvt = null; if (r.outcome === 'accepted') toast('Installed. Open Familiars from your home screen.'); return; }
+    if (matchMedia('(display-mode: standalone)').matches) return toast('You are already playing the installed app.');
+    toast(/iphone|ipad/i.test(navigator.userAgent) ? 'On iPhone: tap Share, then "Add to Home Screen".' : 'Use the browser menu: "Install app" or "Add to Home Screen".', 4200);
+  };
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+
+  $('btnSettings').onclick = () => { Audio8.play('open'); $('tglPush').classList.toggle('on', pushPermitted()); syncPhaseOpts(); $('tglSound').classList.toggle('on', Audio8.isEnabled()); $('tglLegend').classList.toggle('on', me.settings.forceLegendary); $('btnVacation').textContent = me.vacation && me.vacation.active ? 'End' : 'Plan'; $('ovSettings').hidden = false; };
   $('setClose').onclick = () => { $('ovSettings').hidden = true; Audio8.play('close'); };
   $('ovSettings').addEventListener('click', e => { if (e.target === $('ovSettings')) $('ovSettings').hidden = true; });
   $('tglSound').onclick = async () => { const on = !Audio8.isEnabled(); Audio8.setEnabled(on); $('tglSound').classList.toggle('on', on); await API.setSettings({ sound: on }); Audio8.play('tap'); };
@@ -1271,6 +1338,7 @@
 
   // Demo events (settings): every showable moment of the game, on demand, with its full animation
   const DEMO_EVENTS = [
+    ['Friend activity notification', 'activity', 'lilac wide'],
     ['Welcome package', 'gift', 'lilac'], ['Friend curses you', 'curse', 'lilac'],
     ['Friend blesses you', 'bless', 'lilac'], ['Duel request', 'duel', 'lilac'],
     ['Egg ready to hatch', 'eggReady', 'mint'], ['Quest complete + egg', 'quest', 'mint'],
@@ -1293,6 +1361,7 @@
         if (res.reaction) setTimeout(() => toast(res.reaction), 800);
         return;
       }
+      if (kind === 'activity') { const evs = await API.pollActivity({ force: true }); evs.forEach(showPush); return; }
       if (kind === 'duel') { const r = await API.simulateIncomingChallenge(); Audio8.play(r.ok ? 'open' : 'error'); toast(r.message, 3600); await refreshMe(); return showTab('home'); }
       const r = await API.demoEvent(kind); await refreshMe();
       if (kind === 'eggReady') { toast('An egg is ready. Tap it in the Nest.', 3000); return showTab('zoo'); }
