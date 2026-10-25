@@ -241,7 +241,8 @@
   const TIER_CACHE = new Map();
   function drawSheetAtTier(ctx, sheet, pet, x, y, px, opts) {
     // stage-2 sheets ("<species>_2") are drawn at their own native size whatever the pet's tier
-    const N = /_2$/.test(pet.species) ? sheet.meta.frameW : global.Animals.RES[global.Animals.normRarity(pet.rarity)];
+    // pxl sheets are already drawn at their species' rarity resolution: never resample them (blurry).
+    const N = sheet.meta.frameW;
     const { image, meta } = sheet;
     const anim = meta.anims[opts.anim] || meta.anims.idle;
     const frame = Math.floor((opts.t || 0) / (1000 / (anim.fps || 6))) % anim.frames;
@@ -263,9 +264,10 @@
       const d = c.getImageData(0, 0, N, N); for (let i = 3; i < d.data.length; i += 4) d.data[i] = d.data[i] > 110 ? 255 : 0; c.putImageData(d, 0, 0);
       TIER_CACHE.set(key, cv);
     }
-    const w = SIZE * px;
+    // integer scale only (a 24 px sprite in an 80 px box is 3x = 72 px, not 3.33x), centred, feet on the box floor
+    const w = SIZE * px, k = Math.max(1, Math.floor(w / N)), s = N * k, ox = Math.round(x + (w - s) / 2), oy = Math.round(y + (w - s));
     ctx.save(); ctx.imageSmoothingEnabled = false;
-    if (opts.flip) { ctx.translate(x + w, y); ctx.scale(-1, 1); ctx.drawImage(cv, 0, 0, w, w); } else ctx.drawImage(cv, x, y, w, w);
+    if (opts.flip) { ctx.translate(ox + s, oy); ctx.scale(-1, 1); ctx.drawImage(cv, 0, 0, s, s); } else ctx.drawImage(cv, ox, oy, s, s);
     ctx.restore();
     if (opts.fx !== false) global.Animals.sparkles(ctx, global.Animals.normRarity(pet.rarity), x, y, w, opts.t || 0);
   }
@@ -333,8 +335,9 @@
   // fit: shrink the body just enough that the crown stays inside the box, feet where they were (drawPet).
   function drawUpgrade(ctx, pet, stage, x, y, size, opts, fit) {
     const { body, halo, pad, N, over } = evolvedParts(pet, stage, opts), t = opts.t || 0;
-    const s = fit ? size / (N + over) : size / N;
-    if (fit) { x += (size - N * s) / 2; y += over * s; }
+    let s = fit ? size / (N + over) : size / N;
+    s = Math.max(1, Math.floor(s));                       // integer scale keeps every pixel the same size
+    x = Math.round(x + (size - N * s) / 2); y = Math.round(y + size - N * s);
     ctx.save(); ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = 0.45 + 0.35 * Math.sin(t / 260);
     ctx.drawImage(halo, x - pad * s, y - pad * s, body.width * s, body.height * s);

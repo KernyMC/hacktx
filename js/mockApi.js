@@ -106,9 +106,9 @@
     pityMythic: 20, pityLegendary: 60, shinyChance: 1 / 16 };
 
   const FRIENDS_SEED = [
-    { id: 'f1', name: 'Leo', pet: { name: 'Pip',     species: 'dog',     rarity: 'rare' },     level: 5, streak: 9,  status: 'On a quest at Caffe Medici', vacation: false },
+    { id: 'f1', name: 'Leo', pet: { name: 'Pip',     species: 'dog',     rarity: 'common' },     level: 5, streak: 9,  status: 'On a quest at Caffe Medici', vacation: false },
     { id: 'f2', name: 'Ana', pet: { name: 'Boulder', species: 'turtle',  rarity: 'uncommon' }, level: 4, streak: 3,  status: 'Just hatched a rare egg', vacation: false },
-    { id: 'f3', name: 'Sam', pet: { name: 'Hoot',    species: 'owl',     rarity: 'mythic' },   level: 3, streak: 12, status: 'On vacation in Marfa until Tuesday', vacation: true },
+    { id: 'f3', name: 'Sam', pet: { name: 'Hoot',    species: 'owl',     rarity: 'rare' },   level: 3, streak: 12, status: 'On vacation in Marfa until Tuesday', vacation: true },
     { id: 'f4', name: 'Mia', pet: { name: 'Ziggy',   species: 'fennec',  rarity: 'rare' },     level: 6, streak: 21, status: 'Top of the leaderboard. Insufferable.', vacation: false },
   ];
 

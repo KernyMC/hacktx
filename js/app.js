@@ -172,11 +172,17 @@
   }
 
   // ------------------------------------------------------------------
-  // Speech: narrator and TTS are OFF (text chat only). speak() is a no-op kept for call sites.
+  // Speech: ElevenLabs TTS through the server, in the pet's own voice preset (Animals voice). No browser
+  // fallback: when the server or the key is missing the pet simply stays quiet. Voice proofs stay off.
   // ------------------------------------------------------------------
 
   let speaking = null;
-  async function speak() { return false; }
+  async function speak(text, pet = me.pet, mood = 'neutral') {
+    if (speaking) { speaking.pause(); speaking = null; }
+    const blob = await API.say(text, animal(pet).voice, mood);
+    if (!blob) return false;
+    speaking = new Audio(URL.createObjectURL(blob)); speaking.play().catch(() => {}); return true;
+  }
 
   // ------------------------------------------------------------------
   // Tabs
@@ -345,11 +351,12 @@
     th.remove(); $('chatSend').disabled = false;
     chatHistory.push({ role: 'pet', text: r.reply }); chatHistory = chatHistory.slice(-24);
     chatBubble('pet', r.reply); Audio8.happy(me.pet.species);
+    speak(r.reply, me.pet, ['excited', 'sad', 'happy'].includes(r.mood) ? r.mood : 'neutral');
     stage.set(r.mood === 'sad' ? 'sad' : 'happy', 1500);
   }
   $('btnTalk').addEventListener('pointerdown', e => e.stopPropagation());
   $('btnTalk').onclick = openChat;
-  $('chatClose').onclick = () => { $('ovChat').hidden = true; Audio8.play('close');  };
+  $('chatClose').onclick = () => { $('ovChat').hidden = true; Audio8.play('close'); if (speaking) { speaking.pause(); speaking = null; } };
   $('ovChat').addEventListener('click', e => { if (e.target === $('ovChat')) $('chatClose').onclick(); });
   $('chatForm').addEventListener('submit', e => { e.preventDefault(); sendChat($('chatInput').value); });
 
@@ -467,7 +474,8 @@
   $('ovQuest').addEventListener('click', e => { if (e.target === $('ovQuest')) closeQuest(); });
   $('tabPhoto').onclick = () => setProofTab('photo');
   // voice notes and the read-aloud button are OFF: proof = photo + a typed caption the judge also reads
-  $('tabVoice').hidden = true; $('proofVoice').hidden = true; $('qSpeak').hidden = true; $('tabPhoto').style.gridColumn = '1 / -1';
+  $('tabVoice').hidden = true; $('proofVoice').hidden = true; $('tabPhoto').style.gridColumn = '1 / -1';
+  $('qSpeak').onclick = async () => { Audio8.play('tap'); const ok = await speak(activeQuest.text, me.pet, 'excited'); if (!ok) toast('Voice needs the server with an ElevenLabs key (npm start).'); };
   function captionBox() {
     let t = $('qCaption');
     if (!t) {
@@ -852,6 +860,77 @@
   // ------------------------------------------------------------------
   // Village
   // ------------------------------------------------------------------
+  // Raid bosses: one hand-drawn 24 x 20 sprite each (X outline, p body, d shade, e eye, k pupil, R accent, W white)
+  const BOSSES = {
+    hydra: { pal: { p: '#ff6f9c', d: '#c9426f', R: '#ffcf4d', e: '#fff', k: '#2b2140' }, rows: [
+      '.XXXXX....XXXXX....XXXXX',
+      'XpppppX..XpppppX..XpppppX',
+      'XpekppX..XpekppX..XppkepX',
+      'XpppppX..XpppppX..XpppppX',
+      'XpdXdpX..XpdXdpX..XpdXdpX',
+      '.XpppX....XpppX....XpppX.',
+      '..XppX....XppX....XppX..',
+      '...XppX...XppX...XppX...',
+      '....XppX..XppX..XppX....',
+      '.....XppXXppppXXppX.....',
+      '....XppppppppppppppX....',
+      '...XppRppppppRpppppRpX..',
+      '...XppppppppppppppppppX.',
+      '...XdpppppppppppppppdX..',
+      '....XddddddddddddddX....',
+      '.....XXXdddddddXXX......',
+      '.......XdpX.XpdX........',
+      '.......XXXX.XXXX........',
+    ] },
+    golem: { pal: { p: '#b79cff', d: '#7a5fd6', R: '#ffcf4d', e: '#fff', k: '#2b2140' }, rows: [
+      '.......XXXXXXXXXX.......',
+      '......XddddddddddX......',
+      '......XdppppppppdX......',
+      '......XdpekppekpdX......',
+      '......XdppppppppdX......',
+      '......XdpXXXXXXpdX......',
+      '......XddddddddddX......',
+      '...XXXXXXXXXXXXXXXXXX...',
+      '..XpppppppXppppppXpppX..',
+      '..XpRppRppXppRppRXpRpX..',
+      '..XdddddddXddddddXdddX..',
+      '..XXXXXXXXXXXXXXXXXXXX..',
+      '..XppppXppppppppXppppX..',
+      '..XpRppXppRppRppXppRpX..',
+      '..XddddXddddddddXddddX..',
+      '..XXXXXXXXXXXXXXXXXXXX..',
+      '....XXXXX......XXXXX....',
+      '....XdddX......XdddX....',
+      '....XXXXX......XXXXX....',
+    ] },
+    kraken: { pal: { p: '#5ab0ff', d: '#2f6fc4', R: '#ffcf4d', e: '#fff', k: '#2b2140' }, rows: [
+      '........XXXXXXXX........',
+      '......XXppppppppXX......',
+      '.....XppppppppppppX.....',
+      '....XppppppppppppppX....',
+      '....XppeeppppppeeppX....',
+      '....XpekkppppppkkepX....',
+      '....XppeeppppppeeppX....',
+      '....XpppppXXXXpppppX....',
+      '....XddppppppppppddX....',
+      '.....XdddddddddddX......',
+      '....XXdXXdXXdXXdXXdXX...',
+      '...XpXXpXXpXXpXXpXXpX...',
+      '..XpX.XpX.XpX.XpX.XpX...',
+      '..XpX.XpX.XpX.XpX.XpX...',
+      '.XpX..XpX.XpX.XpX..XpX..',
+      '.XpX.XpX...XpX.XpX..XpX.',
+      'XpX..XX.....XX..XX...XX.',
+      'XX......................',
+    ] },
+  };
+  function bossCanvas(id, k = 4) {
+    const b = BOSSES[id] || BOSSES.hydra, cv = document.createElement('canvas');
+    cv.width = Math.max(...b.rows.map(r => r.length)) * k; cv.height = b.rows.length * k; cv.className = 'bosspx';
+    const c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+    b.rows.forEach((row, r) => { for (let x = 0; x < row.length; x++) { const ch = row[x]; if (ch === '.') continue; c.fillStyle = ch === 'X' ? '#2b2140' : (b.pal[ch] || '#fff'); c.fillRect(x * k, r * k, k, k); } });
+    return cv;
+  }
   async function renderVillage() {
     village = await API.getVillage();
     const cv = $('villageCanvas'), c = cv.getContext('2d');
@@ -874,12 +953,13 @@
       const inRaid = r.members.includes('me'), dead = r.hp <= 0;
       const d = document.createElement('div'); d.className = 'panel raid';
       d.innerHTML = `<div class="row"><h2 class="grow"></h2><span class="chip" style="color:var(--ink)">${ic('pin', 14, '#2b2140', '#ffcf4d')} ${r.keys} key${r.keys > 1 ? 's' : ''}</span></div>
-        <div class="boss">${dead ? ic('skull', 64, '#fff', '#2b2140') : ic('monster', 64, ['#ff6f9c', '#b79cff', '#5ab0ff'][village.raids.indexOf(r) % 3], '#ffcf4d')}</div>
+        <div class="boss">${dead ? ic('skull', 64, '#fff', '#2b2140') : ''}</div>
         <div class="lbl" style="color:#fff">HP ${r.hp} / ${r.maxHp} · reward: ${esc(r.rewardText)}</div>
         <div class="meter hp"><i style="width:${r.hp / r.maxHp * 100}%"></i></div>
         <p style="font-size:15px;margin:8px 0" class="desc"></p>
         <div class="row"><div class="mem grow">${r.members.map(m => `<span class="${m === 'me' ? 'me' : ''}">${esc(names[m] || m)}</span>`).join('')}${r.members.length < r.needed ? `<span class="empty">${r.needed - r.members.length} more</span>` : ''}</div>${inRaid || dead ? '' : `<button class="btn sm pink">Join · ${r.keys} key${r.keys > 1 ? 's' : ''}</button>`}</div>`;
       d.querySelector('h2').textContent = r.name;
+      if (!dead) d.querySelector('.boss').appendChild(bossCanvas(r.id));
       d.querySelector('.desc').textContent = dead ? 'Defeated! Reward eggs delivered to every raid member.' : r.desc + ` Expires ${r.expires}.`;
       const jb = d.querySelector('button.pink');
       if (jb) jb.onclick = async () => {

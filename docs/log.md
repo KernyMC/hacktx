@@ -166,3 +166,11 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   (go / do / prove), and XP / coins / egg tiles that show the real payout with blessing (2x) and curse (1/2)
   badges. Display font is now Silkscreen with Press Start 2P as fallback: Press Start 2P's capital C has
   spurs that close it at 8-12 px, so "Common" read as "Oommon". One-line revert in `--display` if unwanted.
+- Follow-up (same day): sprites looked blurry in the village because `drawSheetAtTier` resampled a sheet
+  whenever a pet's rarity did not match its species' native resolution (friend "Pip" was a rare dog on a
+  20 px sheet) and then blitted at a non-integer scale. Fix in `js/sprites.js`: pxl sheets are always drawn
+  at native resolution and at an integer scale (centred, feet on the box floor); the evolution renderer
+  also snaps to an integer scale. Friends' seed pets now carry their species' real rarity. Raid bosses
+  have their own 24 px sprites (hydra, golem, kraken) drawn in `app.js`. ElevenLabs is back on the client
+  side: the quest "Listen" button and chat replies call `/api/speech/say` in the pet's voice preset, no
+  browser fallback (quiet when the key/server is missing). Voice-note proofs stay off.
