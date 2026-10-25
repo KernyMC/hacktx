@@ -176,9 +176,12 @@ async function handleTranscribe(req, res, url) {
   const ext = EXT_FOR[ctype] || 'webm';
 
   const form = new FormData();
-  form.append('model_id', env('ELEVENLABS_STT_MODEL', 'scribe_v1'));
+  form.append('model_id', env('ELEVENLABS_STT_MODEL', 'scribe_v2'));
   const lang = (url.searchParams.get('lang') || '').trim();
   if (lang) form.append('language_code', lang);
+  // keyterm prompting (Scribe v2): place and pet names the model would otherwise mishear
+  const keyterms = (url.searchParams.get('keyterms') || '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 20);
+  keyterms.forEach((k) => form.append('keyterms', k));
   form.append('file', new Blob([audio], { type: ctype }), `proof.${ext}`);
 
   let r;
@@ -196,23 +199,39 @@ async function handleTranscribe(req, res, url) {
 // ---------------------------------------------------------------------------
 // ElevenLabs: text-to-speech
 // ---------------------------------------------------------------------------
+// One character per species "voice" (js/animals.js → voice). Premade ElevenLabs voices, chosen for the
+// character; each preset also carries its v4 voice settings and the audio tags that colour its delivery.
+// Override any id with VOICE_<NAME>=<voice id> in .env. Unknown ids fall back to George at request time.
 const VOICE_PRESETS = {
-  cute:   'MF3mGyEYCl7XYWbV9V6O', // Elli
-  chill:  'EXAVITQu4vr4xnSDxMaL', // Bella / Sarah
-  grumpy: 'VR6AewLTigWG4xSOukaG', // Arnold
-  wise:   'pNInz6obpgDQGcFmaJgB', // Adam
-  hyper:  'AZnzlk1XvdvUeBnXmlld', // Domi
-  regal:  '21m00Tcm4TlvDq8ikWAM', // Rachel
-  spooky: 'yoZ06aMxZJJ28mfd3POQ', // Sam
-  cowboy: 'TxGEqnHWrfWFTfGW9XjX', // Josh
-  dreamy: 'ErXwobaYiN019PkySvjV', // Antoni
+  cute:   { id: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica',   stability: 0.35, similarity: 0.8, tags: { happy: '[giggles]', excited: '[excited]', sad: '[sad]', neutral: '[cheerful]' } },
+  hyper:  { id: 'FGY2WhTYpPnrIDTdsKH5', name: 'Laura',     stability: 0.25, similarity: 0.8, tags: { happy: '[laughs]', excited: '[excited] [shouts]', sad: '[sighs]', neutral: '[excited]' } },
+  chill:  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah',     stability: 0.6,  similarity: 0.75, tags: { happy: '[chuckles]', excited: '[cheerful]', sad: '[sighs]', neutral: '[calm]' } },
+  grumpy: { id: 'pqHfZKP75CvOlQylNhV4', name: 'Bill',      stability: 0.45, similarity: 0.8, tags: { happy: '[grudgingly]', excited: '[sarcastic]', sad: '[sighs]', neutral: '[grumbles]' } },
+  wise:   { id: 'JBFqnCBsd6RMkjVDRZzb', name: 'George',    stability: 0.7,  similarity: 0.6, tags: { happy: '[warmly]', excited: '[amused]', sad: '[gently]', neutral: '[thoughtful]' } },
+  regal:  { id: 'XB0fDUnXU5powFXDhCwa', name: 'Charlotte', stability: 0.6,  similarity: 0.75, tags: { happy: '[delighted]', excited: '[dramatic]', sad: '[sighs]', neutral: '[elegant]' } },
+  spooky: { id: 'N2lVS1w4EtoT3dr4eOWO', name: 'Callum',    stability: 0.3,  similarity: 0.8, tags: { happy: '[mischievous]', excited: '[cackles]', sad: '[whispers]', neutral: '[whispers]' } },
+  cowboy: { id: 'nPczCjzI2devNBz1zQrb', name: 'Brian',     stability: 0.5,  similarity: 0.8, tags: { happy: '[laughs]', excited: '[hollers]', sad: '[sighs]', neutral: '[drawling]' } },
+  dreamy: { id: 'XrExE9yKIg1WjnnlVkGX', name: 'Matilda',   stability: 0.5,  similarity: 0.7, tags: { happy: '[softly]', excited: '[wistful]', sad: '[whispers]', neutral: '[dreamy]' } },
 };
+const DEFAULT_VOICE = VOICE_PRESETS.wise;
 function resolveVoice(voice) {
   const v = String(voice || 'cute').trim();
   const key = v.toLowerCase();
-  if (VOICE_PRESETS[key]) return env('VOICE_' + key.toUpperCase(), VOICE_PRESETS[key]);
-  if (/^[A-Za-z0-9]{10,40}$/.test(v)) return v; // raw ElevenLabs voice id
-  return env('VOICE_CUTE', VOICE_PRESETS.cute);
+  if (VOICE_PRESETS[key]) return Object.assign({}, VOICE_PRESETS[key], { id: env('VOICE_' + key.toUpperCase(), VOICE_PRESETS[key].id), key });
+  if (/^[A-Za-z0-9]{10,40}$/.test(v)) return Object.assign({}, DEFAULT_VOICE, { id: v, key: 'custom' }); // raw ElevenLabs voice id
+  return Object.assign({}, VOICE_PRESETS.cute, { id: env('VOICE_CUTE', VOICE_PRESETS.cute.id), key: 'cute' });
+}
+const isV4 = (model) => /^eleven_v4/.test(model);
+// v4 takes direction from audio tags + punctuation instead of style/speed; older models get the tags stripped
+function directed(text, preset, mood, model) {
+  const tag = (preset.tags && preset.tags[mood]) || '';
+  const hasTag = /^\s*\[/.test(text);
+  if (isV4(model)) return hasTag || !tag ? text : `${tag} ${text}`;
+  return text.replace(/\[[^\]]{1,24}\]\s*/g, '');
+}
+function voiceSettings(preset, model) {
+  const base = { stability: preset.stability, similarity_boost: preset.similarity, use_speaker_boost: true };
+  return isV4(model) ? base : Object.assign(base, { style: 0.35 });
 }
 
 const ttsCache = new Map(); // key -> Buffer (insertion order = LRU-ish)
@@ -221,28 +240,35 @@ const TTS_CACHE_MAX = 50;
 async function handleSay(req, res) {
   const body = await readJson(req, 64 * 1024);
   if (!hasEleven()) throw new HttpError(503, 'ELEVENLABS_API_KEY is not configured on the server');
-  const text = String(body.text || '').replace(/\s+/g, ' ').trim().slice(0, 400);
-  if (!text) throw new HttpError(400, 'Missing "text"');
-  const voiceId = resolveVoice(body.voice);
-  const key = voiceId + '|' + text;
+  const raw = String(body.text || '').replace(/\s+/g, ' ').trim().slice(0, 400);
+  if (!raw) throw new HttpError(400, 'Missing "text"');
+  const preset = resolveVoice(body.voice);
+  const mood = ['happy', 'excited', 'sad', 'neutral'].includes(body.mood) ? body.mood : 'neutral';
+  const model = env('ELEVENLABS_TTS_MODEL', 'eleven_v4');
+  const text = directed(raw, preset, mood, model);
+  const key = `${preset.id}|${model}|${text}`;
 
   let audio = ttsCache.get(key);
   if (audio) {
     ttsCache.delete(key); ttsCache.set(key, audio);
   } else {
+    const call = (voiceId, modelId) => fetchWithTimeout(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`, {
+      method: 'POST',
+      headers: { 'xi-api-key': env('ELEVENLABS_API_KEY'), 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
+      body: JSON.stringify({ text: isV4(modelId) ? text : directed(raw, preset, mood, modelId), model_id: modelId, voice_settings: voiceSettings(preset, modelId), apply_text_normalization: 'on' }),
+    }, 30000);
     let r;
     try {
-      r = await fetchWithTimeout(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`, {
-        method: 'POST',
-        headers: { 'xi-api-key': env('ELEVENLABS_API_KEY'), 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
-        body: JSON.stringify({ text, model_id: env('ELEVENLABS_TTS_MODEL', 'eleven_flash_v2_5'), voice_settings: { stability: 0.4, similarity_boost: 0.8, style: 0.3 } }),
-      }, 30000);
+      r = await call(preset.id, model);
+      // a voice id that this account cannot use → the default narrator; a model this plan lacks → flash
+      if (r.status === 404 || r.status === 400) { log(`TTS voice ${preset.key} (${preset.id}) rejected (${r.status}); retrying with ${DEFAULT_VOICE.name}`); r = await call(DEFAULT_VOICE.id, model); }
+      if (r.status === 422 && model !== 'eleven_flash_v2_5') { log(`TTS model ${model} rejected; retrying with eleven_flash_v2_5`); r = await call(preset.id, 'eleven_flash_v2_5'); }
     } catch (e) { logErr('ElevenLabs TTS fetch failed:', e.message); throw new HttpError(502, 'Could not reach ElevenLabs'); }
     if (!r.ok) throw await upstreamError(r, 'ElevenLabs TTS');
     audio = Buffer.from(await r.arrayBuffer());
     ttsCache.set(key, audio);
     while (ttsCache.size > TTS_CACHE_MAX) ttsCache.delete(ttsCache.keys().next().value);
-    log(`TTS ok voice=${body.voice || 'cute'} ${text.length} chars -> ${audio.length} B`);
+    log(`TTS ok voice=${preset.key} mood=${mood} model=${model} ${text.length} chars -> ${audio.length} B`);
   }
   res.writeHead(200, { ...CORS, 'Content-Type': 'audio/mpeg', 'Content-Length': audio.length, 'Cache-Control': 'no-store' });
   res.end(audio);

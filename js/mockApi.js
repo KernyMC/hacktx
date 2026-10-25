@@ -464,16 +464,19 @@
     /** POST /speech/transcribe (ElevenLabs Scribe). Returns {ok, text} or null if unavailable. */
     async transcribe(blob) {
       try {
-        const r = await fetch(API_BASE + '/api/speech/transcribe', { method: 'POST', headers: { 'Content-Type': blob.type || 'audio/webm' }, body: blob });
+        // keyterms help Scribe spell the place and pet names right
+        const open = S.quests.filter(q => q.status === 'open').map(q => q.place.name);
+        const kt = encodeURIComponent([S.pet && S.pet.name, 'Familiars', 'HackTX'].concat(open).filter(Boolean).join(','));
+        const r = await fetch(API_BASE + '/api/speech/transcribe?keyterms=' + kt, { method: 'POST', headers: { 'Content-Type': blob.type || 'audio/webm' }, body: blob });
         if (!(r.headers.get('content-type') || '').includes('json')) return null;
         const j = await r.json(); return j && j.ok ? j : null;
       } catch (e) { return null; }
     },
 
     /** POST /speech/say (ElevenLabs TTS). Returns an audio Blob or null. */
-    async say(text, voice) {
+    async say(text, voice, mood = 'neutral') {
       try {
-        const r = await fetch(API_BASE + '/api/speech/say', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, voice }) });
+        const r = await fetch(API_BASE + '/api/speech/say', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, voice, mood }) });
         if (!r.ok || !(r.headers.get('content-type') || '').includes('audio')) return null;
         return await r.blob();
       } catch (e) { return null; }

@@ -226,9 +226,9 @@
   // Speech (ElevenLabs TTS via server, browser voice fallback)
   // ------------------------------------------------------------------
   let speaking = null;
-  async function speak(text, pet = me.pet) {
+  async function speak(text, pet = me.pet, mood = 'neutral') {
     if (speaking) { speaking.pause(); speaking = null; }
-    const blob = await API.say(text, animal(pet).voice);
+    const blob = await API.say(text, animal(pet).voice, mood);
     if (blob) { speaking = new Audio(URL.createObjectURL(blob)); speaking.play().catch(() => {}); return true; }
     if ('speechSynthesis' in window) {
       speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text);
@@ -400,7 +400,7 @@
     chatHistory.push({ role: 'pet', text: r.reply }); chatHistory = chatHistory.slice(-24);
     chatBubble('pet', r.reply); Audio8.play('squeak');
     stage.set(r.mood === 'sad' ? 'sad' : 'happy', 1500);
-    speak(r.reply);
+    speak(r.reply, me.pet, r.mood === 'excited' ? 'excited' : r.mood === 'sad' ? 'sad' : r.mood === 'happy' ? 'happy' : 'neutral');
   }
   $('btnTalk').addEventListener('pointerdown', e => e.stopPropagation());
   $('btnTalk').onclick = openChat;
@@ -464,7 +464,7 @@
   $('ovQuest').addEventListener('click', e => { if (e.target === $('ovQuest')) closeQuest(); });
   $('tabPhoto').onclick = () => setProofTab('photo');
   $('tabVoice').onclick = () => setProofTab('voice');
-  $('qSpeak').onclick = async () => { Audio8.play('tap'); const ok = await speak(activeQuest.text); if (!ok) toast('No voice available on this device.'); };
+  $('qSpeak').onclick = async () => { Audio8.play('tap'); const ok = await speak(activeQuest.text, me.pet, 'excited'); if (!ok) toast('No voice available on this device.'); };
   function setProofTab(t) {
     proofTab = t;
     $('tabPhoto').classList.toggle('active', t === 'photo'); $('tabVoice').classList.toggle('active', t === 'voice');
@@ -724,7 +724,7 @@
     $('petActive').onclick = async () => { await API.setActivePet(p.id); Audio8.play('reward'); $('ovPet').hidden = true; await refreshMe(); stage.set('happy', 1500); toast(`${p.name} is now your active Familiar. New look!`); renderZoo(); };
     $('petPlay').onclick = () => { $('ovPet').hidden = true; playPetGame(p); };
     $('petChallenge').onclick = () => { $('ovPet').hidden = true; pickFriendToChallenge(p); };
-    $('petVoice').onclick = () => speak(`Hi! I'm ${p.name}, the ${a.name}. ${a.flavor}`, p);
+    $('petVoice').onclick = () => speak(`Hi! I'm ${p.name}, the ${a.name}. ${a.flavor}`, p, 'happy');
     $('ovPet').hidden = false;
   }
   $('petClose').onclick = () => { $('ovPet').hidden = true; Audio8.play('close'); };
