@@ -106,9 +106,10 @@
       if (anim === 'eat') { sy = 1 + Math.sin(t / 60) * 0.08; sx = 1 - Math.sin(t / 60) * 0.06; }
       if (anim === 'sad') { dy = 4 + Math.sin(t / 900) * 1; sy = 0.96; }
 
+      const tiny = curse === 'tiny' ? 0.6 : 1;                                                                   // Tiny Coins: a pocket-sized pet, the habitat stays
       const w = 16 * PX, h = 16 * PX, x = (W - w) / 2, y = H - 56 - h + 6;
-      ctx.fillStyle = 'rgba(43,33,64,.18)'; ctx.fillRect(x + 16, H - 58, w - 32, 6);
-      ctx.save(); ctx.translate(x + w / 2, y + h + dy); ctx.scale(sx, sy); ctx.translate(-w / 2, -h);
+      ctx.fillStyle = 'rgba(43,33,64,.18)'; ctx.fillRect(x + w / 2 - (w / 2 - 16) * tiny, H - 58, (w - 32) * tiny, 6);
+      ctx.save(); ctx.translate(x + w / 2, y + h + dy); ctx.scale(sx * tiny, sy * tiny); ctx.translate(-w / 2, -h);
       Sprites.drawPet(ctx, me.pet, 0, 0, PX, { blink, t, anim });
       ctx.restore();
       if (away) { ctx.fillStyle = '#2b2140'; ctx.font = '14px "Press Start 2P", monospace'; const zz = Math.floor(t / 500) % 3; ctx.fillText('z'.repeat(zz + 1), x + w - 10, y + 20 - zz * 6); }
@@ -736,8 +737,8 @@
   // Minigames + duels
   // ------------------------------------------------------------------
   async function playPetGame(p) {
-    const a = animal(p), diff = Math.min(5, RAR.indexOf(Animals.normRarity(p.rarity)) + 2);   // harder: a notch above the rarity tier
-    const res = await Minigames.open({ engine: a.minigame, pet: p, difficulty: diff, title: `${p.name}'s ${Minigames.gameFor(a.id).name}`, subtitle: a.minigame === 'rodeo' ? 'Legendary trial' : `${cap(Animals.normRarity(p.rarity))} difficulty`, practice: true });
+    const a = animal(p), diff = Minigames.difficultyFor(a.id, { rarity: p.rarity });   // the game's own difficulty, +1 for rare pets
+    const res = await Minigames.open({ engine: a.minigame, pet: p, difficulty: diff, title: `${p.name}'s ${Minigames.gameFor(a.id).name}`, subtitle: a.minigame === 'rodeo' ? 'Legendary trial' : `${Minigames.difficultyLabel(diff)} · ${diff} of 5 stars`, practice: true });
     const r = await API.reportMinigame(p.id, res.win);
     if (res.win && r.reward) { toast(`Win! +${r.reward.coins} coins${r.reward.warmed ? `, ${r.reward.warmed} egg${r.reward.warmed > 1 ? 's' : ''} warmed` : ''}. ${r.left} rewarded wins left today.`); confetti.burst(50); }
     else if (res.win) toast(r.message || 'Win!');
@@ -755,7 +756,7 @@
   }
   async function pickFriendToChallenge(p) {
     const v = await API.getVillage(); const a = animal(p);
-    openPicker(`Challenge with ${p.name}`, `${Minigames.gameFor(a.id).name} at ${cap(Animals.normRarity(p.rarity))} difficulty. They get 3 tries.`,
+    openPicker(`Challenge with ${p.name}`, `${Minigames.gameFor(a.id).name}, ${Minigames.difficultyLabel(Minigames.difficultyFor(a.id, { rarity: p.rarity, duel: true })).toLowerCase()} difficulty. They get 3 tries.`,
       v.friends.map(f => ({ pet: f.pet, title: `${f.name} & ${f.pet.name}`, sub: f.vacation ? 'On vacation: duel requests blocked' : f.status, disabled: f.vacation,
         right: f.vacation ? 'away' : 'Send', onPick: async () => { const r = await API.sendChallenge(f.id, p.id); Audio8.play(r.ok ? 'accept' : 'error'); toast(r.message, 3600); } })));
   }

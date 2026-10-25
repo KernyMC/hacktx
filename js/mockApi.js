@@ -296,6 +296,8 @@
       rates: GACHA.rates, pityMythicIn: GACHA.pityMythic - S.gacha.sinceMythic, pityLegendaryIn: GACHA.pityLegendary - S.gacha.sinceLegendary };
   }
 
+  // duel difficulty = the minigame's own rating + 1 (Minigames.difficultyFor); rarity tier + 3 when minigames.js is absent
+  const duelDifficulty = (species, rarity) => global.Minigames ? Minigames.difficultyFor(species, { rarity, duel: true }) : Math.min(5, tierOf(rarity) + 3);
   function newEgg(rarity, source, shiny = false) {
     // the nest only has so much warmth: every two eggs already incubating slow a new one down by one step
     // 1 egg = 2 quests; every egg already in the nest adds one more quest to the new one
@@ -338,7 +340,7 @@
       S.inbox.push({ id: uid(), kind: 'gift', from: 'HackTX', title: 'Welcome package', text: 'A care package for your first day. Open it!',
         items: [{ kind: 'coins', amount: 1200 }, { kind: 'curse', id: 'pirate', qty: 1 }, { kind: 'curse', id: 'rhyme', qty: 1 }, { kind: 'curse', id: 'hop', qty: 1 }, { kind: 'blessing', id: 'double', qty: 1 }, { kind: 'key', qty: 1 }] });
       S.inbox.push({ id: uid(), kind: 'curse', from: 'Leo', curse: CURSES[0] });
-      S.inbox.push({ id: uid(), kind: 'challenge', from: 'Leo', pet: clone(FRIENDS_SEED[0].pet), engine: Animals.A[FRIENDS_SEED[0].pet.species].minigame, difficulty: 5, triesLeft: 3, wager: 80 });
+      S.inbox.push({ id: uid(), kind: 'challenge', from: 'Leo', pet: clone(FRIENDS_SEED[0].pet), engine: Animals.A[FRIENDS_SEED[0].pet.species].minigame, difficulty: duelDifficulty(FRIENDS_SEED[0].pet.species, FRIENDS_SEED[0].pet.rarity), triesLeft: 3, wager: 80 });
       save();
       return S.pet;
     },
@@ -675,7 +677,7 @@
       const a = Animals.A[p.species];
       const d = { id: uid(), friendId, friendName: f.name, petName: p.name, species: p.species, rarity: p.rarity, engine: a.minigame,
         engineName: (global.Minigames && Minigames.gameFor ? Minigames.gameFor(p.species).name : a.minigame),
-        difficulty: Math.min(5, tierOf(p.rarity) + 3), triesLeft: 3, status: 'pending', at: Date.now() };   // duels: two notches above the rarity tier
+        difficulty: duelDifficulty(p.species, p.rarity), triesLeft: 3, status: 'pending', at: Date.now() };   // the game's own difficulty, +1 for the duel
       S.duels.unshift(d); S.duels = S.duels.slice(0, 8); save();
       return { ok: true, duel: d, message: `Sent! ${f.name} has 3 tries to beat ${p.name}'s ${d.engineName}. If they fail all 3, you win coins.` };
     },
@@ -697,7 +699,7 @@
       await delay(100);
       const f = rnd(S.friends.filter(x => !x.vacation));
       if (onVacation()) return { ok: false, blocked: true, message: `${f.name} tried to challenge you, but you are on vacation. Request bounced.` };
-      const diff = Math.min(5, tierOf(f.pet.rarity) + 3);
+      const diff = duelDifficulty(f.pet.species, f.pet.rarity);
       S.inbox.push({ id: uid(), kind: 'challenge', from: f.name, pet: clone(f.pet), engine: Animals.A[f.pet.species].minigame, difficulty: diff, triesLeft: 3, wager: 20 + diff * 15 });
       save(); return { ok: true, message: `${f.name} challenged you to ${f.pet.name}'s minigame.` };
     },

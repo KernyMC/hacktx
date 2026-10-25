@@ -621,12 +621,20 @@
   const THEMED = ['home', 'quests', 'shop', 'book', 'coin'];
   let theme = null;   // { grids, a, f } once setTheme() ran
 
-  // accent = body colour, or the darker marking colour when the body is near-white (bunny, sheep...)
+  // accent = the animal's body colour when it reads well; near-white bodies (bunny, sheep) use their marking
+  // colour, near-black ones (penguin, grackle) get lifted so the glyph never turns into an ink blob.
+  const luma = h => { const n = parseInt(h.slice(1), 16); return ((n >> 16 & 255) * 0.3 + (n >> 8 & 255) * 0.59 + (n & 255) * 0.11); };
+  const mix = (a, b, t) => { const x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16), ch = s => Math.round(((x >> s) & 255) * (1 - t) + ((y >> s) & 255) * t); return '#' + [16, 8, 0].map(s => ch(s).toString(16).padStart(2, '0')).join(''); };
   function setTheme(id) {
     const t = THEMES[id], an = global.Animals && global.Animals.A[id];
     if (!t || !an) { theme = null; return false; }
-    const n = parseInt(an.pal.b.slice(1), 16), light = ((n >> 16 & 255) + (n >> 8 & 255) + (n & 255)) / 3 > 215;
-    theme = { grids: t, a: light ? an.pal.d : an.pal.b, f: an.pal.a };
+    const p = an.pal, cands = [p.b, p.d, p.a, p.c].filter(Boolean);
+    let a = cands.find(c => luma(c) >= 70 && luma(c) <= 205);
+    if (!a) a = luma(p.b) > 205 ? mix(p.b, INK, 0.45) : mix(p.b, '#ffffff', 0.5);
+    let f = cands.slice().sort((x, y) => luma(y) - luma(x))[0] || '#fff4dc';
+    if (luma(f) < 175) f = mix(f, '#fff4dc', 0.6);
+    if (Math.abs(luma(f) - luma(a)) < 50) f = luma(a) > 150 ? mix(a, INK, 0.4) : mix(a, '#ffffff', 0.6);
+    theme = { grids: t, a, f };
     return true;
   }
 

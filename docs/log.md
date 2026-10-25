@@ -194,3 +194,11 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
 - Icons, user correction: the bottom tab bar keeps each pet's own 9x9 glyphs (Richard's per-animal sets);
   `Icons.svg(..., themed=true)` and `mount()` inside `.tabs` (or `data-themed`) pick the themed glyph, every
   other place uses the colour icons.
+- Minigames: the swim engine (axolotl, penguin, otter, salamander) crashed every frame because its `log`
+  hazard sprite did not exist, so the pond rendered without the pet; sprite added and a missing sprite now
+  warns once instead of killing the loop. Lost hearts and unearned difficulty stars render dimmed (colour
+  icons ignore the "off" colour). Difficulty is now per game (`Minigames.difficultyFor`): catch 1 ...
+  memory/sneak/fly 4, rodeo 5, +1 for rare+ pets, +1 in duels, so the stars vary from 1 to 5 instead of
+  every pet showing 5. The Tiny Coins curse shrinks the pet instead of the whole stage canvas (looked
+  broken). Themed nav glyphs pick a readable accent: near-black animals (penguin, grackle) no longer get
+  ink-coloured icons.

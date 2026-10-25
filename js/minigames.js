@@ -42,8 +42,14 @@
     } catch (e) { /* ignore */ }
   }
 
+  const OFF = '#d9cfe6';   // callers pass this colour for an empty heart / unearned star
   function icon(name, size, color, color2) {
-    try { if (global.Icons) return global.Icons.svg(name, size, color, color2); } catch (e) { /* ignore */ }
+    try {
+      if (global.Icons) {
+        const svg = global.Icons.svg(name, size, color, color2);
+        return color === OFF ? `<span style="display:inline-block;line-height:0;filter:grayscale(1);opacity:.3">${svg}</span>` : svg;
+      }
+    } catch (e) { /* ignore */ }
     return '';
   }
 
@@ -88,10 +94,13 @@
     snake: ['........', '..kkkk..', '.kGGGGk.', 'kGwkGGGk', 'kkkkkGGk', '....kGGk', 'kkkkkGk.', 'kGGGGk..'],
     bamboo: ['..kuuk..', '..kuuk..', '.kkkkkk.', '..kuuk..', '..kuuk..', '.kkkkkk.', '..kuuk..', '..kuuk..'],
     snow: ['...kk...', '.k.kk.k.', '..kkkk..', 'kkkwwkkk', 'kkkwwkkk', '..kkkk..', '.k.kk.k.', '...kk...'],
+    log: ['.kkkkkkkkkk.', 'kbbbBbbbbNNk', 'kbBbbbbBbNdk', 'kbbbbBbbbNNk', '.kkkkkkkkkk.'],
     pizza: ['kkkkkkkk', 'kyyyyyyk', '.kyrykr.', '.kyyyyk.', '..kryk..', '..kyyk..', '...kk...', '........'],
   };
+  let warnedSpr = {};
   function spr(c, name, x, y, s) {
     const g = SPR[name];
+    if (!g) { if (!warnedSpr[name]) { warnedSpr[name] = true; console.warn('Minigames: missing sprite', name); } return; }
     for (let r = 0; r < g.length; r++) {
       const row = g[r];
       for (let i = 0; i < row.length; i++) {
@@ -103,7 +112,7 @@
     }
   }
   // draw sprite centered at cx, cy
-  function sprC(c, name, cx, cy, s) { const g = SPR[name]; spr(c, name, cx - g[0].length * s / 2, cy - g.length * s / 2, s); }
+  function sprC(c, name, cx, cy, s) { const g = SPR[name]; if (!g) return spr(c, name, cx, cy, s); spr(c, name, cx - g[0].length * s / 2, cy - g.length * s / 2, s); }
 
   let warnedPet = false;
   // pet drawn with its feet at (cx, by)
@@ -1637,7 +1646,19 @@
     });
   }
 
+  // How hard each engine really is, 1-5 (reflexes, timing, memory). Rarer pets add a notch, duels another.
+  const BASE_DIFF = { catch: 1, whack: 2, swim: 2, dig: 2, hop: 3, dodge: 3, stack: 3, timing: 3, memory: 4, sneak: 4, fly: 4, rodeo: 5 };
+  const DIFF_LABEL = ['Easy', 'Casual', 'Medium', 'Hard', 'Brutal'];
+  function difficultyFor(species, opts = {}) {
+    const g = gameFor(species), an = global.Animals && global.Animals.A[species];
+    const tier = an ? ['common', 'uncommon', 'rare', 'mythic', 'legendary'].indexOf(global.Animals.normRarity(opts.rarity || an.rarity)) : 0;
+    const d = (BASE_DIFF[g.engine] || 3) + (tier >= 2 ? 1 : 0) + (opts.duel ? 1 : 0);
+    return Math.max(1, Math.min(5, d));
+  }
+  const difficultyLabel = (d) => DIFF_LABEL[Math.max(1, Math.min(5, d)) - 1];
+
   global.Minigames = {
+    difficultyFor, difficultyLabel, BASE_DIFF,
     // kept for backward compatibility; prefer gameFor(species) for display names
     ENGINES: Object.fromEntries(Object.keys(ENGINES).map(k => [k, { name: ENGINES[k].name, desc: ENGINES[k].desc }])),
     SKINS,
