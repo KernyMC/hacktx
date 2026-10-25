@@ -234,3 +234,7 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   with `reasoning_effort: low`, precise error reasons surface on the offline card). Plan cards redesigned
   as invitations: quest-type colour band with icon, "when" chip, place row, the crew as pet sprites
   (You & your pet, friend & their pet, deduped), your pet's pitch in a speech bubble.
+- Story > "Share as image" (and the chronicle): the chapter is rendered on a 1080x1350 canvas (ribbon, the
+  pet's habitat and sprite, parchment page with title, date and text, footer with the URL and the
+  hashtag). On phones the Web Share API opens Instagram / TikTok / Discord with the PNG attached; elsewhere
+  the Share button hides and "Save image" downloads the PNG.

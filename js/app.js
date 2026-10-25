@@ -1100,8 +1100,59 @@
     $('chronTitle').textContent = c.title; $('chronDate').textContent = (c.engine === 'muse' ? 'Written by Muse Spark' : 'Offline chapter') + ' · ' + new Date(c.at).toLocaleDateString();
     $('chronText').innerHTML = c.paragraphs.map(() => '<p></p>').join(''); [...$('chronText').querySelectorAll('p')].forEach((el, i) => { el.textContent = c.paragraphs[i]; });
     $('btnChronicle').textContent = 'Write it again';
+    $('chronClip').hidden = false; $('chronClip').onclick = () => openShareCard({ title: c.title, date: $('chronDate').textContent, lines: c.paragraphs, kicker: 'THE VILLAGE CHRONICLE' });
   }
   $('btnChronicle').onclick = async () => { const b = $('btnChronicle'); if (b.disabled) return; b.disabled = true; b.textContent = `${me.pet.name} is gathering the village gossip...`; Audio8.play('tap'); const c = await API.villageChronicle(true); renderChronicle(c); b.disabled = false; Audio8.play('bless'); speak(c.paragraphs[0], me.pet, 'happy'); };
+  // ------------------------------------------------------------------
+  // Story card: the chapter as a 1080x1350 image (habitat + pet + text) for Instagram / TikTok / Discord
+  // ------------------------------------------------------------------
+  function wrapLines(c, text, maxW) {
+    const out = []; for (const para of String(text).split('\n')) { let line = ''; for (const w of para.split(/\s+/)) { const t = line ? line + ' ' + w : w; if (c.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t; } out.push(line); }
+    return out;
+  }
+  async function renderStoryCard({ title, date, lines, kicker }) {
+    try { await Promise.all([document.fonts.load('700 44px Silkscreen'), document.fonts.load('700 34px "Pixelify Sans"'), document.fonts.load('400 32px "Pixelify Sans"')]); } catch {}
+    const W = 1080, H = 1350, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+    c.fillStyle = '#120d28'; c.fillRect(0, 0, W, H);
+    // sky + habitat
+    Sprites.drawHabitat(c, me.pet.species, W, 620);
+    for (let i = 0; i < 40; i++) { c.fillStyle = ['#ffc247', '#fff4dc', '#ff6f9c'][i % 3]; const x = (i * 263) % W, y = (i * 97) % 200; c.fillRect(x, y, 6, 6); }
+    c.fillStyle = 'rgba(43,33,64,.25)'; c.fillRect(W / 2 - 150, 606, 300, 14);
+    Sprites.drawPet(c, me.pet, W / 2 - 160, 300, 20, { anim: 'happy', t: 0 });
+    // ribbon
+    c.fillStyle = '#120d28'; c.fillRect(0, 0, W, 64); c.fillStyle = '#bf5700'; c.fillRect(0, 64, W, 8);
+    c.fillStyle = '#ffc247'; c.font = '700 22px Silkscreen, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('HACKTX 2026  ·  ONCE UPON A HACK', W / 2, 33);
+    // parchment page
+    const px0 = 48, py0 = 640, pw = W - 96, ph = H - 640 - 120;
+    c.fillStyle = '#2b2140'; c.fillRect(px0 + 10, py0 + 10, pw, ph); c.fillStyle = '#fff4dc'; c.fillRect(px0, py0, pw, ph); c.lineWidth = 6; c.strokeStyle = '#2b2140'; c.strokeRect(px0 + 3, py0 + 3, pw - 6, ph - 6);
+    c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+    c.fillStyle = '#a84a00'; c.font = '700 20px Silkscreen, monospace'; c.fillText((kicker || `${me.pet.name.toUpperCase()}'S STORY`).slice(0, 40), px0 + 40, py0 + 62);
+    c.fillStyle = '#1e1638'; c.font = '700 44px "Pixelify Sans", sans-serif'; const tl = wrapLines(c, title, pw - 80).slice(0, 2); tl.forEach((l, i) => c.fillText(l, px0 + 40, py0 + 118 + i * 50));
+    let y = py0 + 118 + tl.length * 50 + 8;
+    c.fillStyle = '#6f6386'; c.font = '400 24px "Pixelify Sans", sans-serif'; c.fillText(date || '', px0 + 40, y); y += 54;
+    c.fillStyle = '#2b2140'; c.font = '400 29px "Pixelify Sans", sans-serif';
+    const maxY = py0 + ph - 36; const body = [];
+    for (const t of lines) { const ls = wrapLines(c, t, pw - 80); body.push(...ls, ''); }
+    for (const l of body) { if (y > maxY) { c.fillText('...', px0 + 40, maxY); break; } if (l) c.fillText(l, px0 + 40, y); y += l ? 36 : 18; }
+    // footer
+    c.fillStyle = '#bf5700'; c.fillRect(0, H - 84, W, 84);
+    c.fillStyle = '#fff4dc'; c.font = '700 26px "Pixelify Sans", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Raise yours at hacktx-eight.vercel.app  ·  #OnceUponAHack', W / 2, H - 42);
+    return cv;
+  }
+  async function openShareCard(spec) {
+    Audio8.play('open'); flash();
+    const cv = await renderStoryCard(spec);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    const file = new File([blob], `${me.pet.name.toLowerCase()}-story.png`, { type: 'image/png' });
+    $('shareImg').src = URL.createObjectURL(blob);
+    const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
+    $('shareNow').hidden = !canShare; $('shareHint').textContent = canShare ? 'Post it to Instagram, TikTok or Discord. The village wants to see it.' : 'Save the image and post it anywhere. On a phone, Share opens the apps directly.';
+    $('shareNow').onclick = async () => { try { await navigator.share({ files: [file], title: spec.title, text: `${me.pet.name}'s story · #OnceUponAHack` }); Audio8.play('bless'); confetti.burst(40); } catch {} };
+    $('shareSave').onclick = () => { const a = document.createElement('a'); a.href = $('shareImg').src; a.download = file.name; a.click(); Audio8.play('accept'); toast('Saved. Go post it.'); };
+    $('ovShare').hidden = false;
+  }
+  $('shareClose').onclick = () => { $('ovShare').hidden = true; Audio8.play('close'); };
+  $('ovShare').addEventListener('click', e => { if (e.target === $('ovShare')) $('shareClose').onclick(); });
   async function renderStory() {
     { const c = await API.villageChronicle(false).catch(() => null); if (c && c.paragraphs) renderChronicle(c); }
     const b = await API.getStorybook(); if (!b) return;
@@ -1124,6 +1175,7 @@
     $('bookCopy').textContent = 'Copy chapter';
     $('bookCopy').onclick = async () => { const text = `${b.title}\n\n` + b.pages.map(p => p.text).join('\n\n'); try { await navigator.clipboard.writeText(text); toast('Chapter copied.'); } catch (e) { toast('Select the text to copy it.'); } Audio8.play('accept'); };
     $('bookShare').onclick = () => { Audio8.play('bless'); confetti.burst(40); toast('Posted to the village. Leo already replied "no way".'); };
+    $('bookClip').onclick = () => openShareCard({ title: b.title, date: b.date, lines: b.pages.map(p => p.text) });
   }
 
   // ------------------------------------------------------------------
