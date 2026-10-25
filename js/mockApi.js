@@ -1,5 +1,5 @@
 /* =====================================================================
-   Familiars — mock API + local state
+   Pixlings — mock API + local state
    ---------------------------------------------------------------------
    This is the ONLY file the backend team needs to replace.
    Every function returns a Promise and mirrors a planned HTTP endpoint
@@ -199,7 +199,7 @@
     const paragraphs = [`Once upon a hack, the village of Austin woke up to a quiet week. ${pet} stretched, sniffed the air, and decided something had to happen.`];
     paragraphs.push(mine.length ? `You went out ${mine.length} time${mine.length > 1 ? 's' : ''}: ${mine.slice(0, 3).map(w => `${w.title} at ${w.place}`).join(', ')}. ${pet} told everyone about it twice.` : `You stayed in. ${pet} sat by the door with a look that said "three quests are waiting on the table".`);
     paragraphs.push(`Meanwhile ${theirs.slice(0, 3).map(w => `${w.who} took ${w.petName} to ${w.place}`).join(', ')}. The village got louder, and nobody minded.`);
-    paragraphs.push(`Moral of the chapter: a Familiar grows fastest when the whole village goes outside together. ${pet} is already planning next week.`);
+    paragraphs.push(`Moral of the chapter: a Pixling grows fastest when the whole village goes outside together. ${pet} is already planning next week.`);
     return { title: 'The Village Chronicle', paragraphs, engine: 'template' };
   }
   // Village activity: what friends' pets are doing, plus every new inbox item, delivered as notifications
@@ -245,7 +245,7 @@
   // Helpers
   // ------------------------------------------------------------------
   function fill(text, pet, place) {
-    return text.replace(/{pet}/g, pet ? pet.name : 'Your Familiar').replace(/{place}/g, place.name);
+    return text.replace(/{pet}/g, pet ? pet.name : 'Your Pixling').replace(/{place}/g, place.name);
   }
   const TRANSFORMS = {
     pirate: t => t.replace(/\byou\b/gi, 'ye').replace(/\byour\b/gi, 'yer').replace(/\bis\b/g, 'be')
@@ -340,7 +340,7 @@
   function onVacation() { const v = vacationInfo(); return !!(v && v.active); }
   function settleVacation() {
     const v = vacationInfo();
-    if (v && !v.active) { S.mood = v.mood; S.vacation = null; S.inbox.push({ id: uid(), kind: 'note', from: S.pet ? S.pet.name : 'Your pet', text: `You are back! ${S.pet ? S.pet.name : 'Your Familiar'} missed you. Mood dropped to ${v.mood}. A quest will cheer them up.` }); save(); }
+    if (v && !v.active) { S.mood = v.mood; S.vacation = null; S.inbox.push({ id: uid(), kind: 'note', from: S.pet ? S.pet.name : 'Your pet', text: `You are back! ${S.pet ? S.pet.name : 'Your Pixling'} missed you. Mood dropped to ${v.mood}. A quest will cheer them up.` }); save(); }
   }
 
   function snapshot() {
@@ -589,7 +589,7 @@
       try {
         // keyterms help Scribe spell the place and pet names right
         const open = S.quests.filter(q => q.status === 'open').map(q => q.place.name);
-        const kt = encodeURIComponent([S.pet && S.pet.name, 'Familiars', 'HackTX'].concat(open).filter(Boolean).join(','));
+        const kt = encodeURIComponent([S.pet && S.pet.name, 'Pixlings', 'HackTX'].concat(open).filter(Boolean).join(','));
         const r = await fetch(API_BASE + '/api/speech/transcribe?keyterms=' + kt, { method: 'POST', headers: { 'Content-Type': blob.type || 'audio/webm' }, body: blob });
         if (!(r.headers.get('content-type') || '').includes('json')) return null;
         const j = await r.json(); return j && j.ok ? j : null;

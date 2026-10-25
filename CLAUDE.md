@@ -3,7 +3,7 @@
 Context router. This file is loaded whole every session — keep it short.
 Detail lives in `docs/`, `SPECS.md` and the agents in `.claude/agents/`.
 
-**What it is**: a cute 16-bit pet you can only raise by doing real-world quests. An AI game master
+**What it is**: Pixlings (repo name: Familiars), a cute 16-bit pet you can only raise by doing real-world quests. An AI game master
 turns real places nearby (SerpApi) into quests; proof is a photo or a voice note judged by Gemini;
 rewards are XP, random-rarity eggs and evolutions. Friends' pets live in a shared village
 (curses, blessings, boss raids, minigame duels).

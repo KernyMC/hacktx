@@ -251,3 +251,8 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   vacation) into iOS-style banners that drop from the top with the friend's pet sprite; the bell keeps the
   history; Settings > Phone notifications asks permission and sends real system notifications through the
   service worker while the app is in the background. Demo events gained "Friend activity notification".
+- Renamed to Pixlings in everything a player or a model sees (title, home-screen name, manifest, banners,
+  copy, the pets themselves, AI prompts). Internal storage keys (`familiars.*`) and `FAMILIARS_API` stay so
+  nobody loses progress. New app icon rendered from the sprite at an integer scale: sunset sky with stars,
+  pink ground, happy axolotl inside the maskable safe zone (512, 192, 180 px). Service worker cache bumped.
+  Wallet in the shop is a compact 4-counter strip.

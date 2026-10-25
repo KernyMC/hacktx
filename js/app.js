@@ -1,5 +1,5 @@
 /* =====================================================================
-   Familiars — UI controller
+   Pixlings — UI controller
    Screens: Home (stage + quests) · Nest · Shop · Village · Story
    Flows:   Hatch → Tutorial → Quest → Proof (AI-checked) → Reward → Evolution
             Gacha · Minigames + duels · Vacation mode
@@ -591,7 +591,7 @@
     mythic: 'Mythic! Austin Legends and rare beasts hatch from this one.',
     rare: 'Rare! Sharper pixels incoming. Keep questing to hatch it.',
     uncommon: 'Uncommon. A step up from the barnyard.',
-    common: 'Common, but every Familiar starts somewhere.',
+    common: 'Common, but every Pixling starts somewhere.',
   };
   function rewardSequence(q, res) {
     const steps = [];
@@ -688,7 +688,7 @@
     ids.filter(id => clsFilter === 'all' || Animals.A[id].rarity === clsFilter)
       .sort((a, b) => RAR.indexOf(Animals.A[a].rarity) - RAR.indexOf(Animals.A[b].rarity))
       .forEach(id => { const has = owned.has(id); const d = petCard({ species: id, rarity: Animals.A[id].rarity, name: Animals.A[id].name }, { locked: !has });
-        d.onclick = () => { Audio8.play('tap'); toast(has ? `${Animals.A[id].name}: ${Animals.A[id].flavor}` : `Unknown Familiar. Hatches from ${Animals.A[id].rarity} eggs.`); };
+        d.onclick = () => { Audio8.play('tap'); toast(has ? `${Animals.A[id].name}: ${Animals.A[id].flavor}` : `Unknown Pixling. Hatches from ${Animals.A[id].rarity} eggs.`); };
         dg.appendChild(d); });
   }
 
@@ -725,7 +725,7 @@
     const c = $('petBig').getContext('2d');
     clearInterval(petAnim); petAnim = setInterval(() => { if ($('ovPet').hidden) return clearInterval(petAnim); c.clearRect(0, 0, 192, 192); Sprites.drawPet(c, p, 0, 0, 12, { t: performance.now(), anim: 'idle', blink: performance.now() % 3000 < 150 }); }, 80);
     $('petActive').disabled = !!p.active; $('petActive').textContent = p.active ? 'Active' : 'Make active';
-    $('petActive').onclick = async () => { await API.setActivePet(p.id); Audio8.play('reward'); $('ovPet').hidden = true; await refreshMe(); stage.set('happy', 1500); toast(`${p.name} is now your active Familiar. New look!`); renderZoo(); };
+    $('petActive').onclick = async () => { await API.setActivePet(p.id); Audio8.play('reward'); $('ovPet').hidden = true; await refreshMe(); stage.set('happy', 1500); toast(`${p.name} is now your active Pixling. New look!`); renderZoo(); };
     $('petPlay').onclick = () => { $('ovPet').hidden = true; playPetGame(p); };
     $('petChallenge').onclick = () => { $('ovPet').hidden = true; pickFriendToChallenge(p); };
     $('petVoice').hidden = true;
@@ -1053,7 +1053,7 @@
 
     // duels
     const dl = $('duelList'); dl.innerHTML = '';
-    if (!village.duels.length) dl.innerHTML = '<div class="empty">No duels yet. Open a Familiar in your Nest and tap "Challenge friend".</div>';
+    if (!village.duels.length) dl.innerHTML = '<div class="empty">No duels yet. Open a Pixling in your Nest and tap "Challenge friend".</div>';
     village.duels.forEach(du => {
       const st = du.status === 'pending' ? `${du.friendName} is trying…` : du.status === 'failed' ? `${du.friendName} failed 3x · you won ${du.prize}` : `${du.friendName} beat it on try ${du.triesUsed}`;
       dl.insertAdjacentHTML('beforeend', `<div class="duel"><span>${esc(du.petName)}'s ${esc(du.engineName)}</span><span class="st">${esc(st)}</span></div>`);
@@ -1073,7 +1073,7 @@
       d.querySelector('[data-act=bless]').onclick = () => openBlessPicker(f);
       d.querySelector('[data-act=duel]').onclick = async () => {
         const z = await API.getZoo(); const pets = [z.active].concat(z.pets);
-        openPicker(`Duel ${f.name}`, 'Pick which Familiar\'s minigame they have to beat. Rarer = harder. Legendary = rodeo.',
+        openPicker(`Duel ${f.name}`, 'Pick which Pixling\'s minigame they have to beat. Rarer = harder. Legendary = rodeo.',
           pets.map(p => ({ pet: p, title: `${p.name} · ${animal(p).name}`, sub: `${Minigames.gameFor(p.species).name} · ${Animals.normRarity(p.rarity)}`, right: 'Send',
             onPick: async () => { const r = await API.sendChallenge(f.id, p.id); Audio8.play(r.ok ? 'accept' : 'error'); toast(r.message, 3600); renderVillage(); } })));
       };
@@ -1270,7 +1270,7 @@
   const ago = t => { const s = Math.max(1, Math.round((Date.now() - t) / 1000)); return s < 60 ? 'now' : s < 3600 ? Math.round(s / 60) + 'm ago' : Math.round(s / 3600) + 'h ago'; };
   function pushEl(e, live) {
     const d = document.createElement('button'); d.className = 'push'; d.type = 'button';
-    d.innerHTML = `<canvas width="44" height="44"></canvas><div><div class="app"><span>FAMILIARS</span><span></span></div><b></b><span class="tx"></span></div>`;
+    d.innerHTML = `<canvas width="44" height="44"></canvas><div><div class="app"><span>PIXLINGS</span><span></span></div><b></b><span class="tx"></span></div>`;
     d.querySelector('.app span:last-child').textContent = ago(e.at); d.querySelector('b').textContent = e.title; d.querySelector('.tx').textContent = e.text;
     const c = d.querySelector('canvas').getContext('2d'); c.imageSmoothingEnabled = false;
     if (e.pet) Sprites.drawPet(c, e.pet, 2, 2, 2.5, { fx: false, anim: 'happy' });
@@ -1325,7 +1325,7 @@
   let installEvt = null;
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
   $('btnInstall').onclick = async () => {
-    if (installEvt) { installEvt.prompt(); const r = await installEvt.userChoice; installEvt = null; if (r.outcome === 'accepted') toast('Installed. Open Familiars from your home screen.'); return; }
+    if (installEvt) { installEvt.prompt(); const r = await installEvt.userChoice; installEvt = null; if (r.outcome === 'accepted') toast('Installed. Open Pixlings from your home screen.'); return; }
     if (matchMedia('(display-mode: standalone)').matches) return toast('You are already playing the installed app.');
     toast(/iphone|ipad/i.test(navigator.userAgent) ? 'On iPhone: tap Share, then "Add to Home Screen".' : 'Use the browser menu: "Install app" or "Add to Home Screen".', 4200);
   };

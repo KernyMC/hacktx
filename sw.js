@@ -1,6 +1,6 @@
-// Familiars service worker: makes the app installable and keeps the shell working offline.
+// Pixlings service worker: makes the app installable and keeps the shell working offline.
 // Network first for everything (deploys show up at once), cache as the fallback; /api is never cached.
-const CACHE = 'familiars-v1';
+const CACHE = 'pixlings-v2';   // bump to drop old cached files (new name, new icon)
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', (e) => {

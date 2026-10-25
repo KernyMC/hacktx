@@ -1,5 +1,5 @@
 /* =====================================================================
-   Familiars — minigames (self-contained, no deps, no emoji)
+   Pixlings — minigames (self-contained, no deps, no emoji)
    Minigames.open({ engine, pet, difficulty, title, subtitle, triesLeft, practice })
      -> Promise<{ win, score }>
    Engines: catch, hop, memory, timing, whack, dodge, rodeo (legendary).
