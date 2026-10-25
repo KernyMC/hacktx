@@ -409,7 +409,8 @@ body[data-curse=whisper] .stage canvas { filter: brightness(.8) saturate(.6); }
 body[data-curse=tiny] .stage canvas { transform: scale(.55) translateY(36%); }
 body[data-curse=mime] .stage canvas { filter: grayscale(1) contrast(1.15); }
 body[data-curse=shakespeare] .qtext, body[data-curse=shakespeare] #questList .title { font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
-body[data-curse=opera] .stage { background: radial-gradient(circle at 50% 30%, rgba(255,255,255,.35), transparent 60%); }
+/* opera: a spotlight on the pet, drawn over the (opaque) stage canvas */
+body[data-curse=opera] .stage::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 55%, rgba(255,240,200,.3) 0 22%, rgba(20,10,40,.6) 58%); }
 body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-size: 12px; color: var(--ink-2); }
 .stage .fx { position: absolute; pointer-events: none; animation: floatUp 2.2s ease-out forwards; line-height: 0; }
 
