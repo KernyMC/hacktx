@@ -64,11 +64,13 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 /* App shell: the phone is a fixed-height column; only <main> scrolls, the top bar and tab bar stay put. */
 .phone {
   position: relative; max-width: 430px; margin: 0 auto; height: 100%;
+  height: 100dvh; /* mobile: the visible viewport, so the tab bar never hides under the browser toolbar */
   background: var(--sky); display: flex; flex-direction: column; overflow: hidden;
 }
+.phone > .ribbon, .phone > .topbar { flex: none; }
 @media (min-width: 560px) {
   body { padding-block: 24px; }
-  .phone { height: calc(100% - 48px); border: 4px solid var(--ink); box-shadow: 0 0 0 3px var(--gold), 10px 10px 0 rgba(0,0,0,.45); border-radius: 6px; }
+  .phone { height: calc(100% - 48px); height: calc(100dvh - 48px); border: 4px solid var(--ink); box-shadow: 0 0 0 3px var(--gold), 10px 10px 0 rgba(0,0,0,.45); border-radius: 6px; }
 }
 body.tut-on main { overflow: hidden; }
 .tut { touch-action: none; overscroll-behavior: contain; }
