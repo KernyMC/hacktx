@@ -49,7 +49,7 @@ tools/pxl         vendored pxl tool · tools/pack_sprites.js packs sheets into a
 ## Hard rules (non-negotiable)
 
 - **No emoji anywhere in the UI.** Icons via `Icons.svg()` / `<i data-icon="...">`.
-- **The Texas Longhorn is the ONLY legendary.** Austin-flavored collection.
+- **Legendaries are Austin icons only**: Longhorn, Grackle, Golden Salamander, Horned Lizard (ADR 0005). The rodeo stays Longhorn-only.
 - **Rarity = resolution**: common 20 px · uncommon 24 · rare 32 · mythic 40 · legendary 48. See ADR 0001.
 - **Zero npm dependencies.** The server is plain Node with `fetch`. Do not add packages without asking.
 - **Keys live only in `.env`** (gitignored). Never in the front-end, never in commits. `.env.example` is versioned.

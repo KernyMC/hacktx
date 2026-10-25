@@ -79,6 +79,9 @@ chameleon · mythic · N=40 · Prism Chameleon
 bat · mythic · N=40 · Congress Bat
 jackalope · mythic · N=40 · Jackalope
 longhorn · legendary · N=48 · Texas Longhorn
+grackle · legendary · N=48 · Grackle
+salamander · legendary · N=48 · Golden Salamander
+hornedlizard · legendary · N=48 · Horned Lizard
 
 ## Standard face v2 (REQUIRED: copy verbatim into every animal file; never draw your own eyes/mouth)
 

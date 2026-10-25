@@ -102,6 +102,9 @@
     bat:        [[3000, .08, 'square', -800], [2600, .08, 'square', -600]],
     jackalope:  [[1300, .06, 'triangle', 300], [120, .1, 'square', -40]],
     longhorn:   [[180, .25, 'sawtooth', 40], [200, .36, 'sawtooth', -60]],
+    grackle:    [[2400, .05, 'square', -1200], [0, .03], [1800, .08, 'sawtooth', 800], [900, .1, 'square', -400]],
+    salamander: [[500, .06, 'sine', 300], [700, .06, 'sine', -200], [900, .08, 'sine', 400]],
+    hornedlizard: ['noise', [260, .1, 'triangle', 80], [320, .12, 'triangle', -60]],
   };
   // at = start offset in seconds (lets hatch() end on the cry)
   function cry(species, at = 0) {
