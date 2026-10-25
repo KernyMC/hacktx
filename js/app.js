@@ -1260,6 +1260,8 @@
   // ------------------------------------------------------------------
   // Settings + vacation
   // ------------------------------------------------------------------
+  $('chipLevel').onclick = () => { Audio8.play('tap'); toast(`Level ${me.level}. XP from real quests levels ${me.pet.name} up: ${me.xp} / ${me.xpNeeded || 100} to the next one.`, 3200); };
+  $('chipStreak').onclick = () => { Audio8.play('tap'); toast(`${me.streak}-day streak: days in a row with at least one quest done. Miss a day and it resets.`, 3200); };
   $('btnSettings').onclick = () => { Audio8.play('open'); syncPhaseOpts(); $('tglSound').classList.toggle('on', Audio8.isEnabled()); $('tglLegend').classList.toggle('on', me.settings.forceLegendary); $('btnVacation').textContent = me.vacation && me.vacation.active ? 'End' : 'Plan'; $('ovSettings').hidden = false; };
   $('setClose').onclick = () => { $('ovSettings').hidden = true; Audio8.play('close'); };
   $('ovSettings').addEventListener('click', e => { if (e.target === $('ovSettings')) $('ovSettings').hidden = true; });

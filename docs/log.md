@@ -238,3 +238,7 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   pet's habitat and sprite, parchment page with title, date and text, footer with the URL and the
   hashtag). On phones the Web Share API opens Instagram / TikTok / Discord with the PNG attached; elsewhere
   the Share button hides and "Save image" downloads the PNG.
+- Story actions wrap (the "Share as image" button overflowed on phones; it now takes its own row); the
+  evolution line in the storybook no longer says every pet "stopped being a tiny axolotl". The streak
+  chip was a fixed seed value: it now counts consecutive days with a completed quest (`S.lastQuestDay`).
+  Tapping the level or streak chip explains it.

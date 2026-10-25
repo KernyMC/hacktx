@@ -481,6 +481,8 @@
       S.mood = Math.min(100, S.mood + 15); S.hunger = q.type === 'food' ? 100 : Math.min(100, S.hunger + 5);
       S.typeCounts[q.type] = (S.typeCounts[q.type] || 0) + 1;
       q.status = 'done';
+      { const today = new Date().toDateString(), y = new Date(Date.now() - 864e5).toDateString();
+        if (S.lastQuestDay !== today) { S.streak = S.lastQuestDay === y ? (S.streak || 0) + 1 : (S.lastQuestDay ? 1 : (S.streak || 0) + 1); S.lastQuestDay = today; } }
       S.completed.push({ questId: q.id, type: q.type, title: q.title, place: q.place.name, xp, at: Date.now(), proofType: proof.type });
 
       let levelUp = false;
@@ -876,7 +878,7 @@
         };
         pages.push({ scene: d.type, text: lines[d.type], xp: d.xp });
       });
-      if (p.species !== 'axolotl' && S.completed.length >= EVOLVE_AT) pages.push({ scene: 'evolve', text: `And that was the day ${p.name} stopped being a tiny axolotl and became a ${sp}. Nobody in the village could believe it. Leo cursed you out of jealousy.` });
+      if ((p.stage || 1) >= 2) pages.push({ scene: 'evolve', text: `And that was the day ${p.name} grew up: a crown, brighter colours and a sharper sprite, still the same ${sp} at heart. Nobody in the village could believe it. Leo cursed you out of jealousy.` });
       pages.push({ scene: 'night', text: `${p.name} fell asleep at level ${S.level} with a ${S.streak}-day streak, dreaming of ${S.eggs.length ? 'the eggs in the nest' : 'tomorrow\'s quests'}. The end. For now.` });
       return { title: `Chapter ${S.streak}: The ${sp} of ${done[0] ? done[0].place : 'Guadalupe Street'}`, date: S.day, pages, pet: p };
     },

@@ -286,8 +286,9 @@ main > .screen { padding: 0 14px; }
 .rec i:nth-child(2n) { animation-delay: .1s; } .rec i:nth-child(3n) { animation-delay: .2s; }
 @keyframes bar { to { height: 40px; } }
 .transcript { font-style: italic; color: var(--ink-2); font-size: 14px; }
-.actions { display: flex; gap: 8px; margin-top: 14px; }
-.actions .btn { flex: 1; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.actions .btn { flex: 1 1 auto; min-width: 0; }
+.actions .btn.wide { flex-basis: 100%; }
 
 /* reward sequence */
 .reward .big { font-family: var(--display); font-size: 16px; line-height: 1.6; margin: 6px 0; }
@@ -493,8 +494,8 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
       <div class="sub" id="petSub">a pet you raise by going outside</div>
     </div>
     <div class="stats">
-      <span class="chip" id="chipLevel" title="Level"><i data-icon="star"></i><b>1</b></span>
-      <span class="chip" id="chipStreak" title="Streak"><i data-icon="flame" data-color="#ff6f9c" data-color2="#ffcf4d"></i><b>4</b></span>
+      <span class="chip" id="chipLevel" title="Level: grows with XP from quests" role="button"><i data-icon="star"></i><b>1</b></span>
+      <span class="chip" id="chipStreak" title="Day streak: days in a row with a completed quest" role="button"><i data-icon="flame" data-color="#ff6f9c" data-color2="#ffcf4d"></i><b>4</b></span>
       <button class="iconbtn" id="btnSettings" aria-label="Settings"><i data-icon="gear" data-size="20"></i></button>
     </div>
   </header>
@@ -573,9 +574,9 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
         <h2 id="bookTitle">Chapter 4</h2>
         <div class="date" id="bookDate"></div>
         <div id="bookPages"></div>
-        <div class="actions"><button class="btn ghost" id="bookCopy">Copy chapter</button><button class="btn pink" id="bookShare">Share to village</button><button class="btn gold" id="bookClip"><i data-icon="camera"></i> Share as image</button></div>
+        <div class="actions"><button class="btn ghost" id="bookCopy">Copy chapter</button><button class="btn pink" id="bookShare">Share to village</button><button class="btn gold wide" id="bookClip"><i data-icon="camera"></i> Share as image</button></div>
       </div>
-      <div class="book" id="chronBook"><h2 id="chronTitle">The Village Chronicle</h2><div class="date" id="chronDate">What the whole village did this week, told by your pet. Written by Muse.</div><div id="chronText"></div><div class="actions"><button class="btn lilac block" id="btnChronicle">Write this week's chronicle</button><button class="btn gold" id="chronClip" hidden><i data-icon="camera"></i> Share as image</button></div></div>
+      <div class="book" id="chronBook"><h2 id="chronTitle">The Village Chronicle</h2><div class="date" id="chronDate">What the whole village did this week, told by your pet. Written by Muse.</div><div id="chronText"></div><div class="actions"><button class="btn lilac block" id="btnChronicle">Write this week's chronicle</button><button class="btn gold wide" id="chronClip" hidden><i data-icon="camera"></i> Share as image</button></div></div>
     </section>
   </main>
 
