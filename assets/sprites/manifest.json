@@ -1,0 +1,11 @@
+{
+ "axolotl": {
+  "cell": 20
+ },
+ "cat": {
+  "cell": 20
+ },
+ "hedgehog": {
+  "cell": 24
+ }
+}
