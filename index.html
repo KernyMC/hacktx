@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Familiars</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one phone-shaped column (max 430px) centered on a dotted desktop ground.
+   Sky header → pet stage → scrolling content → sticky pixel tab bar. */
+:root {
+  --sky: #bfe3ff;      --sky-2: #eaf6ff;
+  --grass: #8fd48a;    --grass-2: #5fb35e;
+  --panel: #fff8ea;    --panel-2: #ffefcf;
+  --ink: #2b2140;      --ink-2: #6f6386;
+  --pink: #ff6f9c;     --gold: #ffcf4d;    --mint: #6fe3b1;   --lilac: #b79cff;  --sky-deep: #5ab0ff;
+  --food: var(--pink); --social: var(--lilac); --outdoor: var(--mint); --creative: var(--gold);
+  --common: #8fd48a; --rare: #5ab0ff; --epic: #b79cff; --legendary: #ffcf4d;
+  --display: 'Press Start 2P', 'Courier New', monospace;
+  --body: 'Pixelify Sans', 'Trebuchet MS', sans-serif;
+  --bevel: 3px solid var(--ink);
+  --shadow: 4px 4px 0 var(--ink);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0; font-family: var(--body); font-size: 17px; line-height: 1.35; color: var(--ink);
+  background: var(--ink) radial-gradient(var(--ink-2) 1px, transparent 1px) 0 0/14px 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.pixel, canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+i[data-icon], .pxi { display: inline-block; vertical-align: -3px; line-height: 0; }
+.chip i[data-icon] { margin-right: 2px; }
+.bigicon { display: grid; place-items: center; width: 36px; height: 36px; background: var(--panel); border: 2px solid var(--ink); }
+.quest.done .title::after { content: ""; }
+button { font: inherit; color: inherit; cursor: pointer; }
+input { font: inherit; color: inherit; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+.display { font-family: var(--display); line-height: 1.6; }
+:focus-visible { outline: 3px dashed var(--pink); outline-offset: 2px; }
+
+/* ---------- phone frame ---------- */
+.phone {
+  position: relative; max-width: 430px; margin: 0 auto; min-height: 100%;
+  background: var(--sky); display: flex; flex-direction: column;
+}
+@media (min-width: 560px) {
+  body { padding-block: 24px; }
+  .phone { min-height: calc(100% - 0px); border: 4px solid var(--ink); box-shadow: 8px 8px 0 #1a1428; border-radius: 6px; overflow: hidden; }
+}
+
+/* ---------- top bar ---------- */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 12px 14px 8px; background: var(--sky);
+}
+.topbar .name { font-family: var(--display); font-size: 12px; }
+.topbar .sub { font-size: 14px; color: var(--ink-2); }
+.stats { display: flex; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; font-weight: 600; font-size: 14px;
+  background: var(--panel); border: var(--bevel); box-shadow: 2px 2px 0 var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.iconbtn { width: 36px; height: 36px; border: var(--bevel); background: var(--panel); box-shadow: 2px 2px 0 var(--ink); font-size: 18px; display: grid; place-items: center; }
+.iconbtn:active, .btn:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--ink); }
+
+/* ---------- stage ---------- */
+.stage { position: relative; height: 230px; overflow: hidden; }
+.stage canvas { width: 100%; height: 100%; display: block; }
+.bubble {
+  position: absolute; left: 14px; right: 14px; top: 10px; padding: 8px 12px;
+  background: var(--panel); border: var(--bevel); box-shadow: var(--shadow); font-size: 16px; font-weight: 500;
+  transition: opacity .25s, transform .25s;
+}
+.bubble::after { content: ''; position: absolute; left: 50%; bottom: -12px; width: 12px; height: 12px; background: var(--panel); border-right: var(--bevel); border-bottom: var(--bevel); transform: translateX(-50%) rotate(45deg); }
+.bubble.hide { opacity: 0; transform: translateY(-6px); pointer-events: none; }
+.heart { position: absolute; line-height: 0; pointer-events: none; animation: floatUp .9s ease-out forwards; }
+@keyframes floatUp { from { transform: translateY(0) scale(.6); opacity: 1; } to { transform: translateY(-70px) scale(1.2); opacity: 0; } }
+.stage .tap-hint { position: absolute; bottom: 8px; right: 12px; font-size: 13px; color: var(--ink-2); }
+
+/* ---------- content ---------- */
+main { flex: 1; background: var(--grass); padding: 14px 14px 90px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.screen[hidden] { display: none; }
+.screen { display: flex; flex-direction: column; gap: 14px; }
+.panel { background: var(--panel); border: var(--bevel); box-shadow: var(--shadow); padding: 12px; min-width: 0; }
+.panel h2 { font-family: var(--display); font-size: 11px; margin-bottom: 8px; }
+.row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.row > * { min-width: 0; }
+.grow { flex: 1; }
+.meter { height: 14px; border: 2px solid var(--ink); background: var(--panel-2); position: relative; }
+.meter > i { display: block; height: 100%; background: var(--mint); transition: width .6s cubic-bezier(.2,.9,.3,1.2); }
+.meter.xp > i { background: var(--gold); }
+.meter.hunger > i { background: var(--pink); }
+.meter.hp > i { background: var(--pink); }
+.lbl { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.meters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+
+.btn {
+  font-family: var(--body); font-weight: 700; font-size: 16px; padding: 10px 14px;
+  background: var(--gold); border: var(--bevel); box-shadow: var(--shadow); white-space: nowrap;
+}
+.btn.pink { background: var(--pink); color: #fff; }
+.btn.mint { background: var(--mint); }
+.btn.lilac { background: var(--lilac); }
+.btn.ghost { background: var(--panel); }
+.btn.sm { font-size: 14px; padding: 6px 10px; box-shadow: 2px 2px 0 var(--ink); }
+.btn.block { width: 100%; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; transform: none; }
+
+/* quests */
+.quest {
+  display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center;
+  background: var(--panel); border: var(--bevel); box-shadow: var(--shadow); padding: 10px; width: 100%; text-align: left;
+  position: relative;
+}
+.quest.done { opacity: .55; }
+.quest.done .title::after { content: ''; }
+.quest .ic { width: 44px; height: 44px; border: var(--bevel); display: grid; place-items: center; }
+.quest .title { font-weight: 700; font-size: 17px; }
+.quest .meta { font-size: 14px; color: var(--ink-2); }
+.quest .xp { font-family: var(--display); font-size: 10px; text-align: right; line-height: 1.5; }
+.type-food .ic { background: var(--food); } .type-social .ic { background: var(--social); }
+.type-outdoor .ic { background: var(--outdoor); } .type-creative .ic { background: var(--creative); }
+.tag { display: inline-block; padding: 1px 6px; font-size: 12px; font-weight: 700; border: 2px solid var(--ink); }
+.tag.curse { background: var(--lilac); } .tag.bless { background: var(--gold); }
+.quest .tag { position: absolute; top: -10px; right: 8px; }
+
+/* inbox banner */
+.banner { background: var(--lilac); border: var(--bevel); box-shadow: var(--shadow); padding: 10px 12px; display: flex; gap: 10px; align-items: center; }
+.banner b { display: block; }
+
+/* zoo */
+.zoo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+.critter { background: var(--panel); border: var(--bevel); box-shadow: var(--shadow); padding: 8px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.critter canvas { width: 72px; height: 90px; }
+.critter .nm { font-weight: 700; }
+.critter .sp { font-size: 12px; color: var(--ink-2); }
+.rar { font-size: 11px; font-weight: 700; padding: 1px 6px; border: 2px solid var(--ink); text-transform: uppercase; letter-spacing: .05em; }
+.rar.common { background: var(--common); } .rar.rare { background: var(--rare); color: #fff; }
+.rar.epic { background: var(--epic); } .rar.legendary { background: var(--legendary); }
+.eggcard { cursor: pointer; }
+.eggcard .pr { width: 100%; }
+.eggcard.ready { animation: wobble 1.2s infinite; }
+@keyframes wobble { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+.empty { color: var(--ink-2); text-align: center; padding: 14px; }
+
+/* village */
+.village-stage { height: 120px; border: var(--bevel); box-shadow: var(--shadow); background: var(--sky-2); overflow: hidden; }
+.village-stage canvas { width: 100%; height: 100%; display: block; }
+.friend { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: center; background: var(--panel); border: var(--bevel); box-shadow: var(--shadow); padding: 10px; }
+.friend canvas { width: 56px; height: 70px; }
+.friend .nm { font-weight: 700; }
+.friend .st { font-size: 14px; color: var(--ink-2); }
+.friend .acts { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.raid { background: var(--ink); color: #fff; border: 3px solid var(--pink); box-shadow: 4px 4px 0 var(--pink); }
+.raid h2 { color: var(--gold); }
+.raid .meter { border-color: #fff; background: #4a3d66; }
+.raid .boss { display: grid; place-items: center; height: 72px; animation: wobble 2s infinite; }
+.raid.hit .boss { animation: shake .3s; }
+.raid .mem { display: flex; gap: 6px; font-size: 14px; }
+.raid .mem span { padding: 2px 8px; border: 2px solid #fff; }
+.raid .mem span.me { background: var(--pink); }
+.raid .mem span.empty { border-style: dashed; opacity: .6; }
+@keyframes shake { 0%,100% { transform: translate(0); } 20% { transform: translate(-6px, 2px); } 40% { transform: translate(6px, -2px); } 60% { transform: translate(-4px, 0); } 80% { transform: translate(4px, 0); } }
+
+/* storybook */
+.book { background: var(--panel); border: var(--bevel); box-shadow: var(--shadow); padding: 14px; }
+.book h2 { font-family: var(--display); font-size: 12px; line-height: 1.7; }
+.book .date { font-size: 13px; color: var(--ink-2); margin-bottom: 10px; }
+.page { display: grid; grid-template-columns: 84px 1fr; gap: 12px; align-items: start; padding: 10px 0; border-top: 2px dashed var(--ink-2); }
+.page canvas { width: 84px; height: 84px; border: var(--bevel); }
+.page p { margin: 0; font-size: 16px; }
+.page .pxp { font-family: var(--display); font-size: 9px; color: var(--ink-2); margin-top: 4px; }
+
+/* ---------- tab bar ---------- */
+.tabs {
+  position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--panel); border-top: var(--bevel);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.tabs button { background: none; border: 0; padding: 10px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 12px; font-weight: 700; color: var(--ink-2); position: relative; }
+.tabs button .em { height: 22px; line-height: 0; }
+.tabs button.active { color: var(--ink); background: var(--panel-2); }
+.tabs button.active::before { content: ''; position: absolute; top: -3px; left: 0; right: 0; height: 3px; background: var(--pink); }
+.tabs .dot { position: absolute; top: 8px; right: 22%; width: 10px; height: 10px; background: var(--pink); border: 2px solid var(--ink); }
+
+/* ---------- overlays ---------- */
+.overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; background: rgba(43, 33, 64, .55); padding: 0 max(0px, env(safe-area-inset-left, 0px)) 0 max(0px, env(safe-area-inset-right, 0px)); }
+.overlay.center { align-items: center; padding-inline: 16px; }
+.overlay[hidden] { display: none; }
+.sheet { width: 100%; max-width: 430px; max-height: 92%; overflow: auto; background: var(--panel); border: var(--bevel); border-bottom: 0; padding: 14px 14px calc(18px + env(safe-area-inset-bottom, 0px)); animation: up .25s cubic-bezier(.2,.9,.3,1.1); min-width: 0; }
+.card { width: 100%; max-width: 398px; background: var(--panel); border: var(--bevel); box-shadow: var(--shadow); padding: 16px; animation: pop .3s cubic-bezier(.2,.9,.3,1.4); text-align: center; min-width: 0; }
+@keyframes up { from { transform: translateY(40px); opacity: 0; } }
+@keyframes pop { from { transform: scale(.7); opacity: 0; } }
+.sheet h2, .card h2 { font-family: var(--display); font-size: 12px; line-height: 1.7; }
+.sheet .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.place { display: flex; gap: 10px; align-items: center; background: var(--panel-2); border: 2px solid var(--ink); padding: 8px 10px; margin: 10px 0; }
+.place .pin { font-size: 24px; }
+.place .pn { font-weight: 700; }
+.place .pm { font-size: 13px; color: var(--ink-2); }
+.qtext { font-size: 18px; line-height: 1.4; }
+.proof-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 12px; }
+.proof-tabs button { background: var(--panel-2); border: var(--bevel); padding: 8px; font-weight: 700; }
+.proof-tabs button + button { border-left: 0; }
+.proof-tabs button.active { background: var(--gold); }
+.proofbox { border: var(--bevel); border-top: 0; padding: 12px; background: #fff; min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+.proofbox img { max-height: 160px; border: var(--bevel); }
+.proofbox .tiny { font-size: 13px; color: var(--ink-2); }
+.filebtn { position: relative; overflow: hidden; }
+.filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.rec { display: flex; align-items: flex-end; gap: 3px; height: 40px; }
+.rec i { width: 6px; background: var(--pink); height: 8px; animation: bar .5s infinite alternate; }
+.rec i:nth-child(2n) { animation-delay: .1s; } .rec i:nth-child(3n) { animation-delay: .2s; }
+@keyframes bar { to { height: 40px; } }
+.transcript { font-style: italic; color: var(--ink-2); font-size: 14px; }
+.actions { display: flex; gap: 8px; margin-top: 14px; }
+.actions .btn { flex: 1; }
+
+/* reward sequence */
+.reward .big { font-family: var(--display); font-size: 16px; line-height: 1.6; margin: 6px 0; }
+.reward .xpnum { font-family: var(--display); font-size: 30px; color: var(--ink); margin: 10px 0; font-variant-numeric: tabular-nums; }
+.reward .verdict { font-size: 17px; }
+.reward canvas { width: 160px; height: 200px; margin: 0 auto; display: block; }
+.reward .rarity { font-family: var(--display); font-size: 13px; padding: 8px 10px; border: var(--bevel); display: inline-block; margin-top: 6px; }
+.reward .rarity.common { background: var(--common); } .reward .rarity.rare { background: var(--rare); color: #fff; }
+.reward .rarity.epic { background: var(--epic); } .reward .rarity.legendary { background: var(--legendary); animation: glow 1s infinite alternate; }
+@keyframes glow { from { box-shadow: var(--shadow); } to { box-shadow: 4px 4px 0 var(--ink), 0 0 24px var(--gold); } }
+.card.shake { animation: shake .4s; }
+.flash { position: fixed; inset: 0; background: #fff; z-index: 60; pointer-events: none; opacity: 0; }
+.flash.on { animation: flash .7s; }
+@keyframes flash { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+.evo { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.evo canvas { width: 112px; height: 140px; }
+.evo .arrow { font-family: var(--display); font-size: 18px; }
+.sub { color: var(--ink-2); font-size: 15px; }
+
+/* hatch */
+.hatch { text-align: center; }
+.hatch canvas { width: 192px; height: 240px; margin: 0 auto; display: block; cursor: pointer; }
+.hatch canvas.wob { animation: wobble .4s; }
+.hatch input { width: 100%; padding: 10px; border: var(--bevel); background: #fff; font-size: 18px; text-align: center; margin: 10px 0; }
+
+/* curse picker */
+.curses { display: flex; flex-direction: column; gap: 8px; }
+.curses button { display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center; text-align: left; background: var(--panel-2); border: var(--bevel); padding: 10px; }
+.curses button .em { display: grid; place-items: center; }
+.curses button b { display: block; }
+.curses button small { color: var(--ink-2); }
+
+/* settings */
+.setting { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 2px dashed var(--ink-2); gap: 10px; }
+.setting small { display: block; color: var(--ink-2); }
+.toggle { width: 52px; height: 28px; border: var(--bevel); background: var(--panel-2); position: relative; flex: none; }
+.toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: var(--ink); transition: left .15s; }
+.toggle.on { background: var(--mint); } .toggle.on::after { left: 26px; }
+
+/* toast */
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(90px + env(safe-area-inset-bottom, 0px)); z-index: 70; background: var(--ink); color: #fff; border: 3px solid #fff; box-shadow: var(--shadow); padding: 10px 14px; font-weight: 600; max-width: min(92vw, 400px); animation: pop .25s; pointer-events: none; }
+.toast[hidden] { display: none; }
+#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 65; }
+#flash { }
+
+
+/* ---------- rarity (5 tiers) + per-animal theme ---------- */
+:root { --uncommon: #6fe3b1; --mythic: #b79cff; --accent: var(--pink); --pet: var(--gold); --pet-2: var(--ink-2); --pet-3: var(--panel); --sky-top: #9fd3ff; }
+.rar.uncommon { background: var(--uncommon); } .rar.mythic { background: var(--mythic); }
+.reward .rarity.uncommon { background: var(--uncommon); } .reward .rarity.mythic { background: var(--mythic); animation: glow 1.4s infinite alternate; }
+.topbar { background: var(--pet-3); border-bottom: 3px solid var(--pet-2); transition: background .4s; }
+.topbar .name { color: var(--ink); }
+.topbar .sub b { color: var(--pet-2); }
+.meter.xp > i { background: var(--pet); }
+.tabs button.active::before { background: var(--accent); }
+.tabs { grid-template-columns: repeat(5, 1fr); }
+.tabs button { font-size: 11px; }
+main { transition: background .4s; }
+.panel h2 { color: var(--ink); }
+body[data-cls] .panel, body[data-cls] .friend, body[data-cls] .critter, body[data-cls] .quest { transition: background-color .4s; }
+/* farm: hay-bale planks */
+body[data-cls=farm] main { background: var(--grass) repeating-linear-gradient(90deg, transparent 0 46px, rgba(0,0,0,.05) 46px 48px); }
+body[data-cls=farm] .panel { border-color: #6b3a24; box-shadow: 4px 4px 0 #6b3a24; }
+/* wild: leafy dashes */
+body[data-cls=wild] main { background: var(--grass) radial-gradient(rgba(0,60,20,.12) 2px, transparent 2px) 0 0/18px 18px; }
+body[data-cls=wild] .panel { outline: 2px dashed var(--grass-2); outline-offset: -7px; }
+/* prairie: sun-baked stripes */
+body[data-cls=prairie] main { background: var(--grass) repeating-linear-gradient(0deg, transparent 0 14px, rgba(120,70,0,.07) 14px 16px); }
+body[data-cls=prairie] .panel { box-shadow: 4px 4px 0 #a8641d; }
+/* water: waves */
+body[data-cls=water] main { background: var(--grass) repeating-linear-gradient(135deg, transparent 0 10px, rgba(255,255,255,.14) 10px 12px); }
+body[data-cls=water] .panel { border-color: #1f4f7a; box-shadow: 4px 4px 0 #1f4f7a; }
+/* austin legends: night-time burnt orange + gold */
+body[data-cls=legends] main { background: #3b2a5e radial-gradient(#5d4690 1px, transparent 1px) 0 0/12px 12px; }
+body[data-cls=legends] .panel, body[data-cls=legends] .quest, body[data-cls=legends] .friend, body[data-cls=legends] .critter { border-color: #bf5700; box-shadow: 4px 4px 0 #ffcf4d; }
+body[data-cls=legends] .topbar { background: #2b2140; color: #fff; border-bottom-color: #ffcf4d; }
+body[data-cls=legends] .topbar .name, body[data-cls=legends] .topbar .sub { color: #ffcf4d; }
+.phone[data-rarity=legendary] .stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 4px #ffcf4d; animation: glowin 1.4s infinite alternate; }
+.phone[data-rarity=mythic] .stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 3px #b79cff; }
+@keyframes glowin { to { box-shadow: inset 0 0 0 4px #ffcf4d, inset 0 0 26px rgba(255,207,77,.8); } }
+.resbadge { white-space: nowrap; font-family: var(--display); font-size: 8px; padding: 2px 4px; border: 2px solid var(--ink); background: var(--panel); margin-left: 4px; vertical-align: 1px; }
+
+/* collection cards by rarity: frame upgrades with tier */
+.critter { position: relative; cursor: pointer; }
+.critter.r-uncommon { border-color: #2f8f6a; }
+.critter.r-rare { box-shadow: 4px 4px 0 var(--ink), inset 0 0 0 3px var(--rare); }
+.critter.r-mythic { box-shadow: 4px 4px 0 var(--ink), inset 0 0 0 3px var(--mythic); animation: mythic 2s infinite; }
+.critter.r-legendary { background: #fff3c4; box-shadow: 4px 4px 0 var(--ink), inset 0 0 0 3px var(--legendary); animation: glow 1s infinite alternate; }
+@keyframes mythic { 50% { box-shadow: 4px 4px 0 var(--ink), inset 0 0 0 3px #ff9bd2; } }
+.critter .new, .critter .shiny { position: absolute; top: -9px; left: -6px; font-size: 10px; font-weight: 700; padding: 0 4px; border: 2px solid var(--ink); background: var(--pink); color: #fff; }
+.critter .shiny { left: auto; right: -6px; background: var(--gold); color: var(--ink); }
+.critter.locked { opacity: .45; cursor: default; }
+.critter.locked canvas { filter: brightness(0); opacity: .35; }
+.critter .cls { font-size: 11px; color: var(--ink-2); }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.filters button { font-size: 12px; font-weight: 700; padding: 3px 8px; border: 2px solid var(--ink); background: var(--panel-2); }
+.filters button.on { background: var(--gold); }
+
+/* inbox list */
+.inboxlist { display: flex; flex-direction: column; gap: 8px; }
+.banner.challenge { background: var(--gold); }
+.banner.note { background: var(--panel); }
+
+/* shop */
+.shopgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.item { background: var(--panel-2); border: var(--bevel); padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; min-width: 0; }
+.item b { font-size: 14px; }
+.item small { font-size: 12px; color: var(--ink-2); line-height: 1.2; }
+.item .own { font-size: 11px; font-weight: 700; color: var(--ink-2); }
+.item .btn { width: 100%; }
+.price { display: inline-flex; align-items: center; gap: 3px; }
+.wallet { display: flex; gap: 8px; flex-wrap: wrap; }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); border: var(--bevel); background: var(--panel); }
+.seg button { border: 0; background: none; padding: 8px 2px; font-weight: 700; font-size: 13px; }
+.seg button + button { border-left: 2px solid var(--ink); }
+.seg button.on { background: var(--gold); }
+
+/* gacha machine */
+.gacha { background: var(--ink); color: #fff; border: 3px solid var(--gold); box-shadow: 4px 4px 0 var(--gold); text-align: center; }
+.gacha h2 { color: var(--gold); }
+.gacha canvas { width: 180px; height: 210px; display: block; margin: 0 auto; }
+.gacha .odds { font-size: 12px; opacity: .85; margin: 6px 0; }
+.gacha .row { justify-content: center; flex-wrap: wrap; }
+.gacha.spin canvas { animation: shake .25s 4; }
+.caps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 10px 0; }
+.cap { aspect-ratio: 1; border: var(--bevel); display: grid; place-items: center; position: relative; background: var(--panel-2); animation: pop .35s both; }
+.cap canvas { width: 100%; height: 100%; }
+.cap .lb { position: absolute; bottom: -2px; left: 0; right: 0; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+.cap.common { background: #e7f6e3; } .cap.uncommon { background: #dbfaee; } .cap.rare { background: #dcefff; }
+.cap.mythic { background: #efe6ff; animation: pop .35s both, mythic 1.4s infinite; } .cap.legendary { background: #fff1b8; animation: pop .35s both, glow .8s infinite alternate; }
+.gachaflash { position: fixed; inset: 0; z-index: 75; pointer-events: none; opacity: 0; }
+.gachaflash.on { animation: flash 1s; }
+
+/* tutorial */
+.tut { position: fixed; inset: 0; z-index: 90; }
+.tut .hole { position: fixed; border: 3px dashed var(--gold); box-shadow: 0 0 0 9999px rgba(43,33,64,.72); transition: all .3s cubic-bezier(.2,.9,.3,1.1); pointer-events: none; }
+.tut .tip { position: fixed; left: 50%; transform: translateX(-50%); width: min(400px, calc(100vw - 32px)); background: var(--panel); border: var(--bevel); box-shadow: var(--shadow); padding: 12px; display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center; animation: pop .25s; }
+.tut .tip canvas { width: 64px; height: 64px; }
+.tut .tip p { margin: 0 0 8px; font-size: 16px; }
+.tut .tip .step { font-family: var(--display); font-size: 9px; color: var(--ink-2); margin-bottom: 4px; }
+.tut .tip .row { justify-content: flex-end; }
+
+/* vacation */
+.banner.vacation { background: #bfe8ff; }
+.vacopts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+.vacopts button { padding: 10px 4px; border: var(--bevel); background: var(--panel-2); font-weight: 700; }
+.vacopts button.on { background: var(--gold); }
+.zzz { position: absolute; font-family: var(--display); font-size: 12px; color: var(--ink); animation: floatUp 2.4s ease-out infinite; pointer-events: none; }
+
+/* pet detail */
+.petcard { text-align: center; }
+.petcard canvas.big { width: 192px; height: 192px; display: block; margin: 4px auto; }
+.petcard .facts { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.petcard .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.duel { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; padding: 6px 0; border-top: 2px dashed var(--ink-2); }
+.duel .st { font-weight: 700; }
+.listpick { display: flex; flex-direction: column; gap: 8px; }
+.listpick button { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; text-align: left; background: var(--panel-2); border: var(--bevel); padding: 8px; }
+.listpick button[disabled] { opacity: .45; }
+.listpick button small { display: block; color: var(--ink-2); }
+.listpick canvas { width: 44px; height: 44px; }
+.speak { display: inline-flex; align-items: center; gap: 4px; }
+.reject .big { color: #c0392b; }
+.reasons { text-align: left; font-size: 14px; color: var(--ink-2); margin: 6px 0 0; padding-left: 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+  <!-- top bar -->
+  <header class="topbar">
+    <div>
+      <div class="name" id="petName">Familiars</div>
+      <div class="sub" id="petSub">a pet you raise by going outside</div>
+    </div>
+    <div class="stats">
+      <span class="chip" id="chipLevel" title="Level"><i data-icon="star"></i><b>1</b></span>
+      <span class="chip" id="chipStreak" title="Streak"><i data-icon="flame" data-color="#ff6f9c" data-color2="#ffcf4d"></i><b>4</b></span>
+      <button class="iconbtn" id="btnSettings" aria-label="Settings"><i data-icon="gear" data-size="20"></i></button>
+    </div>
+  </header>
+
+  <!-- pet stage -->
+  <section class="stage" id="stage">
+    <canvas id="stageCanvas" width="400" height="230" aria-label="Your Familiar"></canvas>
+    <div class="bubble hide" id="bubble"></div>
+    <div class="tap-hint">tap to pet</div>
+  </section>
+
+  <main id="main">
+    <!-- HOME -->
+    <section class="screen" id="screen-home">
+      <div class="banner vacation" id="vacBanner" hidden>
+        <span class="bigicon"><i data-icon="tree" data-size="24" data-color="#3f8f52"></i></span>
+        <div class="grow"><b id="vacTitle">On vacation</b><span id="vacText"></span></div>
+        <button class="btn sm ghost" id="vacEnd">I am back</button>
+      </div>
+      <div class="inboxlist" id="inboxList"></div>
+      <div class="row" id="activeBuffs" hidden style="flex-wrap:wrap;gap:6px"></div>
+      <div class="panel">
+        <div class="meters">
+          <div><div class="lbl">XP · <span id="xpLabel">0 / 100</span></div><div class="meter xp"><i id="xpBar" style="width:0%"></i></div></div>
+          <div><div class="lbl">Mood</div><div class="meter"><i id="moodBar" style="width:70%"></i></div></div>
+          <div><div class="lbl">Hunger</div><div class="meter hunger"><i id="hungerBar" style="width:55%"></i></div></div>
+          <div><div class="lbl">Coins</div><div class="chip" style="margin-top:2px"><i data-icon="coin" data-color="#c9922a" data-color2="#ffcf4d"></i><b id="coins">0</b></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="row"><h2 class="grow">Today's quests</h2><span class="lbl row" id="questLoc" style="gap:4px" data-tut="quests"><i data-icon="pin" data-size="12" data-color="#ff6f9c" data-color2="#fff"></i>near GDC, Austin</span></div>
+        <div id="questList" style="display:flex;flex-direction:column;gap:12px;padding-top:6px"></div>
+      </div>
+    </section>
+
+    <!-- ZOO -->
+    <section class="screen" id="screen-zoo" hidden>
+      <div class="panel"><h2>Nest</h2><div class="zoo-grid" id="eggGrid"></div><div class="empty" id="eggEmpty">No eggs yet. Complete quests to find some.</div></div>
+      <div class="panel"><div class="row"><h2 class="grow">Collection</h2><span class="lbl" id="dexCount">0 / 30</span></div>
+        <p class="sub" style="margin:0 0 8px">Tap a Familiar to make it active, play its minigame or challenge a friend. Rarer animals are drawn at higher resolution.</p>
+        <div class="filters" id="clsFilters"></div>
+        <div class="zoo-grid" id="zooGrid"></div><div class="empty" id="zooEmpty" hidden>Hatch an egg to meet your second Familiar.</div></div>
+      <div class="panel"><h2>Familiar Dex</h2><p class="sub" style="margin:0 0 8px">Every animal, by class. Silhouettes are still out there.</p><div class="zoo-grid" id="dexGrid"></div></div>
+    </section>
+
+    <!-- SHOP -->
+    <section class="screen" id="screen-shop" hidden>
+      <div class="panel"><div class="row"><h2 class="grow">Wallet</h2></div><div class="wallet" id="wallet"></div></div>
+      <div class="panel gacha" id="gachaPanel">
+        <h2>Lucky Capsule</h2>
+        <canvas id="gachaCanvas" width="180" height="210"></canvas>
+        <div class="odds" id="gachaOdds"></div>
+        <div class="row"><button class="btn mint sm" id="gachaFree">Free daily pull</button><button class="btn sm" id="gacha1">Pull x1</button><button class="btn pink sm" id="gacha10">Pull x10</button></div>
+        <div class="odds" id="gachaPity"></div>
+      </div>
+      <div class="panel">
+        <div class="seg" id="shopTabs"><button data-s="eggs" class="on">Eggs</button><button data-s="blessings">Blessings</button><button data-s="curses">Curses</button><button data-s="keys">Raid keys</button></div>
+        <div class="shopgrid" id="shopGrid" style="margin-top:10px"></div>
+      </div>
+    </section>
+
+    <!-- VILLAGE -->
+    <section class="screen" id="screen-village" hidden>
+      <div class="village-stage"><canvas id="villageCanvas" width="400" height="120"></canvas></div>
+      <div id="raidList" style="display:flex;flex-direction:column;gap:12px"></div>
+      <div class="panel" id="duelPanel"><h2>Minigame duels</h2><p class="sub" style="margin:0">Challenge a friend from any Familiar in your Nest. They get 3 tries; if they fail all 3, you win coins.</p><div id="duelList"></div></div>
+      <div id="friendList" style="display:flex;flex-direction:column;gap:12px"></div>
+    </section>
+
+    <!-- STORY -->
+    <section class="screen" id="screen-story" hidden>
+      <div class="book">
+        <h2 id="bookTitle">Chapter 4</h2>
+        <div class="date" id="bookDate"></div>
+        <div id="bookPages"></div>
+        <div class="actions"><button class="btn ghost" id="bookCopy">Copy chapter</button><button class="btn pink" id="bookShare">Share to village</button></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="home" class="active"><span class="em"><i data-icon="home" data-size="22"></i></span>Home</button>
+    <button data-tab="zoo"><span class="em"><i data-icon="egg" data-size="22"></i></span>Nest</button>
+    <button data-tab="shop"><span class="em"><i data-icon="coin" data-size="22"></i></span>Shop</button>
+    <button data-tab="village"><span class="em"><i data-icon="village" data-size="22"></i></span>Village<span class="dot" id="villageDot" hidden></span></button>
+    <button data-tab="story"><span class="em"><i data-icon="book" data-size="22"></i></span>Story</button>
+  </nav>
+</div>
+
+<!-- HATCH (first run) -->
+<div class="overlay center" id="ovHatch" hidden>
+  <div class="card hatch">
+    <h2>A Familiar found you</h2>
+    <p class="sub">Tap the egg until it cracks.</p>
+    <canvas id="hatchCanvas" width="192" height="240"></canvas>
+    <div id="hatchStep1">
+      <p class="sub" id="hatchHint">3 taps to go</p>
+    </div>
+    <div id="hatchStep2" hidden>
+      <p>It's an axolotl! What do you call it?</p>
+      <input id="hatchName" maxlength="12" placeholder="Mochi" autocomplete="off">
+      <button class="btn pink block" id="hatchGo">Start the adventure</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUEST DETAIL -->
+<div class="overlay" id="ovQuest" hidden>
+  <div class="sheet">
+    <div class="head"><h2 id="qTitle">Quest</h2><button class="btn sm ghost speak" id="qSpeak" aria-label="Read quest aloud"><i data-icon="note"></i> Listen</button><button class="iconbtn" id="qClose" aria-label="Close"><i data-icon="close"></i></button></div>
+    <div id="qTags"></div>
+    <p class="qtext" id="qText"></p>
+    <div class="place"><span class="pin"><i data-icon="pin" data-size="24" data-color="#ff6f9c" data-color2="#fff"></i></span><div><div class="pn" id="qPlace"></div><div class="pm" id="qPlaceMeta"></div></div></div>
+    <div class="row"><span class="chip">+<b id="qXp">0</b> XP</span><span class="chip"><i data-icon="egg" data-color="#5ab0ff"></i><b id="qEgg">50%</b></span><span class="grow"></span><button class="btn sm ghost" id="qReroll">Reroll</button></div>
+    <div class="proof-tabs"><button id="tabPhoto" class="active"><i data-icon="camera"></i> Photo</button><button id="tabVoice"><i data-icon="mic"></i> Voice note</button></div>
+    <div class="proofbox" id="proofPhoto">
+      <div class="tiny">Show the game master you were there. An AI checks the photo, so no screenshots or reused pics.</div>
+      <img id="photoPreview" hidden alt="Your proof photo">
+      <label class="btn filebtn">Take / choose photo<input type="file" id="photoInput" accept="image/*" capture="environment"></label>
+    </div>
+    <div class="proofbox" id="proofVoice" hidden>
+      <div class="tiny" id="voiceHint">Hold to record. Say what you did.</div>
+      <div class="rec" id="recBars" hidden><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div id="voiceDone" hidden><b>Voice note · <span id="voiceLen">0:00</span></b><div class="transcript" id="voiceTranscript"></div></div>
+      <button class="btn pink" id="recBtn">Hold to record</button>
+    </div>
+    <div class="actions"><button class="btn mint block" id="qSubmit" disabled>Submit proof</button></div>
+  </div>
+</div>
+
+<!-- JUDGING -->
+<div class="overlay center" id="ovJudging" hidden>
+  <div class="card"><canvas id="judgeCanvas" width="128" height="160" style="width:128px;height:160px"></canvas><h2>Game master is judging<span id="dots">…</span></h2><p class="sub" id="judgeLine">Checking the photo against the place…</p></div>
+</div>
+
+<!-- REWARD SEQUENCE -->
+<div class="overlay center" id="ovReward" hidden>
+  <div class="card reward" id="rewardCard">
+    <div id="rwStep"></div>
+    <div class="actions"><button class="btn pink block" id="rwNext">Next</button></div>
+  </div>
+</div>
+
+<!-- EGG HATCH (from nest) -->
+<div class="overlay center" id="ovEgg" hidden>
+  <div class="card hatch">
+    <h2 id="eggTitle">An egg is hatching</h2>
+    <canvas id="eggCanvas" width="192" height="240"></canvas>
+    <p class="sub" id="eggHint">Tap it!</p>
+    <div id="eggResult" hidden><p id="eggResultText"></p><button class="btn pink block" id="eggClose">Welcome!</button></div>
+  </div>
+</div>
+
+<!-- CURSE PICKER -->
+<div class="overlay" id="ovCurse" hidden>
+  <div class="sheet">
+    <div class="head"><h2 id="curseTitle">Curse Leo</h2><button class="iconbtn" id="curseClose" aria-label="Close"><i data-icon="close"></i></button></div>
+    <p class="sub">Costs 5 coins. They can break it by finishing a quest.</p>
+    <div class="curses" id="curseList"></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="overlay" id="ovSettings" hidden>
+  <div class="sheet">
+    <div class="head"><h2>Settings</h2><button class="iconbtn" id="setClose" aria-label="Close"><i data-icon="close"></i></button></div>
+    <div class="setting"><div>Sound<small>8-bit bleeps</small></div><button class="toggle on" id="tglSound" aria-label="Toggle sound"></button></div>
+    <div class="setting"><div>Vacation mode<small>Pets get slowly sadder while you are away. Duel requests are blocked.</small></div><button class="btn sm ghost" id="btnVacation">Plan</button></div>
+    <div class="setting"><div>Tutorial<small>Replay the walkthrough.</small></div><button class="btn sm ghost" id="btnTutorial">Replay</button></div>
+    <div class="setting"><div>Demo: receive a duel request<small>A friend challenges you to their pet minigame.</small></div><button class="btn sm ghost" id="btnFakeDuel">Send</button></div>
+    <div class="setting"><div>Demo: skip 12 hours<small>Fast-forward vacation to see mood drop.</small></div><button class="btn sm ghost" id="btnSkip">Skip</button></div>
+    <div class="setting"><div>Demo: force legendary drop<small>For judging. Every quest drops a legendary egg.</small></div><button class="toggle" id="tglLegend" aria-label="Toggle legendary"></button></div>
+    <div class="setting"><div>Reset demo<small>Back to the egg.</small></div><button class="btn sm ghost" id="btnReset">Reset</button></div>
+    <p class="sub" style="margin-top:12px">Familiars · HackTX 2026 · Proofs are judged by Gemini and voice notes transcribed by ElevenLabs when the server runs (npm start); otherwise everything is mocked locally.</p>
+  </div>
+</div>
+
+<!-- PET DETAIL -->
+<div class="overlay" id="ovPet" hidden>
+  <div class="sheet petcard">
+    <div class="head"><h2 id="petTitle">Pet</h2><button class="iconbtn" id="petClose" aria-label="Close"><i data-icon="close"></i></button></div>
+    <canvas class="big" id="petBig" width="192" height="192"></canvas>
+    <div class="facts" id="petFacts"></div>
+    <p class="sub" id="petFlavor"></p>
+    <div class="acts">
+      <button class="btn mint" id="petPlay">Play minigame</button>
+      <button class="btn lilac" id="petChallenge">Challenge friend</button>
+      <button class="btn" id="petActive">Make active</button>
+      <button class="btn ghost speak" id="petVoice"><i data-icon="note"></i> Hear voice</button>
+    </div>
+  </div>
+</div>
+
+<!-- GENERIC PICKER -->
+<div class="overlay" id="ovPick" hidden>
+  <div class="sheet">
+    <div class="head"><h2 id="pickTitle">Pick</h2><button class="iconbtn" id="pickClose" aria-label="Close"><i data-icon="close"></i></button></div>
+    <p class="sub" id="pickSub"></p>
+    <div class="listpick" id="pickList"></div>
+  </div>
+</div>
+
+<!-- GACHA RESULTS -->
+<div class="overlay center" id="ovGacha" hidden>
+  <div class="card reward" id="gachaCard">
+    <div class="big" id="gachaTitle">Capsules!</div>
+    <div class="caps" id="gachaCaps"></div>
+    <p class="sub" id="gachaSub"></p>
+    <div class="actions"><button class="btn pink block" id="gachaOk">Nice</button></div>
+  </div>
+</div>
+
+<!-- VACATION -->
+<div class="overlay" id="ovVacation" hidden>
+  <div class="sheet">
+    <div class="head"><h2>Going on vacation?</h2><button class="iconbtn" id="vacClose" aria-label="Close"><i data-icon="close"></i></button></div>
+    <p class="sub">Your Familiars will miss you and slowly get sadder the longer you are gone. Nobody can send you duel requests while you are away. Doing a quest ends vacation early.</p>
+    <div class="vacopts" id="vacOpts"><button data-h="12">12 hours</button><button data-h="24" class="on">1 day</button><button data-h="72">3 days</button><button data-h="168">1 week</button><button data-h="336">2 weeks</button><button data-h="custom">Custom</button></div>
+    <div class="row" id="vacCustomRow" hidden><input id="vacCustom" type="number" min="1" max="60" value="5" style="width:80px;padding:8px;border:var(--bevel)"> <span>days</span></div>
+    <p class="sub" id="vacPreview"></p>
+    <div class="actions"><button class="btn mint block" id="vacGo">Start vacation</button></div>
+  </div>
+</div>
+
+<!-- INFO / REJECTED PROOF -->
+<div class="overlay center" id="ovInfo" hidden>
+  <div class="card reward" id="infoCard"><div id="infoBody"></div><div class="actions" id="infoActs"></div></div>
+</div>
+
+<div class="gachaflash" id="gachaFlash"></div>
+<div class="toast" id="toast" hidden></div>
+<canvas id="confetti"></canvas>
+<div class="flash" id="flash"></div>
+
+<script src="js/icons.js"></script>
+<script src="js/animals.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/minigames.js"></script>
+<script src="js/mockApi.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
