@@ -230,3 +230,7 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   Both fall back to templates without the key or on any failure (hard rule). api.meta.ai is unreachable from
   this sandbox, so the Muse path was verified against a local stub of the endpoint (auth header, JSON-mode
   parsing, code-fence stripping) and the fallback path end to end; the live call is to be checked on Vercel.
+- Muse live on Vercel after two fixes: the 900-token budget was eaten by Muse Spark's reasoning (now 6000
+  with `reasoning_effort: low`, precise error reasons surface on the offline card). Plan cards redesigned
+  as invitations: quest-type colour band with icon, "when" chip, place row, the crew as pet sprites
+  (You & your pet, friend & their pet, deduped), your pet's pitch in a speech bubble.

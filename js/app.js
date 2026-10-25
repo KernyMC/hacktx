@@ -971,17 +971,30 @@
   }
   // Group planner (Muse): proposals and the plans already sent to the village
   const TYPE_LBL = { food: 'Food', social: 'Social', outdoor: 'Outdoor', creative: 'Creative' };
+  // a plan is an invitation poster: type band, place row, the crew as pet sprites, your pet's pitch in a bubble
+  const crewOf = (p, sent) => { const seen = new Set(); return (sent ? ['You'] : []).concat(p.who || []).filter(n => { const k = /^(you|me)$/i.test(n) ? 'You' : n; if (seen.has(k)) return false; seen.add(k); return true; }).map(n => (/^(you|me)$/i.test(n) ? 'You' : n)); };
   function planCard(p, opts = {}) {
-    const d = document.createElement('div'); d.className = 'plan' + (opts.sent ? ' sent' : '');
-    d.innerHTML = `<div class="pt"></div><div class="pm"></div><div class="pw"></div><div class="who"></div><div class="pq"></div>`;
-    d.querySelector('.pt').textContent = p.title;
-    d.querySelector('.pm').textContent = `${TYPE_LBL[p.type] || 'Group'} quest · ${p.place && p.place.name}${p.place && p.place.dist ? ' · ' + p.place.dist : ''} · ${p.when}`;
+    const d = document.createElement('div'); d.className = 'plan t-' + (p.type || 'social') + (opts.sent ? ' sent' : '');
+    d.innerHTML = `<div class="ph"><span class="pi">${ic(TYPE_ICON[p.type] || 'star', 22, '#2b2140', '#fff8ea')}</span><div class="grow"><div class="pt"></div><div class="pk"></div></div><span class="when"></span></div>
+      <div class="pp">${ic('pin', 16)}<span></span></div><p class="pw"></p><div class="crew"></div>
+      <div class="pitch"><canvas width="48" height="48"></canvas><i></i></div>`;
+    d.querySelector('.pt').textContent = p.title; d.querySelector('.pk').textContent = (TYPE_LBL[p.type] || 'Group') + ' quest';
+    d.querySelector('.when').textContent = p.when || '';
+    d.querySelector('.pp span').textContent = `${p.place && p.place.name}${p.place && p.place.dist ? ' · ' + p.place.dist : ''}`;
     d.querySelector('.pw').textContent = p.why || '';
-    d.querySelector('.who').innerHTML = (opts.sent ? ['You'] : []).concat(p.who || []).map(n => `<span></span>`).join('');
-    [...d.querySelectorAll('.who span')].forEach((s, i) => { s.textContent = (opts.sent ? ['You'] : []).concat(p.who || [])[i]; });
-    d.querySelector('.pq').textContent = p.pitch || '';
-    if (opts.onSend) { const b = document.createElement('button'); b.className = 'btn sm pink'; b.style.marginTop = '8px'; b.textContent = 'Send to the village'; b.onclick = () => opts.onSend(p, b); d.appendChild(b); }
-    else if (opts.sent) { const t = document.createElement('div'); t.className = 'pm'; t.style.marginTop = '6px'; t.textContent = 'Sent to the village · ' + (p.members || []).join(', '); d.appendChild(t); }
+    const crew = d.querySelector('.crew');
+    crewOf(p, opts.sent || !opts.onSend).forEach(n => {
+      const f = n === 'You' ? null : (village && village.friends.find(x => x.name === n));
+      const pet = n === 'You' ? me.pet : (f ? f.pet : null);
+      const m = document.createElement('div'); m.className = 'mate'; m.innerHTML = `<canvas width="40" height="40"></canvas><b></b>`;
+      m.querySelector('b').textContent = n === 'You' ? `You & ${me.pet.name}` : (pet ? `${n} & ${pet.name}` : n);
+      if (pet) Sprites.drawPet(m.querySelector('canvas').getContext('2d'), pet, 0, 0, 2.5, { fx: false, anim: 'happy' });
+      crew.appendChild(m);
+    });
+    Sprites.drawPet(d.querySelector('.pitch canvas').getContext('2d'), me.pet, 0, 0, 3, { fx: false, anim: 'happy' });
+    d.querySelector('.pitch i').textContent = p.pitch || `${me.pet.name} is in.`;
+    if (opts.onSend) { const b = document.createElement('button'); b.className = 'btn sm pink'; b.textContent = 'Send to the village'; b.onclick = () => opts.onSend(p, b); d.appendChild(b); }
+    else if (opts.sent) { const t = document.createElement('div'); t.className = 'tag bless'; t.textContent = 'Sent to the village'; d.appendChild(t); }
     return d;
   }
   function renderPlans(sent) {

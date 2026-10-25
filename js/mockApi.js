@@ -756,7 +756,8 @@
     async proposePlan(plan) {
       await delay(80);
       S.plans = S.plans || [];
-      const p = Object.assign({ id: uid(), at: Date.now(), members: ['You'].concat(plan.who || []) }, plan);
+      const who = (plan.who || []).filter(n => !/^(you|me)$/i.test(n));
+      const p = Object.assign({ id: uid(), at: Date.now(), members: ['You'].concat(who) }, plan, { who });
       S.plans.unshift(p); S.plans = S.plans.slice(0, 6);
       const f = S.friends.find(x => (plan.who || []).includes(x.name)) || S.friends[0];
       S.inbox.unshift({ id: uid(), kind: 'note', from: f.name, text: `${f.name}: "${plan.title}"? I am in. ${f.pet.name} is already packing.` });
