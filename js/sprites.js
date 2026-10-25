@@ -269,16 +269,110 @@
     if (opts.fx !== false) global.Animals.sparkles(ctx, global.Animals.normRarity(pet.rarity), x, y, w, opts.t || 0);
   }
 
+  // ------------------------------------------------------------------
+  // Evolution: the same animal, upgraded. Built from the pet's own native-resolution frame:
+  // richer palette, a crown on top of the head (found by scanning the frame) and a pulsing aura
+  // from its silhouette. Stage 3 = bigger crown with a gem, stronger colours, gold aura.
+  // ------------------------------------------------------------------
+  const CROWNS = {
+    2: ['w.w.w', 'g.g.g', 'ggggg', 'yyyyy'],
+    3: ['w..w..w', 'g..g..g', 'g.ggg.g', 'ggrgrgg', 'ggggggg', 'yyyyyyy'],
+  };
+  const EVO_CACHE = new Map();
+  // returns { body, halo, pad }: canvases of (N + 2*pad)^2 native pixels; halo is the aura silhouette
+  function evolvedParts(pet, stage, opts) {
+    const rarity = global.Animals.normRarity(pet.rarity || global.Animals.A[pet.species].rarity);
+    const N = global.Animals.RES[rarity], pad = Math.ceil(N / 5), M = N + 2 * pad;
+    const anim = opts.anim || 'idle', frame = Math.floor((opts.t || 0) / 125) % 8;
+    const key = [pet.species, rarity, stage, anim, frame, opts.flip ? 1 : 0, opts.blink ? 1 : 0, pet.shiny ? 1 : 0].join('|');
+    let parts = EVO_CACHE.get(key);
+    if (parts) return parts;
+
+    const body = document.createElement('canvas'); body.width = body.height = M;
+    const b = body.getContext('2d'); b.imageSmoothingEnabled = false;
+    // a redrawn "<species>_2" sheet is the base when there is one (it already wears its own crown)
+    const own = !!(SHEETS[pet.species + '_2'] && api.USE_SHEETS);
+    drawPet(b, Object.assign({}, pet, { stage: own ? 2 : 1 }), pad, pad, N / SIZE, Object.assign({}, opts, { fx: false }));
+    // richer palette: push every pixel away from its grey (works where ctx.filter does not, e.g. older Safari)
+    const img = b.getImageData(0, 0, M, M), d = img.data, sat = stage >= 3 ? 1.55 : 1.3;
+    let top = M, left = M, right = -1;
+    for (let i = 0; i < d.length; i += 4) {
+      if (!d[i + 3]) continue;
+      const m = (d[i] + d[i + 1] + d[i + 2]) / 3;
+      for (let k = 0; k < 3; k++) d[i + k] = Math.max(0, Math.min(255, m + (d[i + k] - m) * sat));
+      const px = (i / 4) % M, py = Math.floor(i / 4 / M);
+      // head top: highest opaque pixel in the middle half (skips tails and side ears)
+      if (px > pad + N / 4 && px < pad + N * 3 / 4) {
+        if (py < top) { top = py; left = px; right = px; } else if (py === top) right = px;
+      }
+    }
+    b.putImageData(img, 0, 0);
+    const crown = CROWNS[stage >= 3 ? 3 : 2], k = Math.max(1, Math.round(N / 20));
+    const cx = Math.round((left + right) / 2 - (crown[0].length * k) / 2), cy = Math.max(0, top - crown.length * k + k);
+    const cpal = { w: '#fff6c0', g: '#ffcf4d', y: '#a8661a', r: '#ff4a6a' };
+    if (!own) crown.forEach((row, r) => [...row].forEach((ch, c) => { if (ch !== '.') { b.fillStyle = cpal[ch]; b.fillRect(cx + c * k, cy + r * k, k, k); } }));
+
+    // aura: the silhouette grown by 1-2 px, in the animal's accent (gold at stage 3)
+    const sil = document.createElement('canvas'); sil.width = sil.height = M;
+    const s = sil.getContext('2d'); s.drawImage(body, 0, 0);
+    s.globalCompositeOperation = 'source-in';
+    s.fillStyle = stage >= 3 ? '#ffcf4d' : global.Animals.A[pet.species].pal.c; s.fillRect(0, 0, M, M);
+    const halo = document.createElement('canvas'); halo.width = halo.height = M;
+    const h = halo.getContext('2d'), r = stage >= 3 ? 2 : 1;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx || dy) h.drawImage(sil, dx, dy);
+
+    // native px the crown + aura reach above the normal box
+    parts = { body, halo, pad, N, over: Math.max(0, pad - (own ? top : cy) + r) };
+    if (EVO_CACHE.size > 400) EVO_CACHE.clear();
+    EVO_CACHE.set(key, parts);
+    return parts;
+  }
+  // draws the upgraded pet so its body fills a box of `size` css px at x,y (crown and aura spill outside it).
+  // fit: shrink the body just enough that the crown stays inside the box, feet where they were (drawPet).
+  function drawUpgrade(ctx, pet, stage, x, y, size, opts, fit) {
+    const { body, halo, pad, N, over } = evolvedParts(pet, stage, opts), t = opts.t || 0;
+    const s = fit ? size / (N + over) : size / N;
+    if (fit) { x += (size - N * s) / 2; y += over * s; }
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = 0.45 + 0.35 * Math.sin(t / 260);
+    ctx.drawImage(halo, x - pad * s, y - pad * s, body.width * s, body.height * s);
+    ctx.globalAlpha = 1;
+    ctx.drawImage(body, x - pad * s, y - pad * s, body.width * s, body.height * s);
+    ctx.restore();
+    if (opts.fx !== false && stage >= 3) global.Animals.sparkles(ctx, 'legendary', x, y, size, t);
+  }
+
+  /**
+   * An evolved animal on its own canvas, 1.5x the normal pet box (SIZE * px), with room for crown + aura.
+   * stage 1 returns the plain pet at normal size. opts: { t, anim, px = 6, rarity, shiny, blink, flip }.
+   * The canvas is reused per (animal, stage, px): draw it right away with ctx.drawImage.
+   */
+  const EVO_OUT = new Map();
+  function drawEvolved(animalId, stage = 2, opts = {}) {
+    const px = opts.px || 6, pet = { species: animalId, rarity: opts.rarity, shiny: opts.shiny, stage };
+    const key = animalId + '|' + stage + '|' + px;
+    let cv = EVO_OUT.get(key);
+    if (stage < 2) {
+      cv = cv || document.createElement('canvas'); cv.width = cv.height = SIZE * px;
+      drawPet(cv.getContext('2d'), Object.assign(pet, { stage: 1 }), 0, 0, px, opts);
+    } else {
+      const size = SIZE * px * 1.5, { pad, N } = evolvedParts(pet, stage, opts), edge = Math.ceil(pad * size / N);
+      cv = cv || document.createElement('canvas'); cv.width = cv.height = size + 2 * edge;
+      drawUpgrade(cv.getContext('2d'), pet, stage, edge, edge, size, opts);
+    }
+    EVO_OUT.set(key, cv);
+    return cv;
+  }
+
   function drawPet(ctx, pet, x, y, px, opts = {}) {
     if (global.Animals && global.Animals.A[pet.species]) {
-      // Evolved pets (stage >= 2) use their own "<species>_2" sheet when one exists; otherwise the same
-      // sheet drawn one tier larger with gold twinkles (Animals.sparkles).
-      const evolved = (pet.stage || 1) >= 2;
-      const sheetKey = evolved && SHEETS[pet.species + '_2'] ? pet.species + '_2' : pet.species;
-      if (SHEETS[sheetKey] && api.USE_SHEETS) {
-        drawSheetAtTier(ctx, SHEETS[sheetKey], Object.assign({}, pet, { species: sheetKey }), x, y, px, opts);
-        if (evolved && sheetKey === pet.species && opts.fx !== false) global.Animals.sparkles(ctx, 'legendary', x, y, SIZE * px, opts.t || 0);
-      } else global.Animals.draw(ctx, pet, x, y, SIZE * px, opts);
+      // Evolved pets (stage >= 2) use their own "<species>_2" sheet when one exists (redrawn art);
+      // otherwise the same animal upgraded in place: richer palette, crown and aura (drawUpgrade).
+      const stage = pet.stage || 1, evolved = stage >= 2;
+      if (evolved && !SHEETS[pet.species + '_2']) { drawUpgrade(ctx, pet, stage, x, y, SIZE * px, opts, true); return; }
+      const sheetKey = evolved ? pet.species + '_2' : pet.species;
+      if (SHEETS[sheetKey] && api.USE_SHEETS) drawSheetAtTier(ctx, SHEETS[sheetKey], Object.assign({}, pet, { species: sheetKey }), x, y, px, opts);
+      else global.Animals.draw(ctx, pet, x, y, SIZE * px, opts);
       return;
     }
     if (SHEETS[pet.species]) { drawFromSheet(ctx, SHEETS[pet.species], pet, x, y, px, opts); return; }
@@ -853,7 +947,7 @@
 
   const api = { USE_SHEETS: true, SIZE, BODIES, HATS, SPECIES, QUEST_TYPE_TO_SPECIES, RARITY_HUE,
     BASE_HUE, SHEET_META, makePalette, drawPet, petCanvas, drawEgg, registerSheet, loadSheet, loadAll, SHEETS,
-    HABITATS, phaseAt, drawHabitat, habitatCanvas, applyAnimalTheme };
+    HABITATS, phaseAt, drawHabitat, habitatCanvas, applyAnimalTheme, drawEvolved };
   global.applyAnimalTheme = applyAnimalTheme;
   if (global.Animals) api.SPECIES = global.Animals.A;
   global.Sprites = api;
