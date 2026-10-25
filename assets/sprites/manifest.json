@@ -7,5 +7,86 @@
  },
  "hedgehog": {
   "cell": 24
+ },
+ "armadillo": {
+  "cell": 40
+ },
+ "bat": {
+  "cell": 40
+ },
+ "bunny": {
+  "cell": 20
+ },
+ "capybara": {
+  "cell": 32
+ },
+ "chameleon": {
+  "cell": 40
+ },
+ "chick": {
+  "cell": 20
+ },
+ "dog": {
+  "cell": 20
+ },
+ "duckling": {
+  "cell": 20
+ },
+ "fennec": {
+  "cell": 32
+ },
+ "frog": {
+  "cell": 20
+ },
+ "goat": {
+  "cell": 24
+ },
+ "hamster": {
+  "cell": 20
+ },
+ "jackalope": {
+  "cell": 40
+ },
+ "longhorn": {
+  "cell": 48
+ },
+ "mouse": {
+  "cell": 20
+ },
+ "otter": {
+  "cell": 32
+ },
+ "owl": {
+  "cell": 32
+ },
+ "penguin": {
+  "cell": 32
+ },
+ "pig": {
+  "cell": 24
+ },
+ "prairiedog": {
+  "cell": 24
+ },
+ "raccoon": {
+  "cell": 32
+ },
+ "redpanda": {
+  "cell": 32
+ },
+ "roadrunner": {
+  "cell": 32
+ },
+ "sheep": {
+  "cell": 24
+ },
+ "snowleopard": {
+  "cell": 40
+ },
+ "squirrel": {
+  "cell": 24
+ },
+ "turtle": {
+  "cell": 24
  }
 }
