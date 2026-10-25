@@ -627,7 +627,7 @@ Return JSON {"reply": "...", "mood": "happy|neutral|sad|excited"}.`;
 // ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
-const server = http.createServer(async (req, res) => {
+async function handle(req, res) {
   let url;
   try { url = new URL(req.url, 'http://localhost'); } catch { return sendJson(res, 400, { ok: false, error: 'Bad URL' }); }
   const { pathname } = url;
@@ -652,8 +652,13 @@ const server = http.createServer(async (req, res) => {
     if (status >= 500) logErr(`${req.method} ${pathname}:`, e); else log(`${req.method} ${pathname} -> ${status} ${e.message}`);
     sendJson(res, status, { ok: false, error: e instanceof HttpError ? e.message : 'Internal server error' });
   }
-});
+}
 
+// Exported for serverless hosts (Vercel: api/[...path].js). Local dev listens below.
+module.exports = { handle };
+if (require.main !== module) return;
+
+const server = http.createServer(handle);
 server.on('clientError', (err, socket) => { try { socket.end('HTTP/1.1 400 Bad Request\r\n\r\n'); } catch {} });
 process.on('unhandledRejection', (e) => logErr('unhandledRejection:', e));
 

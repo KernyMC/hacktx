@@ -1,0 +1,5 @@
+tools/
+art/
+docs/
+.claude/
+node_modules/
