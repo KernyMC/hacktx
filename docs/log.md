@@ -218,3 +218,6 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   test `tools/qa/allgames.js` (documented in docs/dev.md). Result 40/40 and 33/33 clean. One real fix: the chat
   re-requested the ElevenLabs voice on every reply even when the server answered 502; the client now backs
   off for a minute after a network or 5xx failure.
+- Settings > "Time of day": Auto / Dawn / Day / Sunset / Night. `Sprites.setPhaseOverride(phase)` (null = clock)
+  drives the habitat, the CSS theme and the themed glyphs; the choice is remembered in localStorage so the
+  demo phase survives a reload. This closes step 7 of the systems list.

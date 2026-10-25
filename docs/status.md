@@ -52,5 +52,5 @@ Living checklist. Update when something changes column — the "how" lives in `d
 
 ## systems branch (2026-10-25)
 - Done: steps 0-6 of the systems list; Vercel config (`api/[...path].js`, `vercel.json`); Village scene fix; quest sheet v2; Silkscreen display font.
-- Blocked: step 7 needs `Sprites.setPhaseOverride(phase)` in `js/sprites.js`; minigame win-rate tuning needs `js/minigames.js`.
+- Done: step 7 (time-of-day control, `Sprites.setPhaseOverride`). Minigame win-rate tuning is still by judgment, not measured.
 - Pending: import the repo in the Vercel dashboard (production branch `systems`, six env vars from `.env`) and check `/api/health`.

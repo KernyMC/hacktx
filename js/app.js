@@ -1160,7 +1160,7 @@
   // ------------------------------------------------------------------
   // Settings + vacation
   // ------------------------------------------------------------------
-  $('btnSettings').onclick = () => { Audio8.play('open'); $('tglSound').classList.toggle('on', Audio8.isEnabled()); $('tglLegend').classList.toggle('on', me.settings.forceLegendary); $('btnVacation').textContent = me.vacation && me.vacation.active ? 'End' : 'Plan'; $('ovSettings').hidden = false; };
+  $('btnSettings').onclick = () => { Audio8.play('open'); syncPhaseOpts(); $('tglSound').classList.toggle('on', Audio8.isEnabled()); $('tglLegend').classList.toggle('on', me.settings.forceLegendary); $('btnVacation').textContent = me.vacation && me.vacation.active ? 'End' : 'Plan'; $('ovSettings').hidden = false; };
   $('setClose').onclick = () => { $('ovSettings').hidden = true; Audio8.play('close'); };
   $('ovSettings').addEventListener('click', e => { if (e.target === $('ovSettings')) $('ovSettings').hidden = true; });
   $('tglSound').onclick = async () => { const on = !Audio8.isEnabled(); Audio8.setEnabled(on); $('tglSound').classList.toggle('on', on); await API.setSettings({ sound: on }); Audio8.play('tap'); };
@@ -1207,6 +1207,16 @@
   }
   $('btnUnlock').onclick = unlockAll;
   $('btnTutorial').onclick = () => { $('ovSettings').hidden = true; runTutorial(); };
+  // Time of day override (demo): remembered across reloads; Auto follows the clock
+  const PHASE_KEY = 'familiars.phase';
+  function syncPhaseOpts() { const cur = localStorage.getItem(PHASE_KEY) || ''; document.querySelectorAll('#phaseOpts button').forEach(b => b.classList.toggle('on', b.dataset.ph === cur)); }
+  try { const saved = localStorage.getItem(PHASE_KEY); if (saved) Sprites.setPhaseOverride(saved); } catch {}
+  $('phaseOpts').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    try { if (b.dataset.ph) localStorage.setItem(PHASE_KEY, b.dataset.ph); else localStorage.removeItem(PHASE_KEY); } catch {}
+    Sprites.setPhaseOverride(b.dataset.ph || null); applyTheme(); syncPhaseOpts(); Audio8.play('tap');
+    toast(b.dataset.ph ? `${b.textContent}: this is how ${me.pet.name}'s home looks at that hour.` : 'Back to the real clock.', 2600);
+  };
   $('btnFakeDuel').onclick = async () => { const r = await API.simulateIncomingChallenge(); Audio8.play(r.ok ? 'open' : 'error'); toast(r.message, 3600); $('ovSettings').hidden = true; await refreshMe(); showTab('home'); };
   $('btnSkip').onclick = async () => { $('ovSettings').hidden = true; const v = await API.skipVacationTime(12); if (!v) { toast('Start a vacation first.'); return; } Audio8.play('tick'); await refreshMe(); toast(`12 hours later... ${me.pet.name}'s mood is ${me.mood}.`); };
   $('btnVacation').onclick = async () => {

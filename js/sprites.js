@@ -931,7 +931,15 @@
     }
     return cv;
   }
-  function drawHabitat(ctx, animalId, W, H, phase = phaseAt(new Date().getHours())) {
+  // Demo override: null follows the device clock, else 'dawn' | 'day' | 'sunset' | 'night'
+  let phaseOverride = null;
+  const currentPhase = () => phaseOverride || phaseAt(new Date().getHours());
+  function setPhaseOverride(phase) {
+    phaseOverride = ['dawn', 'day', 'sunset', 'night'].includes(phase) ? phase : null;
+    if (themeId) applyAnimalTheme(themeId);
+    return phaseOverride;
+  }
+  function drawHabitat(ctx, animalId, W, H, phase = currentPhase()) {
     const cv = habitatCanvas(animalId, phase), k = Math.max(W / HW, H / HH);
     ctx.save(); ctx.imageSmoothingEnabled = false;
     ctx.drawImage(cv, (W - HW * k) / 2, H - HH * k, HW * k, HH * k);
@@ -945,7 +953,7 @@
   function applyAnimalTheme(animalId, phase) {
     const a = global.Animals && global.Animals.A[animalId];
     if (!a) return false;
-    const ph = phase || phaseAt(new Date().getHours());
+    const ph = phase || currentPhase();
     const hab = HABITATS[animalId] || HABITATS.axolotl;
     const sky = (hab.sky && hab.sky[ph]) || SKY[ph];
     const [tc, tt] = TINT[ph];
@@ -962,14 +970,14 @@
     themeId = animalId; themePhase = ph;
     // re-theme when the clock crosses into the next phase
     if (!themeTimer && !phase) themeTimer = setInterval(() => {
-      if (themeId && phaseAt(new Date().getHours()) !== themePhase) applyAnimalTheme(themeId);
+      if (themeId && currentPhase() !== themePhase) applyAnimalTheme(themeId);
     }, 60000);
     return true;
   }
 
   const api = { USE_SHEETS: true, SIZE, BODIES, HATS, SPECIES, QUEST_TYPE_TO_SPECIES, RARITY_HUE,
     BASE_HUE, SHEET_META, makePalette, drawPet, petCanvas, drawEgg, registerSheet, loadSheet, loadAll, SHEETS,
-    HABITATS, phaseAt, drawHabitat, habitatCanvas, applyAnimalTheme, drawEvolved };
+    HABITATS, phaseAt, drawHabitat, habitatCanvas, applyAnimalTheme, drawEvolved, setPhaseOverride, currentPhase };
   global.applyAnimalTheme = applyAnimalTheme;
   if (global.Animals) api.SPECIES = global.Animals.A;
   global.Sprites = api;
