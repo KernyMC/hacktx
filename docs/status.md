@@ -26,12 +26,16 @@ Living checklist. Update when something changes column — the "how" lives in `d
   `tools/pack_sprites.js`, loader in `js/sprites.js` via `manifest.json`.
 - [x] Documentation system (`CLAUDE.md` router, `CONTEXT.md`, `docs/`, `.claude/agents/`) created
   Oct 25, mirroring the Galápagos & Beyond repo.
+- [x] **Visuals pass (Oct 25, branch `visuals`)**: classes removed; per-animal icon set + habitat with
+  dawn/day/sunset/night from the device clock (`Sprites.applyAnimalTheme`, `drawHabitat`); 100dvh shell;
+  `Audio8.pet/happy/hatch` per species, cry on tap + hatch; evolution = same animal with richer palette,
+  crown and aura (`Sprites.drawEvolved`); 3 new legendaries (Grackle, Golden Salamander, Horned Lizard, ADR 0005).
 - [x] Playable artifact (offline mode): https://claude.ai/artifact/JejDGqb8Us9a398MaWbHTc
 
 ## In progress
 
 - [x] **Minigames unique per species**: 12 engines, per-species skins, `Minigames.gameFor(species)` (Oct 25).
-- [ ] Playtest round 1 fixes (see log 2026-10-25 "Playtest feedback round 1"): shell, cries, evolution, curse CSS done; welcome package, egg timing, class removal, tutorial lock pending.
+- [ ] Playtest round 1 fixes (see log 2026-10-25 "Playtest feedback round 1"): shell, cries, evolution, curse CSS, class removal done; welcome package, egg timing, tutorial lock, setting `body.dataset.curse` in app.js (curse CSS never shows without it) pending.
 - [ ] Verify on the user's machine (this sandbox blocks those hosts): ElevenLabs v4 voices (does the
   plan include v4? otherwise it falls back to flash), Scribe v2 transcription, real SerpApi quests.
 

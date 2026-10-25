@@ -115,3 +115,19 @@ browser-voice fallback tuned, harder duels.
   swim, stack, sneak) + `Minigames.SKINS` and `Minigames.gameFor(species)`; every one of the 30 animals
   has its own named game (max 3 species per engine; rodeo stays Longhorn-only). Not tested: touch on a
   real device, difficulty-5 balance, the duel inbox path end to end.
+
+## 2026-10-25 — Visuals pass: per-animal themes, voices, evolution, 3 legendaries (branch `visuals`)
+
+- Classes are gone (user: "too Pokémon"). Each animal has its own 9x9 icon set (home, quests, shop, emblem on
+  book/coin) and its own habitat scene (174x100, same aspect as the stage), ported from the TS prototype and
+  re-tinted for dawn 5-8 / day 8-17 / sunset 17-20 / night 20-5 from the device clock. One entry point:
+  `Sprites.applyAnimalTheme(id)` (icons, CSS vars, re-themes when the phase changes).
+- Sounds: `Audio8.pet/happy/hatch(id)` are sung in the voice of each species' existing cry (wave + pitch), so
+  no second table. The cry now plays on pet tap and after both hatch fanfares.
+- Evolution: species without a redrawn `_2` sheet get a richer palette (per-pixel, works without ctx.filter),
+  a crown placed on the topmost head pixel found by scanning the frame, and a silhouette aura. `drawPet`
+  shrinks the body so the crown fits its box; `drawEvolved(id, stage)` returns a 1.5x canvas.
+- Found: nothing sets `body.dataset.curse`, so all curse CSS is dormant until app.js does. Opera spotlight fixed.
+- 3 new legendaries (ADR 0005). Every legendary wears a gold aura (stage 0 of the evolution renderer).
+- QA: Playwright (playwright-core from a scratch dir, system Chrome) at 390x844 after every commit; contact
+  sheets of all habitats x 4 phases, icons and evolutions were looked at, not just counted.
