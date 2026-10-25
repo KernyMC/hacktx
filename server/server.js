@@ -261,8 +261,10 @@ async function handleSay(req, res) {
     try {
       r = await call(preset.id, model);
       // a voice id that this account cannot use → the default narrator; a model this plan lacks → flash
-      if (r.status === 404 || r.status === 400) { log(`TTS voice ${preset.key} (${preset.id}) rejected (${r.status}); retrying with ${DEFAULT_VOICE.name}`); r = await call(DEFAULT_VOICE.id, model); }
-      if (r.status === 422 && model !== 'eleven_flash_v2_5') { log(`TTS model ${model} rejected; retrying with eleven_flash_v2_5`); r = await call(preset.id, 'eleven_flash_v2_5'); }
+      // plans without v4 answer 402/403/422 → fall back to flash; a voice this account cannot use (404/400) → narrator
+      if ([402, 403, 422].includes(r.status) && model !== 'eleven_flash_v2_5') { log(`TTS model ${model} rejected (${r.status}); retrying with eleven_flash_v2_5`); r = await call(preset.id, 'eleven_flash_v2_5'); }
+      if (r.status === 404 || r.status === 400) { log(`TTS voice ${preset.key} (${preset.id}) rejected (${r.status}); retrying with ${DEFAULT_VOICE.name}`); r = await call(DEFAULT_VOICE.id, r.status === 400 ? 'eleven_flash_v2_5' : model); }
+      if (!r.ok) { const body = await r.text().catch(() => ''); logErr(`TTS failed ${r.status}: ${body.slice(0, 200)}`); }
     } catch (e) { logErr('ElevenLabs TTS fetch failed:', e.message); throw new HttpError(502, 'Could not reach ElevenLabs'); }
     if (!r.ok) throw await upstreamError(r, 'ElevenLabs TTS');
     audio = Buffer.from(await r.arrayBuffer());

@@ -630,7 +630,7 @@
       if (S.duels.some(d => d.friendId === friendId && d.status === 'pending')) return { ok: false, message: `${f.name} is still working on your last challenge.` };
       const a = Animals.A[p.species];
       const d = { id: uid(), friendId, friendName: f.name, petName: p.name, species: p.species, rarity: p.rarity, engine: a.minigame,
-        engineName: (global.Minigames && Minigames.ENGINES[a.minigame] ? Minigames.ENGINES[a.minigame].name : a.minigame),
+        engineName: (global.Minigames && Minigames.gameFor ? Minigames.gameFor(p.species).name : a.minigame),
         difficulty: tierOf(p.rarity) + 1, triesLeft: 3, status: 'pending', at: Date.now() };
       S.duels.unshift(d); S.duels = S.duels.slice(0, 8); save();
       return { ok: true, duel: d, message: `Sent! ${f.name} has 3 tries to beat ${p.name}'s ${d.engineName}. If they fail all 3, you win coins.` };

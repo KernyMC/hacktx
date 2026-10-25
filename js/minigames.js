@@ -68,6 +68,27 @@
     critter: ['..kkkk..', '.kllllk.', 'kllllllk', 'klkllklk', 'kllppllk', 'kllllllk', 'kllllllk', 'kllllllk'],
     heart: ['.kk..kk.', 'kppkkppk', 'kpwppppk', 'kppppppk', '.kppppk.', '..kppk..', '...kk...', '........'],
     bush: ['..kkkk..', '.kggggk.', 'kggwgggk', 'kgggggGk', 'kgGgggGk', 'kGGGGGGk'],
+    // skin props
+    cucumber: ['........', 'kk......', 'kGGk....', '.kGgGk..', '..kGgGk.', '...kGgGk', '....kGGk', '.....kk.'],
+    seed: ['...kk...', '..kyk...', '.kyyBk..', '.kyyBk..', '.kyBBk..', '.kBBk...', '..kk....', '........'],
+    muffin: ['..kkkk..', '.kbbbbk.', 'kbbkbbbk', 'kbbbbkbk', '.kkkkkk.', '.kyyyyk.', '.kykyyk.', '..kkkk..'],
+    mud: ['........', '........', '..kkkk..', '.kBBBBk.', 'kBbBBbBk', 'kBBBBBBk', '.kkkkkk.', '........'],
+    lily: ['........', '..kkk...', '.kggggk.', 'kggpggkk', 'kgggggk.', '.kgggk..', '..kkk...', '........'],
+    cactus: ['...kk...', '..kGGk..', 'kk.GG.kk', 'kGkGGkGk', 'kGGGGGGk', '.kkGGkk.', '..kGGk..', '..kGGk..'],
+    bone: ['kk....kk', 'kwkkkkwk', 'kwwwwwwk', 'kwkkkkwk', 'kk....kk'],
+    yuzu: ['...kG...', '..kkkk..', '.kooook.', 'koowoook', 'kooooook', '.kooook.', '..kkkk..', '........'],
+    grub: ['........', '..kkkk..', '.knnnnk.', 'knknnknk', 'knnnnnnk', '.knnnnk.', '..kkkk..', '........'],
+    scorpion: ['k.....k.', '.k...k.k', '..kkk.k.', '.kBBBk..', 'kBBBBBk.', '.kBBBk.k', 'k.k.k.kk', '.k...k..'],
+    anvil: ['kkkkkkkk', 'kSSSSSSk', '.kSSSSk.', '..kSSk..', '..kSSk..', '.kSSSSk.', 'kSSSSSSk', 'kkkkkkkk'],
+    beetle: ['..k..k..', '.kkkkkk.', 'kBBkkBBk', 'kBBBBBBk', 'kBwBBwBk', 'kBBBBBBk', '.kkkkkk.', '.k....k.'],
+    ice: ['..kkkk..', '.kiwiik.', 'kiiiiiik', 'kiiiwiik', 'kiiiiiik', '.kiiiik.', '..kkkk..', '........'],
+    shell: ['..kkkk..', '.kGgGgk.', 'kgGgGgGk', 'kGgGgGgk', 'kgGgGgGk', '.kkkkkk.', '.kyyyyk.', '..kkkk..'],
+    cheese: ['......k.', '....kkyk', '..kkyyyk', 'kkyykyyk', 'kyyyyyyk', 'kykyyyyk', 'kyyyykyk', 'kkkkkkkk'],
+    trash: ['.kkkkkk.', 'kSSSSSSk', '.kkkkkk.', '.kSsSSk.', '.kSsSSk.', '.kSsSSk.', '.kSsSSk.', '.kkkkkk.'],
+    snake: ['........', '..kkkk..', '.kGGGGk.', 'kGwkGGGk', 'kkkkkGGk', '....kGGk', 'kkkkkGk.', 'kGGGGk..'],
+    bamboo: ['..kuuk..', '..kuuk..', '.kkkkkk.', '..kuuk..', '..kuuk..', '.kkkkkk.', '..kuuk..', '..kuuk..'],
+    snow: ['...kk...', '.k.kk.k.', '..kkkk..', 'kkkwwkkk', 'kkkwwkkk', '..kkkk..', '.k.kk.k.', '...kk...'],
+    pizza: ['kkkkkkkk', 'kyyyyyyk', '.kyrykr.', '.kyyyyk.', '..kryk..', '..kyyk..', '...kk...', '........'],
   };
   function spr(c, name, x, y, s) {
     const g = SPR[name];
@@ -122,11 +143,12 @@
       rect(c, 0, groundY - 40, W, 40, opts.sky2 || C.sky2);
       drawClouds(c, t, opts.cloudSpeed || 6, 18);
     }
-    rect(c, 0, groundY, W, H - groundY, C.grass);
+    const g1 = opts.ground || C.grass, g2 = opts.ground2 || C.grass2;
+    rect(c, 0, groundY, W, H - groundY, g1);
     rect(c, 0, groundY, W, 3, C.ink);
-    rect(c, 0, groundY + 3, W, 4, C.grass2);
+    rect(c, 0, groundY + 3, W, 4, g2);
     const off = opts.scroll ? (opts.scroll % 24) : 0;
-    for (let x = -off; x < W; x += 24) rect(c, x + 6, groundY + 14, 6, 3, C.grass2);
+    for (let x = -off; x < W; x += 24) rect(c, x + 6, groundY + 14, 6, 3, g2);
   }
 
   function text(c, str, x, y, size, col, align, outline) {
@@ -174,21 +196,23 @@
       desc: 'Slide left and right to catch falling snacks. Dodge the rocks!',
       controls: 'Drag, or arrow keys',
       make(G) {
-        const d = G.d;
+        const d = G.d, sk = G.skin;
         G.mode = 'score'; G.duration = 20; G.target = 8 + d * 3; G.hearts = 3;
         const groundY = H - 34, px = 3;
         const me = mover(G, 210 + d * 18);
         const items = [];
+        const good = sk.good || ['berry', 'cookie', 'star', 'fish'], bad = sk.bad || 'rock';
+        const badRate = sk.badRate != null ? sk.badRate : 0.16;
         let spawn = 0.3;
-        const fall = () => 80 + d * 20 + G.t * 3;
+        const fall = () => (80 + d * 20 + G.t * 3) * (sk.speed || 1);
         return {
           update(dt) {
             me.update(dt);
             spawn -= dt;
             if (spawn <= 0) {
-              spawn = rnd(0.6, 0.95) - d * 0.07;
-              const rock = Math.random() < 0.16 + d * 0.05;
-              items.push({ x: rnd(18, W - 18), y: -14, vy: fall() * rnd(0.85, 1.2), kind: rock ? 'rock' : pick(['berry', 'cookie', 'star', 'fish']), wob: rnd(0, 6) });
+              spawn = (rnd(0.6, 0.95) - d * 0.07) / (sk.speed || 1);
+              const rock = Math.random() < badRate + d * 0.05;
+              items.push({ x: rnd(18, W - 18), y: -14, vy: fall() * rnd(0.85, 1.2), kind: rock ? bad : pick(good), wob: rnd(0, 6) });
             }
             const top = groundY - 16 * px + 14;
             for (let i = items.length - 1; i >= 0; i--) {
@@ -196,19 +220,19 @@
               it.y += it.vy * dt;
               if (it.y + 10 > top && it.y < groundY && Math.abs(it.x - me.x) < 26) {
                 items.splice(i, 1);
-                if (it.kind === 'rock') { G.burst(it.x, it.y, C.stone, 12); G.hurt(); }
-                else { G.burst(it.x, it.y, it.kind === 'berry' ? C.pink : it.kind === 'fish' ? C.lilac : C.gold, 10); G.pop(it.x, it.y - 10, '+1', C.gold); sfx('xp'); G.petAnim('eat', 0.3); G.addScore(1); }
+                if (it.kind === bad) { G.burst(it.x, it.y, sk.badCol || C.stone, 12); G.pop(it.x, it.y - 10, sk.badText || 'OUCH', C.pink); G.hurt(); }
+                else { G.burst(it.x, it.y, sk.accent || (it.kind === 'berry' ? C.pink : it.kind === 'fish' ? C.lilac : C.gold), 10); G.pop(it.x, it.y - 10, '+1', C.gold); sfx('xp'); G.petAnim('eat', 0.3); G.addScore(1); }
               } else if (it.y > groundY + 4) {
                 items.splice(i, 1);
-                if (it.kind === 'rock') { G.burst(it.x, groundY, C.stone2, 6); G.shake(2); }
+                if (it.kind === bad) { G.burst(it.x, groundY, sk.badCol || C.stone2, 6); G.shake(2); }
                 else G.burst(it.x, groundY, C.white, 4);
               }
             }
           },
           draw(c) {
-            drawSkyGround(c, G.t, groundY);
-            for (const it of items) sprC(c, it.kind, it.x + (it.kind === 'rock' ? Math.sin(G.t * 9 + it.wob) * 1.5 : 0), it.y, 3);
-            rect(c, me.x - 20, groundY + 2, 40, 4, C.grass2);
+            drawSkyGround(c, G.t, groundY, { sky: sk.sky, sky2: sk.sky2, ground: sk.ground, ground2: sk.ground2 });
+            for (const it of items) sprC(c, it.kind, it.x + (it.kind === bad ? Math.sin(G.t * 9 + it.wob) * 1.5 : 0), it.y, 3);
+            rect(c, me.x - 20, groundY + 2, 40, 4, sk.ground2 || C.grass2);
             drawPet(c, G.pet, me.x, groundY + 2 + (me.moving ? -Math.abs(Math.sin(G.t * 16)) * 3 : 0), px, G.petOpts({ flip: me.flip }));
           },
         };
@@ -221,14 +245,15 @@
       desc: 'Tap to jump over everything coming your way. Survive the timer!',
       controls: 'Tap, Space or Up',
       make(G) {
-        const d = G.d;
+        const d = G.d, sk = G.skin;
         G.mode = 'survive'; G.duration = 18; G.hearts = d <= 2 ? 3 : 2;
         const groundY = H - 50, px = 2.5, petX = 70;
-        const maxJumps = d <= 2 ? 2 : 1;
+        const maxJumps = sk.maxJumps || (d <= 2 ? 2 : 1);
         const grav = 1600, jumpV = 560;
+        const bushSpr = sk.bush || 'bush', hillCol = sk.hill || C.lilac;
         let py = 0, vy = 0, jumps = 0, invul = 0, scroll = 0, nextGap = 220, wasAir = false;
         const obs = [];
-        const speed = () => 150 + d * 22 + G.t * 4;
+        const speed = () => (150 + d * 22 + G.t * 4) * (sk.speed || 1);
         function jump() {
           if (jumps < maxJumps) {
             vy = jumps === 0 ? jumpV : jumpV * 0.85; jumps++; sfx('tap');
@@ -272,23 +297,24 @@
             }
           },
           draw(c) {
-            rect(c, 0, 0, W, H, C.sky);
+            rect(c, 0, 0, W, H, sk.sky || C.sky);
             drawClouds(c, G.t, 10, 16);
             // parallax hills
             const hs = (scroll * 0.25) % 120;
             for (let x = -hs - 20; x < W + 120; x += 120) {
-              rect(c, x, groundY - 46, 80, 46, C.lilac); rect(c, x + 14, groundY - 62, 52, 16, C.lilac);
-              rect(c, x + 28, groundY - 70, 24, 8, C.lilac);
+              rect(c, x, groundY - 46, 80, 46, hillCol); rect(c, x + 14, groundY - 62, 52, 16, hillCol);
+              rect(c, x + 28, groundY - 70, 24, 8, hillCol);
             }
             const ts = (scroll * 0.5) % 90;
-            for (let x = -ts; x < W + 90; x += 90) { rect(c, x + 10, groundY - 26, 10, 26, C.brown2); rect(c, x, groundY - 46, 30, 24, C.grass2); rect(c, x + 4, groundY - 52, 22, 8, C.grass2); }
-            drawSkyGround(c, 0, groundY, { scroll, groundOnly: true });
+            if (!sk.noTrees) for (let x = -ts; x < W + 90; x += 90) { rect(c, x + 10, groundY - 26, 10, 26, C.brown2); rect(c, x, groundY - 46, 30, 24, C.grass2); rect(c, x + 4, groundY - 52, 22, 8, C.grass2); }
+            else for (let x = -ts; x < W + 90; x += 90) spr(c, sk.deco || 'cactus', x, groundY - 24, 3);
+            drawSkyGround(c, 0, groundY, { scroll, groundOnly: true, ground: sk.ground, ground2: sk.ground2 });
             for (const o of obs) {
-              if (o.type === 'bush') spr(c, 'bush', o.x, groundY - o.h, 3);
+              if (o.type === 'bush') spr(c, bushSpr, o.x, groundY - o.h, 3);
               else if (o.type === 'rock') { spr(c, 'rock', o.x - 1, groundY - 24, 3); spr(c, 'rock', o.x + 2, groundY - 40, 2.5); }
               else { box(c, o.x, groundY - o.h, o.w, o.h, C.brown); rect(c, o.x + 6, groundY - o.h + 7, o.w - 12, 2, C.brown2); box(c, o.x + o.w - 14, groundY - o.h, 14, o.h, C.sand2); rect(c, o.x + o.w - 9, groundY - o.h + 7, 4, 6, C.brown); }
             }
-            rect(c, petX - 14 + py * 0.05, groundY + 1, 28 - py * 0.1, 4, C.grass2);
+            rect(c, petX - 14 + py * 0.05, groundY + 1, 28 - py * 0.1, 4, sk.ground2 || C.grass2);
             if (!(invul > 0 && Math.floor(invul * 12) % 2)) {
               drawPet(c, G.pet, petX, groundY + 2 - py, px, G.petOpts({ anim: py > 0 ? 'happy' : null }));
             }
@@ -303,11 +329,12 @@
       desc: 'Watch the pads light up, then repeat the tune in order.',
       controls: 'Tap pads, or arrows / 1-4',
       make(G) {
-        const d = G.d;
+        const d = G.d, sk = G.skin;
         G.mode = 'custom'; G.noClock = true;
         G.target = [4, 5, 6, 7, 7][d - 1]; G.hearts = d <= 2 ? 2 : 1;
-        const cols = [C.pink, C.gold, C.mint, C.sky];
-        const dark = ['#c2577a', '#c69c34', '#4fae86', '#6e9fc6'];
+        const cols = (sk.cols || [C.pink, C.gold, C.mint, C.sky]).slice();
+        const dark = (sk.dark || ['#c2577a', '#c69c34', '#4fae86', '#6e9fc6']).slice();
+        const style = sk.style || 'plain', bg = sk.bg || C.ink;
         const notes = [523, 659, 784, 1047];
         const m = 12, gap = 10, pw = (W - 2 * m - gap) / 2, ph = (H - 2 * m - gap) / 2;
         const pads = [0, 1, 2, 3].map(i => ({ x: m + (i % 2) * (pw + gap), y: m + (i >> 1) * (ph + gap), lit: 0 }));
@@ -329,7 +356,10 @@
               if (G.score >= G.target) { G.end(true); return; }
               sfx('accept'); seq.push(pick([0, 1, 2, 3]));
               if (seq.length < 3) seq.push(pick([0, 1, 2, 3]));
-              state = 'pause'; timer = 0.8; msg = 'NICE!';
+              if (sk.shuffle) { // chameleon twist: colours move, positions stay
+                for (let k = 3; k > 0; k--) { const j = (Math.random() * (k + 1)) | 0; [cols[k], cols[j]] = [cols[j], cols[k]]; [dark[k], dark[j]] = [dark[j], dark[k]]; }
+              }
+              state = 'pause'; timer = 0.8; msg = sk.shuffle ? 'SHIFT!' : 'NICE!';
             }
           } else fail();
         }
@@ -365,14 +395,31 @@
             }
           },
           draw(c) {
-            rect(c, 0, 0, W, H, C.ink);
+            rect(c, 0, 0, W, H, bg);
             for (let i = 0; i < 4; i++) {
               const p = pads[i], on = p.lit > 0;
               const yy = on ? p.y + 2 : p.y;
               if (!on) rect(c, p.x + 4, p.y + 4, pw, ph, '#1a1428');
-              box(c, p.x, yy, pw, ph, on ? cols[i] : dark[i], 3);
-              rect(c, p.x + 8, yy + 8, pw - 16, 4, on ? C.white : cols[i]);
-              rect(c, p.x + 8, yy + 8, 4, ph - 30, on ? C.white : cols[i]);
+              if (style === 'eyes') {
+                // a dark pad with a pair of owl eyes that glow when lit
+                box(c, p.x, yy, pw, ph, on ? dark[i] : '#1d1733', 3);
+                const ex = p.x + pw / 2, ey = yy + ph / 2 - 6, er = on ? 22 : 16;
+                for (const sgn of [-1, 1]) {
+                  const cx = ex + sgn * 34;
+                  rect(c, cx - er, ey - er * 0.8, er * 2, er * 1.6, C.ink);
+                  rect(c, cx - er + 3, ey - er * 0.8 + 3, er * 2 - 6, er * 1.6 - 6, on ? cols[i] : '#4a3f6e');
+                  rect(c, cx - 5, ey - 6, 10, 12, C.ink);
+                  if (on) rect(c, cx - 8, ey - er * 0.8 + 6, 5, 5, C.white);
+                }
+                rect(c, ex - 4, ey + 22, 8, 10, on ? C.orange : '#3a2f58');
+              } else if (style === 'bamboo') {
+                box(c, p.x, yy, pw, ph, on ? cols[i] : dark[i], 3);
+                for (let k = 10; k < pw - 10; k += 22) { rect(c, p.x + k, yy + 6, 8, ph - 12, on ? C.white : cols[i]); rect(c, p.x + k - 2, yy + ph / 3, 12, 4, C.ink); rect(c, p.x + k - 2, yy + 2 * ph / 3, 12, 4, C.ink); }
+              } else {
+                box(c, p.x, yy, pw, ph, on ? cols[i] : dark[i], 3);
+                rect(c, p.x + 8, yy + 8, pw - 16, 4, on ? C.white : cols[i]);
+                rect(c, p.x + 8, yy + 8, 4, ph - 30, on ? C.white : cols[i]);
+              }
               if (on) for (let k = 0; k < 6; k++) rect(c, p.x + 14 + ((k * 37) % (pw - 30)), yy + 20 + ((k * 23) % (ph - 40)), 4, 4, C.white);
             }
             // centre badge with the pet
@@ -391,10 +438,11 @@
       desc: 'Tap when the cursor is inside the green zone. It gets faster!',
       controls: 'Tap or Space',
       make(G) {
-        const d = G.d;
+        const d = G.d, sk = G.skin;
         G.mode = 'score'; G.duration = 25; G.target = 4 + d; G.hearts = 3;
         const bx = 26, bw = W - 52, by = 216, bh = 30;
-        let p = 0, dir = 1, speed = 0.5 + d * 0.11, zw = 0.3 - d * 0.03, zc = 0.5, cool = 0, jumpT = 0, flashT = 0, flashCol = C.mint;
+        const zoneCol = sk.zone || C.mint, label = sk.label || 'TAP IN THE GREEN';
+        let p = 0, dir = 1, speed = (0.5 + d * 0.11) * (sk.speed || 1), zw = 0.3 - d * 0.03, zc = 0.5, cool = 0, jumpT = 0, flashT = 0, flashCol = C.mint;
         function newZone() { zc = rnd(zw / 2 + 0.04, 1 - zw / 2 - 0.04); }
         newZone();
         function tap() {
@@ -424,10 +472,11 @@
             if (p < 0) { p = -p; dir = 1; sfx('tick'); }
           },
           draw(c) {
-            drawSkyGround(c, G.t, 176);
+            drawSkyGround(c, G.t, 176, { sky: sk.sky, sky2: sk.sky2, ground: sk.ground, ground2: sk.ground2 });
+            if (sk.steam) for (let k = 0; k < 6; k++) { const sy = 150 - ((G.t * 30 + k * 40) % 120); rect(c, 40 + k * 56 + Math.sin(G.t * 2 + k) * 6, sy, 10, 6, 'rgba(255,255,255,.55)'); }
             // platform + pet
             const jy = jumpT > 0 ? Math.sin((jumpT / 0.45) * Math.PI) * 34 : 0;
-            box(c, W / 2 - 40, 168, 80, 12, C.panel2);
+            box(c, W / 2 - 40, 168, 80, 12, sk.platform || C.panel2);
             drawPet(c, G.pet, W / 2, 170 - jy, 3.6, G.petOpts());
             // target pips
             for (let i = 0; i < G.target; i++) {
@@ -438,15 +487,16 @@
             rect(c, bx + 4, by + 4, bw, bh, C.ink);
             box(c, bx, by, bw, bh, flashT > 0 ? flashCol : C.panel2, 3);
             const zx = bx + (zc - zw / 2) * bw;
-            rect(c, zx, by + 3, zw * bw, bh - 6, C.mint);
+            rect(c, zx, by + 3, zw * bw, bh - 6, zoneCol);
             rect(c, bx + (zc - zw * 0.15) * bw, by + 3, zw * 0.3 * bw, bh - 6, C.gold);
             rect(c, zx, by + 3, 2, bh - 6, C.grass2); rect(c, zx + zw * bw - 2, by + 3, 2, bh - 6, C.grass2);
             // cursor
             const cx = bx + p * bw;
             rect(c, cx - 3, by - 12, 6, bh + 24, C.ink);
             rect(c, cx - 1, by - 10, 2, bh + 20, C.pink);
-            rect(c, cx - 7, by - 16, 14, 6, C.ink); rect(c, cx - 5, by - 14, 10, 2, C.pink);
-            text(c, 'TAP IN THE GREEN', W / 2, by + bh + 22, 8, C.ink2);
+            if (sk.prop) sprC(c, sk.prop, cx, by - 22, 2.5);
+            else { rect(c, cx - 7, by - 16, 14, 6, C.ink); rect(c, cx - 5, by - 14, 10, 2, C.pink); }
+            text(c, label, W / 2, by + bh + 22, 8, C.ink2);
           },
         };
       },
@@ -458,8 +508,10 @@
       desc: 'Tap critters as they pop up. Your pet is worth 3. Never tap a bomb!',
       controls: 'Tap, or keys 1-9',
       make(G) {
-        const d = G.d;
+        const d = G.d, sk = G.skin;
         G.mode = 'score'; G.duration = 20; G.target = 10 + d * 3; G.hearts = 3;
+        const critSpr = sk.critter || 'critter', bombSpr = sk.bomb || 'bomb';
+        const g1 = sk.ground || C.grass, g2 = sk.ground2 || C.grass2;
         const xs = [66, 180, 294], ys = [104, 184, 264];
         const holes = [];
         for (let r = 0; r < 3; r++) for (let q = 0; q < 3; q++) holes.push({ x: xs[q], y: ys[r], item: null });
@@ -517,9 +569,9 @@
             }
           },
           draw(c) {
-            rect(c, 0, 0, W, H, C.grass);
-            for (let i = 0; i < 40; i++) rect(c, (i * 83) % W, (i * 47) % H, 6, 3, C.grass2);
-            rect(c, 0, 0, W, 50, C.sky);
+            rect(c, 0, 0, W, H, g1);
+            for (let i = 0; i < 40; i++) rect(c, (i * 83) % W, (i * 47) % H, 6, 3, g2);
+            rect(c, 0, 0, W, 50, sk.sky || C.sky);
             drawClouds(c, G.t, 5, 8);
             rect(c, 0, 50, W, 3, C.ink);
             for (const h of holes) {
@@ -535,9 +587,9 @@
                 const lift = vis * 58;
                 const base = h.y + 56 - lift;
                 if (it.kind === 'pet') drawPet(c, G.pet, h.x, base - 4, 3, G.petOpts({ anim: it.bonk ? 'happy' : 'idle' }));
-                else if (it.kind === 'bomb') { sprC(c, 'bomb', h.x, base - 24, 5); if (Math.floor(G.t * 10) % 2) rect(c, h.x + 12, base - 46, 4, 4, C.gold); }
+                else if (it.kind === 'bomb') { sprC(c, bombSpr, h.x, base - 24, 5); if (bombSpr === 'bomb' && Math.floor(G.t * 10) % 2) rect(c, h.x + 12, base - 46, 4, 4, C.gold); }
                 else {
-                  sprC(c, 'critter', h.x, base - 22, 5.5);
+                  sprC(c, critSpr, h.x, base - 22, 5.5);
                   if (it.bonk) { rect(c, h.x - 14, base - 30, 8, 3, C.ink); rect(c, h.x + 6, base - 30, 8, 3, C.ink); }
                 }
                 c.restore();
@@ -558,11 +610,13 @@
       desc: 'Things are falling from the sky! Slide to dodge and survive.',
       controls: 'Drag, or arrow keys',
       make(G) {
-        const d = G.d;
+        const d = G.d, sk = G.skin;
         G.mode = 'survive'; G.duration = 20; G.hearts = 3;
         const groundY = H - 30, px = 2.6;
         const me = mover(G, 230 + d * 15);
         const hz = [];
+        const hazards = sk.hazards || ['rock', 'flame', 'acorn'];
+        const bigRate = sk.bigRate != null ? sk.bigRate : (d >= 4 ? 0.12 : 0);
         let spawn = 0.6, invul = 0;
         G.hudLeft = () => 'Dodged ' + G.score;
         return {
@@ -571,11 +625,11 @@
             invul = Math.max(0, invul - dt);
             spawn -= dt;
             if (spawn <= 0) {
-              spawn = Math.max(0.16, rnd(0.5, 0.75) - d * 0.075 - G.t * 0.008);
-              const big = d >= 4 && Math.random() < 0.12;
-              const k = big ? 'rock' : pick(['rock', 'flame', 'acorn']);
+              spawn = Math.max(0.16, rnd(0.5, 0.75) - d * 0.075 - G.t * 0.008) / (sk.speed || 1);
+              const big = Math.random() < bigRate;
+              const k = big ? (sk.big || 'rock') : pick(hazards);
               const aim = Math.random() < 0.3 ? me.x + rnd(-30, 30) : rnd(14, W - 14);
-              hz.push({ x: clamp(aim, 12, W - 12), y: -20, vy: (110 + d * 26 + G.t * 4) * rnd(0.85, 1.2) * (big ? 0.8 : 1), vx: d >= 3 && Math.random() < 0.3 ? rnd(-50, 50) : 0, k, s: big ? 5 : 3, r: big ? 18 : 10 });
+              hz.push({ x: clamp(aim, 12, W - 12), y: -20, vy: (110 + d * 26 + G.t * 4) * rnd(0.85, 1.2) * (big ? 0.8 : 1) * (sk.speed || 1), vx: d >= 3 && Math.random() < 0.3 ? rnd(-50, 50) : 0, k, s: big ? 5 : 3, r: big ? 18 : 10 });
             }
             for (let i = hz.length - 1; i >= 0; i--) {
               const o = hz[i];
@@ -595,11 +649,12 @@
             }
           },
           draw(c) {
-            drawSkyGround(c, G.t, groundY, { sky: '#b9b0e8', sky2: '#d8d1f7' });
+            drawSkyGround(c, G.t, groundY, { sky: sk.sky || '#b9b0e8', sky2: sk.sky2 || '#d8d1f7', ground: sk.ground, ground2: sk.ground2 });
+            if (sk.mountains) for (let i = 0; i < 5; i++) { const mx = i * 90 - 30; rect(c, mx, groundY - 70, 100, 70, C.stone2); rect(c, mx + 20, groundY - 100, 60, 30, C.stone2); rect(c, mx + 34, groundY - 112, 32, 14, C.white); }
             for (const o of hz) {
               // landing shadow
               const k = clamp(o.y / groundY, 0, 1);
-              rect(c, o.x - o.r * k, groundY + 2, o.r * 2 * k, 3, C.grass2);
+              rect(c, o.x - o.r * k, groundY + 2, o.r * 2 * k, 3, sk.ground2 || C.grass2);
               sprC(c, o.k, o.x, o.y, o.s);
             }
             if (!(invul > 0 && Math.floor(invul * 12) % 2)) drawPet(c, G.pet, me.x, groundY + 2 + (me.moving ? -Math.abs(Math.sin(G.t * 16)) * 3 : 0), px, G.petOpts({ flip: me.flip }));
@@ -695,7 +750,369 @@
         };
       },
     },
+
+    // ------------------------------------------------------------------
+    dig: {
+      name: 'Snack Dig',
+      desc: 'Tap dirt tiles to dig up every buried snack before time runs out. Rocks cost a heart. Sparkles hint at snacks, cracks hint at rocks!',
+      controls: 'Tap tiles, or arrows + Space',
+      make(G) {
+        const d = G.d, sk = G.skin;
+        G.mode = 'score'; G.duration = 20; G.target = 4 + d; G.hearts = 3;
+        const snackSpr = sk.snack || 'cookie', rockSpr = sk.rock || 'rock';
+        const dirt = sk.dirt || C.brown, dirt2 = sk.dirt2 || C.brown2, dug = sk.dug || '#4b3024';
+        const N = 4, m = 18, top = 54, cell = (W - 2 * m) / N, ch = (H - top - 10) / N;
+        const tiles = [];
+        for (let i = 0; i < 16; i++) tiles.push({ kind: 'empty', open: false, hint: 0, wob: rnd(0, 6) });
+        const idxs = tiles.map((_, i) => i).sort(() => Math.random() - 0.5);
+        const nRock = Math.min(1 + d, 15 - G.target);
+        for (let i = 0; i < G.target; i++) tiles[idxs[i]].kind = 'snack';
+        for (let i = 0; i < nRock; i++) tiles[idxs[G.target + i]].kind = 'rock';
+        let cur = 5, hintT = 0.8, flashCur = 0;
+        const hintEvery = 1.0 + d * 0.22;
+        const centre = (i) => [m + (i % N) * cell + cell / 2, top + ((i / N) | 0) * ch + ch / 2];
+        function dig(i) {
+          const t = tiles[i]; if (!t || t.open) return;
+          t.open = true; cur = i;
+          const [cx, cy] = centre(i);
+          G.burst(cx, cy, dirt2, 10); sfx('crack'); G.petAnim('eat', 0.3);
+          if (t.kind === 'snack') { G.pop(cx, cy - 14, '+1', C.gold); sfx('xp'); G.addScore(1); }
+          else if (t.kind === 'rock') { G.shake(6); G.pop(cx, cy - 14, sk.rockText || 'ROCK', C.pink); G.hurt(); }
+          else G.pop(cx, cy - 14, '...', C.ink2);
+        }
+        G.hudLeft = () => 'Found ' + G.score + ' / ' + G.target;
+        return {
+          down(x, y) { if (y < top) return; const gx = clamp(((x - m) / cell) | 0, 0, N - 1), gy = clamp(((y - top) / ch) | 0, 0, N - 1); dig(gy * N + gx); },
+          key(k) {
+            if (k === 'ArrowLeft' || k === 'a' || k === 'A') cur = cur % N === 0 ? cur : cur - 1;
+            else if (k === 'ArrowRight' || k === 'd' || k === 'D') cur = cur % N === N - 1 ? cur : cur + 1;
+            else if (k === 'ArrowUp' || k === 'w' || k === 'W') cur = cur < N ? cur : cur - N;
+            else if (k === 'ArrowDown' || k === 's' || k === 'S') cur = cur >= 12 ? cur : cur + N;
+            else if (k === ' ' || k === 'Spacebar' || k === 'Enter') dig(cur);
+            else return;
+            flashCur = 1.5; sfx('tick');
+          },
+          update(dt) {
+            hintT -= dt; flashCur = Math.max(0, flashCur - dt);
+            for (const t of tiles) t.hint = Math.max(0, t.hint - dt);
+            if (hintT <= 0) { hintT = hintEvery; const hidden = tiles.filter(t => !t.open && t.kind !== 'empty'); if (hidden.length) pick(hidden).hint = 0.7; }
+          },
+          draw(c) {
+            rect(c, 0, 0, W, H, sk.sky || C.sky);
+            rect(c, 0, top - 8, W, H, dirt); rect(c, 0, top - 8, W, 3, C.ink);
+            drawPet(c, G.pet, 40, top - 8, 2.6, G.petOpts());
+            text(c, sk.hudText || 'DIG FOR SNACKS', W / 2 + 20, 26, 8, C.white, 'center', true);
+            for (let i = 0; i < 16; i++) {
+              const t = tiles[i], x = m + (i % N) * cell, y = top + ((i / N) | 0) * ch;
+              if (t.open) {
+                box(c, x + 3, y + 3, cell - 6, ch - 6, dug, 2);
+                if (t.kind === 'snack') sprC(c, snackSpr, x + cell / 2, y + ch / 2, 3);
+                else if (t.kind === 'rock') sprC(c, rockSpr, x + cell / 2, y + ch / 2, 3.5);
+                else rect(c, x + cell / 2 - 8, y + ch / 2 - 2, 16, 4, '#2c1a12');
+              } else {
+                box(c, x + 3, y + 3, cell - 6, ch - 6, dirt2, 2);
+                for (let k = 0; k < 5; k++) rect(c, x + 10 + ((k * 29 + i * 7) % (cell - 24)), y + 10 + ((k * 17 + i * 11) % (ch - 20)), 5, 3, dirt);
+                if (t.hint > 0 && Math.floor(G.t * 10) % 2 === 0) {
+                  if (t.kind === 'snack') sprC(c, 'star', x + cell / 2 + Math.sin(t.wob) * 14, y + 14, 1.5);
+                  else { rect(c, x + cell / 2 - 1, y + 12, 2, ch - 24, C.ink); rect(c, x + cell / 2 - 8, y + ch / 2, 8, 2, C.ink); }
+                }
+              }
+              if (i === cur && flashCur > 0) { rect(c, x + 1, y + 1, cell - 2, 3, C.gold); rect(c, x + 1, y + ch - 4, cell - 2, 3, C.gold); rect(c, x + 1, y + 1, 3, ch - 2, C.gold); rect(c, x + cell - 4, y + 1, 3, ch - 2, C.gold); }
+            }
+          },
+        };
+      },
+    },
+
+    // ------------------------------------------------------------------
+    fly: {
+      name: 'Gap Flap',
+      desc: 'Tap to flap. Glide through the gaps and do not clip the edges!',
+      controls: 'Tap, Space or Up',
+      make(G) {
+        const d = G.d, sk = G.skin;
+        G.mode = 'score'; G.duration = 20; G.target = 6 + d * 2; G.hearts = 3;
+        const px = 2.2, petX = 90, size = 14;
+        const grav = 1150, flapV = -330;
+        const speed = () => (120 + d * 16 + G.t * 2) * (sk.speed || 1);
+        const gapH = Math.max(70, 118 - d * 8);
+        const style = sk.gate || 'pipes';
+        let y = H / 2, vy = 0, invul = 0, nextGate = 160, scroll = 0, flapT = 0;
+        const gates = [];
+        function flap() { vy = flapV; flapT = 0.2; sfx('tap'); G.burst(petX - 10, y + 10, C.white, 3); }
+        G.hudLeft = () => 'Passed ' + G.score + ' / ' + G.target;
+        return {
+          action: flap, down: flap,
+          update(dt) {
+            const sp = speed(); scroll += sp * dt; invul = Math.max(0, invul - dt); flapT = Math.max(0, flapT - dt);
+            vy += grav * dt; y += vy * dt;
+            if (y < 14) { y = 14; vy = 0; }
+            if (y > H - 30) { y = H - 30; vy = -140; if (invul <= 0) { invul = 1; G.burst(petX, y + 12, C.stone, 10); G.hurt(); } }
+            nextGate -= sp * dt;
+            if (nextGate <= 0) { nextGate = 150 + Math.max(0, 40 - d * 8); gates.push({ x: W + 30, gy: rnd(50, H - 60 - gapH), w: 34, passed: false }); }
+            for (let i = gates.length - 1; i >= 0; i--) {
+              const g = gates[i]; g.x -= sp * dt;
+              const inX = petX + size > g.x && petX - size < g.x + g.w;
+              if (inX && invul <= 0 && (y - size < g.gy || y + size > g.gy + gapH)) { invul = 1.1; G.burst(petX, y, sk.accent || C.stone, 12); G.hurt(); }
+              if (!g.passed && g.x + g.w < petX - size) { g.passed = true; G.pop(petX, y - 26, '+1', C.gold); sfx('xp'); G.petAnim('happy', 0.3); G.addScore(1); }
+              if (g.x < -60) gates.splice(i, 1);
+            }
+          },
+          draw(c) {
+            rect(c, 0, 0, W, H, sk.sky || C.sky);
+            if (sk.sky2) rect(c, 0, H * 0.5, W, H * 0.5, sk.sky2);
+            if (style === 'arch') { // Austin dusk: skyline, bats, Lady Bird Lake
+              for (let i = 0; i < 9; i++) { const bx = ((i * 47 - scroll * 0.15) % (W + 60) + W + 60) % (W + 60) - 30; const bh = 30 + (i * 37) % 60; rect(c, bx, H - 40 - bh, 22 + (i % 3) * 8, bh, '#3b2a5e'); for (let k = 0; k < 3; k++) rect(c, bx + 4 + k * 6, H - 40 - bh + 8 + (k * 11) % 20, 3, 3, C.gold); }
+              for (let i = 0; i < 6; i++) { const bx = ((i * 97 - scroll * 0.35) % (W + 40) + W + 40) % (W + 40) - 20, byy = 30 + (i * 31) % 70, fl = Math.floor(G.t * 8 + i) % 2 ? 2 : 0; rect(c, bx, byy, 4, 2, C.ink); rect(c, bx - 4, byy - fl, 4, 2, C.ink); rect(c, bx + 4, byy - fl, 4, 2, C.ink); }
+              rect(c, 0, H - 40, W, 40, '#2a3e6e'); rect(c, 0, H - 40, W, 2, '#6f8fd0');
+              for (let i = 0; i < 6; i++) { const bx = ((i * 73 - scroll * 0.5) % (W + 40) + W + 40) % (W + 40) - 20; rect(c, bx, H - 24 + (i % 3) * 5, 14, 2, '#6f8fd0'); }
+            } else {
+              drawClouds(c, G.t, 14, 20);
+              if (style === 'reeds') { rect(c, 0, H - 40, W, 40, sk.water || '#5fb6e8'); rect(c, 0, H - 40, W, 3, C.ink); for (let i = 0; i < 8; i++) rect(c, ((i * 53 - scroll * 0.6) % (W + 20) + W + 20) % (W + 20) - 10, H - 28 + (i % 3) * 4, 16, 2, C.white); }
+              else { rect(c, 0, H - 24, W, 24, sk.ground || C.grass); rect(c, 0, H - 24, W, 3, C.ink); }
+            }
+            for (const g of gates) {
+              if (style === 'arch') {
+                box(c, g.x, 0, g.w, g.gy, C.stone, 3); box(c, g.x, g.gy + gapH, g.w, H - g.gy - gapH, C.stone, 3);
+                for (let k = 8; k < g.gy - 8; k += 12) rect(c, g.x + 6 + (k % 24 ? 0 : 10), k, 10, 3, C.stone2);
+                for (let k = g.gy + gapH + 8; k < H - 8; k += 12) rect(c, g.x + 6 + (k % 24 ? 0 : 10), k, 10, 3, C.stone2);
+                rect(c, g.x - 6, g.gy - 8, g.w + 12, 8, C.ink); rect(c, g.x - 4, g.gy - 6, g.w + 8, 4, C.stone2);
+                rect(c, g.x - 6, g.gy + gapH, g.w + 12, 8, C.ink); rect(c, g.x - 4, g.gy + gapH + 2, g.w + 8, 4, C.stone2);
+              } else if (style === 'reeds') {
+                for (let k = 0; k < 3; k++) {
+                  const rx = g.x + 4 + k * 11;
+                  rect(c, rx, 0, 6, g.gy, C.ink); rect(c, rx + 1, 0, 4, g.gy - 2, C.grass2); rect(c, rx - 1, g.gy - 18, 8, 14, C.brown2);
+                  rect(c, rx, g.gy + gapH, 6, H - g.gy - gapH, C.ink); rect(c, rx + 1, g.gy + gapH + 2, 4, H, C.grass2); rect(c, rx - 1, g.gy + gapH + 4, 8, 14, C.brown2);
+                }
+              } else {
+                box(c, g.x, 0, g.w, g.gy, C.mint, 3); box(c, g.x, g.gy + gapH, g.w, H - g.gy - gapH, C.mint, 3);
+                box(c, g.x - 4, g.gy - 14, g.w + 8, 14, C.mint, 3); box(c, g.x - 4, g.gy + gapH, g.w + 8, 14, C.mint, 3);
+              }
+            }
+            if (!(invul > 0 && Math.floor(invul * 12) % 2)) {
+              c.save(); c.translate(petX, y); c.rotate(clamp(vy / 600, -0.5, 0.6));
+              drawPet(c, G.pet, 0, 8 * px, px, G.petOpts({ anim: flapT > 0 ? 'happy' : null }));
+              c.restore();
+            }
+          },
+        };
+      },
+    },
+
+    // ------------------------------------------------------------------
+    swim: {
+      name: 'Lane Swim',
+      desc: 'Switch lanes to snap up fish. Steer clear of whatever floats downstream!',
+      controls: 'Tap above / below your pet, or Up / Down',
+      make(G) {
+        const d = G.d, sk = G.skin;
+        G.mode = 'score'; G.duration = 20; G.target = 8 + d * 2; G.hearts = 3;
+        const lanes = [92, 170, 248], petX = 70, px = 2.6;
+        const good = sk.fish || ['fish'], bad = sk.hazard || 'log';
+        const speed = () => (130 + d * 22 + G.t * 3) * (sk.speed || 1);
+        let lane = 1, py = lanes[1], invul = 0, spawn = 0.5, scroll = 0;
+        const items = [];
+        function go(dir) { const n = clamp(lane + dir, 0, 2); if (n !== lane) { lane = n; sfx('tap'); G.burst(petX, py + 14, C.white, 4); } }
+        G.hudLeft = () => 'Fish ' + G.score + ' / ' + G.target;
+        return {
+          down(x, y) { if (y < py - 18) go(-1); else if (y > py + 18) go(1); },
+          key(k) { if (k === 'ArrowUp' || k === 'w' || k === 'W') go(-1); else if (k === 'ArrowDown' || k === 's' || k === 'S') go(1); },
+          update(dt) {
+            const sp = speed(); scroll += sp * dt; invul = Math.max(0, invul - dt);
+            py += (lanes[lane] - py) * Math.min(1, dt * 14);
+            spawn -= dt;
+            if (spawn <= 0) {
+              spawn = Math.max(0.3, rnd(0.55, 0.85) - d * 0.06);
+              const l = (Math.random() * 3) | 0;
+              const haz = Math.random() < 0.3 + d * 0.04;
+              items.push({ x: W + 20, lane: l, kind: haz ? bad : pick(good), wob: rnd(0, 6) });
+              if (d >= 3 && Math.random() < 0.35) items.push({ x: W + 20, lane: (l + 1 + ((Math.random() * 2) | 0)) % 3, kind: pick(good), wob: rnd(0, 6) });
+            }
+            for (let i = items.length - 1; i >= 0; i--) {
+              const it = items[i]; it.x -= sp * dt;
+              const y = lanes[it.lane];
+              if (Math.abs(it.x - petX) < 20 && Math.abs(y - py) < 24) {
+                items.splice(i, 1);
+                if (it.kind === bad) { if (invul <= 0) { invul = 1; G.burst(it.x, y, sk.badCol || C.brown, 12); G.hurt(); } }
+                else { G.burst(it.x, y, sk.accent || C.lilac, 10); G.pop(it.x, y - 22, '+1', C.gold); sfx('xp'); G.petAnim('eat', 0.3); G.addScore(1); }
+                continue;
+              }
+              if (it.x < -40) items.splice(i, 1);
+            }
+          },
+          draw(c) {
+            const w1 = sk.water || '#5fb6e8', w2 = sk.water2 || '#4a9bd0', bank = sk.bank || C.grass;
+            rect(c, 0, 0, W, H, w1);
+            for (let i = 0; i < 3; i++) rect(c, 0, lanes[i] - 39, W, 78, i % 2 ? w2 : w1);
+            for (let i = 0; i < 14; i++) { const x = ((i * 61 - scroll * (0.6 + (i % 3) * 0.2)) % (W + 40) + W + 40) % (W + 40) - 20; rect(c, x, 60 + (i * 53) % 220, 18, 2, 'rgba(255,255,255,.7)'); }
+            rect(c, 0, 0, W, 52, bank); rect(c, 0, 49, W, 3, C.ink); rect(c, 0, H - 12, W, 12, bank); rect(c, 0, H - 12, W, 3, C.ink);
+            if (sk.bankDeco) for (let i = 0; i < 6; i++) sprC(c, sk.bankDeco, ((i * 67 - scroll * 0.3) % (W + 30) + W + 30) % (W + 30) - 15, 30, 2.5);
+            for (const it of items) { const y = lanes[it.lane] + Math.sin(G.t * 5 + it.wob) * 3; if (it.kind === bad) sprC(c, bad, it.x, y, 4.5); else sprC(c, it.kind, it.x, y, 3); }
+            rect(c, petX - 22, py + 18, 44, 3, 'rgba(255,255,255,.6)');
+            if (!(invul > 0 && Math.floor(invul * 12) % 2)) drawPet(c, G.pet, petX, py + 20, px, G.petOpts({ anim: 'happy' }));
+          },
+        };
+      },
+    },
+
+    // ------------------------------------------------------------------
+    stack: {
+      name: 'Block Stack',
+      desc: 'Tap to drop the sliding block. Line it up: overhang falls off and the tower gets narrower!',
+      controls: 'Tap or Space',
+      make(G) {
+        const d = G.d, sk = G.skin;
+        G.mode = 'score'; G.duration = 25; G.target = 5 + d; G.hearts = 3;
+        const bh = 22, baseW = 96 - d * 6, groundY = H - 30;
+        const style = sk.block || 'crate';
+        const cols = sk.cols || [C.gold, C.orange, C.pink, C.lilac, C.mint];
+        const stack = [{ x: W / 2 - baseW / 2, w: baseW }];
+        const cur = { x: 20, w: baseW, dir: 1, y: 0 };
+        let falling = null, cam = 0, cool = 0;
+        const speed = () => (130 + d * 25 + stack.length * 10) * (sk.speed || 1);
+        const topY = () => groundY - stack.length * bh; // world y of the top surface
+        function drop() { if (falling || cool > 0) return; falling = { x: cur.x, w: cur.w, y: cur.y, vy: 0 }; sfx('tap'); }
+        G.hudLeft = () => 'Stacked ' + G.score + ' / ' + G.target;
+        return {
+          action: drop, down: drop,
+          update(dt) {
+            cool = Math.max(0, cool - dt);
+            const ty = topY();
+            cur.y = ty - bh - 70 + cam; // screen coords
+            if (!falling) {
+              cur.x += cur.dir * speed() * dt;
+              if (cur.x + cur.w > W - 8) { cur.x = W - 8 - cur.w; cur.dir = -1; }
+              if (cur.x < 8) { cur.x = 8; cur.dir = 1; }
+            } else {
+              falling.vy += 1500 * dt; falling.y += falling.vy * dt;
+              if (falling.y + bh >= ty + cam) {
+                const top = stack[stack.length - 1];
+                const l = Math.max(falling.x, top.x), r = Math.min(falling.x + falling.w, top.x + top.w);
+                const ov = r - l;
+                if (ov < 8) { G.burst(falling.x + falling.w / 2, ty + cam, C.stone, 12); G.shake(5); G.pop(W / 2, ty - 20 + cam, 'MISS', C.pink); G.hurt(); }
+                else {
+                  const off = falling.w - ov, perfect = off < 5;
+                  const nw = perfect ? Math.min(baseW, ov + 6) : ov;
+                  const nx = perfect ? l - (nw - ov) / 2 : l;
+                  stack.push({ x: nx, w: nw });
+                  if (!perfect) { const sx = falling.x < top.x ? falling.x : r; G.burst(sx + off / 2, ty + cam, cols[stack.length % cols.length], 10); }
+                  G.pop(W / 2, ty - 20 + cam, perfect ? 'PERFECT' : 'GOOD', perfect ? C.gold : C.mint);
+                  sfx(perfect ? 'bless' : 'accept'); G.petAnim('happy', 0.4); G.shake(perfect ? 1 : 3);
+                  G.addScore(1);
+                  cur.w = nw;
+                }
+                falling = null; cool = 0.15;
+              }
+            }
+            const camTarget = Math.max(0, stack.length * bh - 110);
+            cam += (camTarget - cam) * Math.min(1, dt * 6);
+          },
+          draw(c) {
+            rect(c, 0, 0, W, H, sk.sky || C.sky);
+            drawClouds(c, G.t + cam * 0.02, 6, 16);
+            c.save(); c.translate(0, cam);
+            rect(c, 0, groundY, W, H, sk.ground || C.grass); rect(c, 0, groundY, W, 3, C.ink);
+            for (let i = 0; i < stack.length; i++) drawBlock(c, style, stack[i].x, groundY - (i + 1) * bh, stack[i].w, bh, cols[i % cols.length]);
+            const ty = topY();
+            if (falling) drawBlock(c, style, falling.x, falling.y - cam, falling.w, bh, cols[stack.length % cols.length]);
+            else drawBlock(c, style, cur.x, cur.y - cam, cur.w, bh, cols[stack.length % cols.length]);
+            const top = stack[stack.length - 1];
+            drawPet(c, G.pet, top.x + top.w / 2, ty + 1, 2.2, G.petOpts());
+            c.restore();
+          },
+        };
+      },
+    },
+
+    // ------------------------------------------------------------------
+    sneak: {
+      name: 'Sneak Up',
+      desc: 'Hold to creep forward. Freeze the moment the watcher turns around, or get spotted and lose ground!',
+      controls: 'Hold anywhere, Space or Right',
+      make(G) {
+        const d = G.d, sk = G.skin;
+        G.mode = 'score'; G.duration = 25; G.target = 1; G.hearts = 3;
+        const groundY = H - 44, startX = 36, goalX = W - 70, px = 2.6;
+        const creep = 68 + d * 6, warnT = Math.max(0.18, 0.5 - d * 0.07);
+        let x = startX, state = 'away', st = rnd(1.4, 2.4), held = false, caught = 0, shock = 0, mov = false;
+        const pct = () => Math.round(clamp((x - startX) / (goalX - 26 - startX), 0, 1) * 100);
+        G.hudLeft = () => 'Distance ' + pct() + '%';
+        G.resultText = () => (G.win ? 'Reached the goal!' : 'Spotted at ' + pct() + '%');
+        return {
+          action() { held = true; }, up() { held = false; },
+          update(dt) {
+            mov = (held || G.ptr.down || G.input.right) && caught <= 0;
+            st -= dt; shock = Math.max(0, shock - dt); caught = Math.max(0, caught - dt);
+            if (state === 'away' && st <= 0) { state = 'warn'; st = warnT; sfx('tick'); }
+            else if (state === 'warn' && st <= 0) { state = 'watch'; st = rnd(0.8, 1.6); }
+            else if (state === 'watch' && st <= 0) { state = 'away'; st = Math.max(0.7, rnd(1.3, 2.4) - d * 0.12); sfx('open'); }
+            if (mov) {
+              x += creep * dt;
+              if (state === 'watch') { caught = 1.0; shock = 0.6; mov = false; x = Math.max(startX, x - 50); G.burst(x, groundY - 20, C.red, 12); G.pop(x, groundY - 50, 'SPOTTED', C.pink); G.hurt(); }
+              else if (x >= goalX - 26) { x = goalX - 26; G.pop(W / 2, 100, 'MADE IT', C.gold); G.addScore(1); }
+            }
+          },
+          draw(c) {
+            const night = !!sk.night;
+            rect(c, 0, 0, W, H, sk.sky || (night ? '#2a2548' : C.sky));
+            if (!night) drawClouds(c, G.t, 4, 16); else for (let i = 0; i < 20; i++) rect(c, (i * 71) % W, (i * 43) % 120, 2, 2, C.white);
+            if (sk.wall) { rect(c, 0, 60, W, groundY - 60, sk.wall); for (let i = 0; i < W; i += 40) for (let j = 60; j < groundY; j += 20) rect(c, i + (j % 40 ? 20 : 0), j, 36, 16, sk.wall2 || sk.wall); }
+            rect(c, 0, groundY, W, H - groundY, sk.ground || C.sand); rect(c, 0, groundY, W, 3, C.ink);
+            if (sk.tiles) for (let i = 0; i < W; i += 30) for (let j = 0; j < 2; j++) rect(c, i + (j % 2) * 15, groundY + 8 + j * 16, 26, 12, sk.ground2 || C.sand2);
+            const col = state === 'away' ? C.mint : state === 'warn' ? C.gold : C.red;
+            box(c, W / 2 - 60, 12, 120, 22, col, 3);
+            text(c, state === 'away' ? 'GO' : state === 'warn' ? 'WAIT' : 'FREEZE', W / 2, 23, 8, C.ink);
+            drawWatcher(c, sk.watcher || 'cat', goalX + 2, groundY, state, G.t);
+            if (sk.goal) sprC(c, sk.goal, goalX + 46, groundY - 12, 3);
+            for (let i = startX; i < x; i += 16) rect(c, i, groundY + 6, 6, 2, C.ink2);
+            if (!(caught > 0 && Math.floor(caught * 12) % 2)) drawPet(c, G.pet, x, groundY + 2 + (mov ? -Math.abs(Math.sin(G.t * 14)) * 2 : 0), px, G.petOpts({ anim: shock > 0 ? 'sad' : null }));
+            if (state === 'watch') { // sight cone
+              c.globalAlpha = 0.18; rect(c, 0, groundY - 60, goalX - 10, 60, C.red); c.globalAlpha = 1;
+            }
+          },
+        };
+      },
+    },
   };
+
+  // stack blocks: crate / cloud / shell
+  function drawBlock(c, style, x, y, w, h, col) {
+    if (style === 'cloud') {
+      rect(c, x, y + 4, w, h - 4, C.ink); rect(c, x + 2, y + 6, w - 4, h - 8, C.white);
+      for (let i = 2; i < w - 6; i += 14) rect(c, x + i, y, Math.min(10, w - i - 4), 8, C.white);
+      rect(c, x + 4, y + h - 5, w - 8, 2, C.sky2);
+    } else if (style === 'shell') {
+      box(c, x, y, w, h, col, 2);
+      for (let i = 6; i < w - 8; i += 12) rect(c, x + i, y + 4, 6, h - 8, C.grass2);
+      rect(c, x + 2, y + h - 5, w - 4, 3, C.grass2);
+    } else {
+      box(c, x, y, w, h, col, 2);
+      rect(c, x + 2, y + 2, w - 4, 3, 'rgba(255,255,255,.4)');
+      for (let i = 10; i < w - 6; i += 18) rect(c, x + i, y + 6, 2, h - 10, 'rgba(43,33,64,.35)');
+    }
+  }
+
+  // sneak watcher, standing at the goal; eyes only show when it faces you
+  function drawWatcher(c, kind, x, groundY, state, t) {
+    const facing = state === 'watch', warn = state === 'warn';
+    if (kind === 'lamp') {
+      rect(c, x - 3, groundY - 90, 6, 90, C.ink); rect(c, x - 1, groundY - 88, 2, 86, C.stone2);
+      box(c, x - 12, groundY - 104, 24, 18, facing ? C.gold : warn ? C.orange : '#4a4160', 2);
+      if (facing) { c.globalAlpha = 0.25; rect(c, x - 60, groundY - 86, 60, 86, C.gold); c.globalAlpha = 1; }
+      return;
+    }
+    const body = kind === 'goat' ? C.white : C.stone, dark = kind === 'goat' ? C.stone : C.stone2;
+    const sway = Math.sin(t * 2) * 2;
+    box(c, x - 22, groundY - 40, 44, 40, body, 2);
+    rect(c, x - 18, groundY - 12, 36, 6, dark);
+    box(c, x - 18 + sway, groundY - 66, 36, 30, body, 2);
+    if (kind === 'goat') { rect(c, x - 16 + sway, groundY - 78, 6, 14, C.ink); rect(c, x + 10 + sway, groundY - 78, 6, 14, C.ink); rect(c, x - 10 + sway, groundY - 46, 20, 8, C.stone); }
+    else { rect(c, x - 16 + sway, groundY - 72, 8, 8, C.ink); rect(c, x + 8 + sway, groundY - 72, 8, 8, C.ink); rect(c, x - 14 + sway, groundY - 70, 4, 4, C.pink); rect(c, x + 10 + sway, groundY - 70, 4, 4, C.pink); }
+    rect(c, x + 20, groundY - 36 + Math.sin(t * 3) * 3, 12, 4, C.ink);
+    if (facing) { rect(c, x - 12 + sway, groundY - 58, 8, 8, C.ink); rect(c, x + 4 + sway, groundY - 58, 8, 8, C.ink); rect(c, x - 10 + sway, groundY - 56, 3, 3, C.red); rect(c, x + 6 + sway, groundY - 56, 3, 3, C.red); rect(c, x - 4 + sway, groundY - 46, 8, 3, C.ink); }
+    else if (warn) { rect(c, x + 4 + sway, groundY - 58, 8, 8, C.ink); rect(c, x + 6 + sway, groundY - 56, 3, 3, C.gold); }
+    else { rect(c, x - 10 + sway, groundY - 58, 20, 3, dark); if (Math.floor(t * 2) % 2) text(c, 'z', x + 24, groundY - 70, 8, C.white, 'center', true); }
+  }
 
   // rodeo physics, kept pure so it can be tuned/tested
   function rodeoInit(d) {
@@ -750,6 +1167,72 @@
   }
 
   // =====================================================================
+  //  SKINS: one named game per species. Each maps to ONE engine and
+  //  overrides its props (sprites, colours, small rule twists).
+  //  Max 3 species per engine; rodeo is exclusive to the Longhorn.
+  // =====================================================================
+  const SKINS = {
+    // ---- catch ----
+    cat: { engine: 'catch', name: 'Fish Frenzy', desc: 'Catch every fish that falls from the sky. Cats hate cucumbers, so dodge those!', good: ['fish'], bad: 'cucumber', badCol: C.grass2, badText: 'EWW', accent: C.lilac },
+    chick: { engine: 'catch', name: 'Seed Shower', desc: 'Peck up the falling seeds and berries. Mind the pebbles!', good: ['seed', 'berry'], bad: 'rock', accent: C.gold, sky: '#ffe9a8', sky2: '#fff5d6' },
+    pig: { engine: 'catch', name: 'Muffin Scramble', desc: 'Muffins and cookies are raining! Snack fast and dodge the mud pies.', good: ['muffin', 'cookie'], bad: 'mud', badCol: C.brown2, badText: 'SPLAT', badRate: 0.22, accent: C.orange, ground: '#c99a62', ground2: '#9a6a3c' },
+    // ---- hop ----
+    bunny: { engine: 'hop', name: 'Clover Hop', desc: 'Bounce over bushes and rocks across the clover field. Two hops in the air!', maxJumps: 2 },
+    frog: { engine: 'hop', name: 'Lily Leap', desc: 'Leap from pad to pad over the pond weeds. A double hop keeps you dry.', bush: 'lily', maxJumps: 2, sky: '#a8e6cf', hill: '#6fc7a5', ground: '#5fb6e8', ground2: '#4a9bd0' },
+    jackalope: { engine: 'hop', name: 'Antler Dash', desc: 'A full-speed desert sprint. Clear the cacti; the legend never slows down!', bush: 'cactus', speed: 1.25, maxJumps: 2, sky: '#ffd1a1', hill: '#e2956a', ground: C.sand, ground2: C.sand2, noTrees: true, deco: 'cactus' },
+    // ---- memory ----
+    owl: { engine: 'memory', name: 'Moonlit Eyes', desc: 'Pairs of eyes blink in the dark. Repeat the order they glowed.', style: 'eyes', cols: [C.gold, C.orange, C.mint, C.lilac], dark: ['#4a3a20', '#4a2e1a', '#1f4a3a', '#36284f'], bg: '#15102a' },
+    redpanda: { engine: 'memory', name: 'Bamboo Echo', desc: 'The bamboo stalks rustle in a pattern. Tap them back in order.', style: 'bamboo', cols: ['#8fd48a', '#ffcf4d', '#ff9a4d', '#6fe3b1'], dark: ['#4f8f4a', '#b08a2a', '#b2652a', '#3f9a72'], bg: '#2f3d2a' },
+    chameleon: { engine: 'memory', name: 'Color Shift', desc: 'Repeat the pattern, but the pads swap colours after every round. Remember positions, not colours!', shuffle: true, cols: [C.pink, C.gold, C.mint, C.sky] },
+    // ---- timing ----
+    dog: { engine: 'timing', name: 'Fetch Snap', desc: 'The ball bounces back and forth. Snap it up when it crosses the green!', prop: 'bone', label: 'SNAP IN THE GREEN' },
+    capybara: { engine: 'timing', name: 'Hot Spring Soak', desc: 'Yuzu drift past the hot spring. Tap exactly when one floats into the green.', prop: 'yuzu', label: 'TAP WHEN THE YUZU FLOATS BY', steam: true, sky: '#f6d5c3', sky2: '#fbe9df', zone: '#ffb37a', platform: C.stone, speed: 0.9 },
+    // ---- whack ----
+    prairiedog: { engine: 'whack', name: 'Lookout Pop', desc: 'Boop the lookouts as they pop up from the burrows. Never boop a snake!', bomb: 'snake', ground: C.sand, ground2: C.sand2 },
+    armadillo: { engine: 'whack', name: 'Grub Bop', desc: 'Grubs pop out of the dirt: bop them fast. Scorpions sting!', critter: 'grub', bomb: 'scorpion', ground: '#c99a62', ground2: '#9a6a3c', sky: '#ffd1a1' },
+    // ---- dodge ----
+    goat: { engine: 'dodge', name: 'Rockslide', desc: 'Boulders tumble down the mountain. Keep your hooves out from under them!', hazards: ['rock'], big: 'rock', bigRate: 0.2, mountains: true, sky: '#cfd8ea', sky2: '#e8eef8', ground: C.stone, ground2: C.stone2 },
+    roadrunner: { engine: 'dodge', name: 'Anvil Alley', desc: 'Anvils and cacti drop out of a clear desert sky. Zip, zip, zip!', hazards: ['anvil', 'cactus'], big: 'anvil', bigRate: 0.15, speed: 1.2, sky: '#ffd1a1', sky2: '#ffe6c9', ground: C.sand, ground2: C.sand2 },
+    // ---- dig ----
+    hamster: { engine: 'dig', name: 'Seed Stash', desc: 'Your stash is somewhere under this dirt. Dig up every seed; pebbles hurt your cheeks!', snack: 'seed', hudText: 'FIND THE STASH' },
+    hedgehog: { engine: 'dig', name: 'Beetle Burrow', desc: 'Snuffle through the leaf litter for crunchy beetles. Dig around the stones.', snack: 'beetle', dirt: '#6b4a2b', dirt2: '#4f3520', dug: '#2e1c10', sky: '#8fb98a', hudText: 'SNUFFLE FOR BEETLES' },
+    fennec: { engine: 'dig', name: 'Dune Dig', desc: 'Berries hide under the dunes, but so do scorpions. Dig with those big ears listening!', snack: 'berry', rock: 'scorpion', rockText: 'STING', dirt: C.sand, dirt2: C.sand2, dug: '#b58c52', sky: '#ffd1a1', hudText: 'DIG THE DUNES' },
+    // ---- fly ----
+    bat: { engine: 'fly', name: 'Bridge Swoop', desc: 'Dusk over Lady Bird Lake. Swoop through the Congress Bridge arches with the colony!', gate: 'arch', sky: '#3d2a6e', sky2: '#c9548a', accent: C.lilac },
+    duckling: { engine: 'fly', name: 'Reed Flutter', desc: 'Flutter between the reeds along the pond. Little wings, big gaps!', gate: 'reeds', sky: C.sky, water: '#5fb6e8', speed: 0.95 },
+    // ---- swim ----
+    axolotl: { engine: 'swim', name: 'Pond Paddle', desc: 'Paddle between the lanes and gobble up fish. Logs drift down the pond!', fish: ['fish'], hazard: 'log', water: '#8ec9f0', water2: '#6eb3e3', bank: '#ffb3c7', bankDeco: 'lily' },
+    penguin: { engine: 'swim', name: 'Icy Lane', desc: 'Slide down the icy lane snapping up fish. Dodge the drifting ice floes!', fish: ['fish'], hazard: 'ice', badCol: C.sky2, water: '#5a8fd8', water2: '#4a7cc4', bank: '#eaf4ff', bankDeco: 'snow', speed: 1.15 },
+    otter: { engine: 'swim', name: 'River Run', desc: 'Ride the fast river, grab fish and shells, and roll past the logs.', fish: ['fish', 'shell'], hazard: 'log', water: '#4fb8a5', water2: '#3f9f8e', bank: C.grass, speed: 1.2 },
+    // ---- stack ----
+    sheep: { engine: 'stack', name: 'Cloud Stack', desc: 'Pile up fluffy wool clouds. Line each one up or the fluff blows away!', block: 'cloud', cols: [C.white] },
+    turtle: { engine: 'stack', name: 'Shell Tower', desc: 'Stack the turtle shells into a tower, like the famous pond pile. Slow and steady wins.', block: 'shell', cols: ['#8fd48a', '#6fc7a5', '#a4d46a'], speed: 0.85, sky: '#a8e6cf', ground: '#5fb6e8' },
+    squirrel: { engine: 'stack', name: 'Acorn Crates', desc: 'Stack the acorn crates for winter. Fast hands, straight tower!', block: 'crate', cols: [C.brown, C.sand2, C.orange], speed: 1.15, sky: '#ffd9a8' },
+    // ---- sneak ----
+    mouse: { engine: 'sneak', name: 'Crumb Creep', desc: 'The cat is dozing by the cheese. Creep closer, and freeze whenever it looks up!', watcher: 'cat', goal: 'cheese', tiles: true, ground: '#f3e3c3', ground2: '#e1cfa6', wall: '#ffe9c9', wall2: '#ffdfb0' },
+    raccoon: { engine: 'sneak', name: 'Porch Heist', desc: 'Midnight raid on the trash can. Move while the porch light is off, freeze when it flicks on!', watcher: 'lamp', goal: 'trash', night: true, ground: '#4a4160', ground2: '#5a5074', tiles: true },
+    snowleopard: { engine: 'sneak', name: 'Snow Stalk', desc: 'Stalk the mountain goat across the snow. Freeze when it turns, pounce when it looks away!', watcher: 'goat', ground: '#eaf4ff', ground2: '#d6e6f7', sky: '#b7c9e6' },
+    // ---- rodeo (legendary, exclusive) ----
+    longhorn: { engine: 'rodeo', name: 'Bull Rodeo', desc: 'Hold the left or right side to stay balanced. Keep the needle in the green!' },
+  };
+
+  function fallbackEngine(species) {
+    try { const a = global.Animals && global.Animals.A && global.Animals.A[species]; if (a && ENGINES[a.minigame]) return a.minigame; } catch (e) { /* ignore */ }
+    return 'catch';
+  }
+  // gameFor(species) -> { engine, name, desc, skin }
+  function gameFor(species) {
+    const s = SKINS[species];
+    if (s && ENGINES[s.engine]) return { engine: s.engine, name: s.name, desc: s.desc || ENGINES[s.engine].desc, skin: s };
+    const e = fallbackEngine(species);
+    return { engine: e, name: ENGINES[e].name, desc: ENGINES[e].desc, skin: {} };
+  }
+  function skinFor(species, engine) {
+    const s = SKINS[species];
+    return s && s.engine === engine ? s : {};
+  }
+
+  // =====================================================================
   //  CSS
   // =====================================================================
   const CSS = `
@@ -801,6 +1284,8 @@
     const E = ENGINES[key];
     const diff = clamp(Math.round(opts.difficulty || 1), 1, 5);
     const pet = opts.pet || { species: 'blob', rarity: 'common', name: 'Pet' };
+    const skin = opts.skin || skinFor(pet.species, key);
+    const gameName = skin.name || E.name, gameDesc = skin.desc || E.desc;
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
     return new Promise((resolve) => {
@@ -810,7 +1295,7 @@
       ov.setAttribute('aria-modal', 'true');
       ov.innerHTML =
         '<div class="card mg-card">' +
-          '<div class="mg-head"><div class="mg-titles"><h2>' + esc(opts.title || E.name) + '</h2>' +
+          '<div class="mg-head"><div class="mg-titles"><h2>' + esc(opts.title || gameName) + '</h2>' +
           (opts.subtitle ? '<div class="sub">' + esc(opts.subtitle) + '</div>' : '') + '</div>' +
           '<button class="iconbtn mg-x" type="button" aria-label="Close">' + icon('close', 16, '#2b2140') + '</button></div>' +
           '<div class="mg-body"></div>' +
@@ -828,7 +1313,7 @@
       // ---------- game state ----------
       function newGame() {
         const G = {
-          d: diff, pet, t: 0, score: 0, target: 0, hearts: 3, maxHearts: 3, duration: 20, mode: 'score',
+          d: diff, pet, skin, t: 0, score: 0, target: 0, hearts: 3, maxHearts: 3, duration: 20, mode: 'score',
           input: { left: false, right: false, kl: false, kr: false, pl: false, pr: false },
           ptr: { down: false, x: W / 2, y: H / 2 },
           parts: [], pops: [], shakeT: 0, shakeMag: 0, anim: null, animT: 0,
@@ -901,7 +1386,7 @@
         const pips = Array.from({ length: 5 }, (_, i) => icon('star', 14, i < diff ? '#ffcf4d' : '#d9cfe6')).join('');
         const wrap = document.createElement('div');
         wrap.innerHTML =
-          '<div class="mg-how">' + esc(E.desc) + '</div>' +
+          '<div class="mg-how">' + esc(gameDesc) + '</div>' +
           '<div class="mg-ctrl">' + esc(E.controls) + '</div>' +
           '<div class="mg-meta"><span class="chip"><span class="mg-pips" aria-label="Difficulty ' + diff + ' of 5">' + pips + '</span></span>' +
           (typeof opts.triesLeft === 'number' ? '<span class="chip">' + icon('heart', 14, '#ff6f9c', '#fff') + ' ' + opts.triesLeft + (opts.triesLeft === 1 ? ' try' : ' tries') + ' left</span>' : '') +
@@ -924,7 +1409,7 @@
         hudTime = body.querySelector('.mg-time'); hudMeter = body.querySelector('.mg-timer'); hudBar = hudMeter.firstChild;
         cv = document.createElement('canvas');
         cv.className = 'mg-canvas';
-        cv.setAttribute('aria-label', E.name);
+        cv.setAttribute('aria-label', gameName);
         body.appendChild(cv);
         const cssW = cv.getBoundingClientRect().width || 330;
         const sc = Math.max(1, (cssW / W) * Math.min(3, window.devicePixelRatio || 1));
@@ -951,7 +1436,8 @@
         body.appendChild(v);
         petPreview(body, 96);
         let targetTxt;
-        if (key === 'rodeo') targetTxt = 'Rode ' + Math.min(G.score, G.duration) + 's of ' + G.duration + 's';
+        if (G.resultText) targetTxt = G.resultText();
+        else if (key === 'rodeo') targetTxt = 'Rode ' + Math.min(G.score, G.duration) + 's of ' + G.duration + 's';
         else if (G.mode === 'survive') targetTxt = (key === 'hop' ? 'Cleared ' : 'Dodged ') + G.score + ' / survive ' + G.duration + 's';
         else if (key === 'memory') targetTxt = 'Rounds ' + G.score + ' / ' + G.target;
         else targetTxt = 'Score ' + G.score + ' / ' + G.target;
@@ -1152,7 +1638,10 @@
   }
 
   global.Minigames = {
+    // kept for backward compatibility; prefer gameFor(species) for display names
     ENGINES: Object.fromEntries(Object.keys(ENGINES).map(k => [k, { name: ENGINES[k].name, desc: ENGINES[k].desc }])),
+    SKINS,
+    gameFor,
     open,
     _rodeo: { init: rodeoInit, step: rodeoStep }, // exposed for tuning/tests
   };

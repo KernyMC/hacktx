@@ -417,7 +417,7 @@
       let icon, title, text, btn;
       if (m.kind === 'curse') { icon = ic(m.curse.icon, 26); title = `${m.from} cursed you`; text = `${m.curse.name}: ${m.curse.desc}`; btn = 'Accept'; }
       else if (m.kind === 'bless') { icon = ic('sparkle', 26, '#c9922a'); title = `${m.from} blessed you`; text = m.blessing.desc; btn = 'Accept'; }
-      else if (m.kind === 'challenge') { icon = ic('star', 26, '#2b2140'); title = `${m.from} challenged you`; text = `${m.pet.name}'s ${Minigames.ENGINES[m.engine].name} · ${m.triesLeft} tries · win ${m.wager} coins`; btn = 'Play'; }
+      else if (m.kind === 'challenge') { icon = ic('star', 26, '#2b2140'); title = `${m.from} challenged you`; text = `${m.pet.name}'s ${Minigames.gameFor(m.pet.species).name} · ${m.triesLeft} tries · win ${m.wager} coins`; btn = 'Play'; }
       else { icon = ic('chat', 26); title = m.from; text = m.text; btn = 'OK'; }
       d.innerHTML = `<span class="bigicon">${icon}</span><div class="grow"><b></b><span></span></div><button class="btn sm ${m.kind === 'challenge' ? 'pink' : 'lilac'}">${btn}</button>`;
       d.querySelector('b').textContent = title; d.querySelector('span:not(.bigicon)').textContent = text;
@@ -704,7 +704,7 @@
         const hv = setInterval(() => { if (ov.hidden) return clearInterval(hv); c.clearRect(0, 0, 192, 240); Sprites.drawPet(c, pet, 0, 40, 12, { anim: 'happy', t: performance.now() }); }, 80);
         const a = animal(pet);
         $('eggHint').hidden = true; $('eggResult').hidden = false;
-        $('eggResultText').innerHTML = `<b>${esc(pet.name)}</b> the <b>${esc(a.name)}</b> joined your collection.${pet.isNew ? ' <b>New to your Dex!</b>' : ''}<br><span class="rar ${pet.rarity}">${pet.rarity}</span> <span class="rar common">${Animals.CLASSES[a.cls].name}</span> ${pet.shiny ? '<span class="rar legendary">shiny</span>' : ''}<br><span class="sub">${Animals.RES[pet.rarity]}px sprite · minigame: ${esc(Minigames.ENGINES[a.minigame].name)}</span>`;
+        $('eggResultText').innerHTML = `<b>${esc(pet.name)}</b> the <b>${esc(a.name)}</b> joined your collection.${pet.isNew ? ' <b>New to your Dex!</b>' : ''}<br><span class="rar ${pet.rarity}">${pet.rarity}</span> <span class="rar common">${Animals.CLASSES[a.cls].name}</span> ${pet.shiny ? '<span class="rar legendary">shiny</span>' : ''}<br><span class="sub">${Animals.RES[pet.rarity]}px sprite · minigame: ${esc(Minigames.gameFor(a.id).name)}</span>`;
       }
     };
     $('eggClose').onclick = () => { ov.hidden = true; renderZoo(); };
@@ -716,7 +716,7 @@
     Audio8.play('open');
     const a = animal(p), r = Animals.normRarity(p.rarity);
     $('petTitle').textContent = `${p.name} · ${a.name}`;
-    $('petFacts').innerHTML = `<span class="rar ${r}">${r}</span><span class="rar common">${Animals.CLASSES[a.cls].name}</span><span class="chip">${Animals.RES[r]}px</span><span class="chip">${ic('star', 12)} ${esc(Minigames.ENGINES[a.minigame].name)}${a.minigame === 'rodeo' ? ' (hard)' : ''}</span>${p.shiny ? '<span class="rar legendary">shiny</span>' : ''}`;
+    $('petFacts').innerHTML = `<span class="rar ${r}">${r}</span><span class="rar common">${Animals.CLASSES[a.cls].name}</span><span class="chip">${Animals.RES[r]}px</span><span class="chip">${ic('star', 12)} ${esc(Minigames.gameFor(a.id).name)}${a.minigame === 'rodeo' ? ' (hard)' : ''}</span>${p.shiny ? '<span class="rar legendary">shiny</span>' : ''}`;
     $('petFlavor').textContent = a.flavor;
     const c = $('petBig').getContext('2d');
     clearInterval(petAnim); petAnim = setInterval(() => { if ($('ovPet').hidden) return clearInterval(petAnim); c.clearRect(0, 0, 192, 192); Sprites.drawPet(c, p, 0, 0, 12, { t: performance.now(), anim: 'idle', blink: performance.now() % 3000 < 150 }); }, 80);
@@ -735,7 +735,7 @@
   // ------------------------------------------------------------------
   async function playPetGame(p) {
     const a = animal(p), diff = RAR.indexOf(Animals.normRarity(p.rarity)) + 1;
-    const res = await Minigames.open({ engine: a.minigame, pet: p, difficulty: diff, title: `${p.name}'s ${Minigames.ENGINES[a.minigame].name}`, subtitle: a.minigame === 'rodeo' ? 'Legendary trial' : `${cap(Animals.normRarity(p.rarity))} difficulty`, practice: true });
+    const res = await Minigames.open({ engine: a.minigame, pet: p, difficulty: diff, title: `${p.name}'s ${Minigames.gameFor(a.id).name}`, subtitle: a.minigame === 'rodeo' ? 'Legendary trial' : `${cap(Animals.normRarity(p.rarity))} difficulty`, practice: true });
     const r = await API.reportMinigame(p.id, res.win);
     if (res.win && r.reward) { toast(`Win! +${r.reward.coins} coins${r.reward.warmed ? `, ${r.reward.warmed} egg${r.reward.warmed > 1 ? 's' : ''} warmed` : ''}. ${r.left} rewarded wins left today.`); confetti.burst(50); }
     else if (res.win) toast(r.message || 'Win!');
@@ -743,7 +743,7 @@
     if (currentTab === 'zoo') renderZoo();
   }
   async function playChallenge(m) {
-    const res = await Minigames.open({ engine: m.engine, pet: m.pet, difficulty: m.difficulty, title: `${m.from}'s duel`, subtitle: `${m.pet.name}'s ${Minigames.ENGINES[m.engine].name}`, triesLeft: m.triesLeft });
+    const res = await Minigames.open({ engine: m.engine, pet: m.pet, difficulty: m.difficulty, title: `${m.from}'s duel`, subtitle: `${m.pet.name}'s ${Minigames.gameFor(m.pet.species).name}`, triesLeft: m.triesLeft });
     const r = await API.attemptChallenge(m.id, res.win);
     if (!r) return;
     if (r.done && r.win) { Audio8.play('reward'); confetti.burst(80); }
@@ -753,7 +753,7 @@
   }
   async function pickFriendToChallenge(p) {
     const v = await API.getVillage(); const a = animal(p);
-    openPicker(`Challenge with ${p.name}`, `${Minigames.ENGINES[a.minigame].name} at ${cap(Animals.normRarity(p.rarity))} difficulty. They get 3 tries.`,
+    openPicker(`Challenge with ${p.name}`, `${Minigames.gameFor(a.id).name} at ${cap(Animals.normRarity(p.rarity))} difficulty. They get 3 tries.`,
       v.friends.map(f => ({ pet: f.pet, title: `${f.name} & ${f.pet.name}`, sub: f.vacation ? 'On vacation: duel requests blocked' : f.status, disabled: f.vacation,
         right: f.vacation ? 'away' : 'Send', onPick: async () => { const r = await API.sendChallenge(f.id, p.id); Audio8.play(r.ok ? 'accept' : 'error'); toast(r.message, 3600); } })));
   }
@@ -949,7 +949,7 @@
       d.querySelector('[data-act=duel]').onclick = async () => {
         const z = await API.getZoo(); const pets = [z.active].concat(z.pets);
         openPicker(`Duel ${f.name}`, 'Pick which Familiar\'s minigame they have to beat. Rarer = harder. Legendary = rodeo.',
-          pets.map(p => ({ pet: p, title: `${p.name} · ${animal(p).name}`, sub: `${Minigames.ENGINES[animal(p).minigame].name} · ${Animals.normRarity(p.rarity)}`, right: 'Send',
+          pets.map(p => ({ pet: p, title: `${p.name} · ${animal(p).name}`, sub: `${Minigames.gameFor(p.species).name} · ${Animals.normRarity(p.rarity)}`, right: 'Send',
             onPick: async () => { const r = await API.sendChallenge(f.id, p.id); Audio8.play(r.ok ? 'accept' : 'error'); toast(r.message, 3600); renderVillage(); } })));
       };
       d.querySelector('[data-act=visit]').onclick = () => { Audio8.play('squeak'); toast(`${f.pet.name} did a little dance for you. ${f.name} got a notification.`); };
