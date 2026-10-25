@@ -10,12 +10,16 @@
 <style>
 /* Layout: one phone-shaped column (max 430px) centered on a dotted desktop ground.
    Sky header → pet stage → scrolling content → sticky pixel tab bar. */
+/* Palette: HackTX "Once Upon a Hack" — a storybook night (midnight ink, gold stars) with UT burnt orange,
+   parchment panels for the cards. Pet classes still recolor sky/grass on top of this. */
 :root {
   --sky: #bfe3ff;      --sky-2: #eaf6ff;
   --grass: #8fd48a;    --grass-2: #5fb35e;
-  --panel: #fff8ea;    --panel-2: #ffefcf;
-  --ink: #2b2140;      --ink-2: #6f6386;
-  --pink: #ff6f9c;     --gold: #ffcf4d;    --mint: #6fe3b1;   --lilac: #b79cff;  --sky-deep: #5ab0ff;
+  --panel: #fff4dc;    --panel-2: #ffe6b8;
+  --ink: #1d1537;      --ink-2: #6a5f8c;
+  --midnight: #120d28; --night-2: #2a1f52;
+  --orange: #bf5700;   --orange-2: #ff8c42;  --parchment: #f6e7c3;
+  --pink: #ff6f9c;     --gold: #ffc247;    --mint: #6fe3b1;   --lilac: #b79cff;  --sky-deep: #5ab0ff;
   --food: var(--pink); --social: var(--lilac); --outdoor: var(--mint); --creative: var(--gold);
   --common: #8fd48a; --rare: #5ab0ff; --epic: #b79cff; --legendary: #ffcf4d;
   --display: 'Press Start 2P', 'Courier New', monospace;
@@ -29,7 +33,17 @@
 html, body { height: 100%; }
 body {
   margin: 0; font-family: var(--body); font-size: 17px; line-height: 1.35; color: var(--ink);
-  background: var(--ink) radial-gradient(var(--ink-2) 1px, transparent 1px) 0 0/14px 14px;
+  /* storybook night: stars over a burnt-orange Austin horizon */
+  background:
+    radial-gradient(circle at 12% 18%, #fff 0 1.5px, transparent 2px),
+    radial-gradient(circle at 78% 9%, #ffe9a3 0 1.5px, transparent 2px),
+    radial-gradient(circle at 32% 62%, #fff 0 1px, transparent 1.5px),
+    radial-gradient(circle at 88% 44%, #fff 0 1px, transparent 1.5px),
+    radial-gradient(circle at 58% 30%, #ffe9a3 0 1.5px, transparent 2px),
+    radial-gradient(circle at 6% 80%, #fff 0 1px, transparent 1.5px),
+    radial-gradient(circle at 70% 76%, #ffe9a3 0 1px, transparent 1.5px),
+    linear-gradient(180deg, var(--midnight) 0%, var(--night-2) 55%, #6b2d5c 82%, var(--orange) 100%);
+  background-attachment: fixed;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 0;
@@ -53,8 +67,12 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 }
 @media (min-width: 560px) {
   body { padding-block: 24px; }
-  .phone { min-height: calc(100% - 0px); border: 4px solid var(--ink); box-shadow: 8px 8px 0 #1a1428; border-radius: 6px; overflow: hidden; }
+  .phone { min-height: calc(100% - 0px); border: 4px solid var(--ink); box-shadow: 0 0 0 3px var(--gold), 10px 10px 0 rgba(0,0,0,.45); border-radius: 6px; overflow: hidden; }
 }
+/* HackTX ribbon above the top bar */
+.ribbon { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 5px 10px; background: var(--midnight); color: var(--gold); font-family: var(--display); font-size: 8px; letter-spacing: .08em; border-bottom: 3px solid var(--orange); }
+.ribbon b { color: #fff; }
+.ribbon .star { color: var(--gold); line-height: 0; }
 
 /* ---------- top bar ---------- */
 .topbar {
@@ -180,17 +198,19 @@ main { flex: 1; background: var(--grass); padding: 14px 14px 90px; display: flex
 .page p { margin: 0; font-size: 16px; }
 .page .pxp { font-family: var(--display); font-size: 9px; color: var(--ink-2); margin-top: 4px; }
 
-/* ---------- tab bar ---------- */
+/* ---------- tab bar: midnight ribbon, gold lantern for the active tab ---------- */
 .tabs {
-  position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr);
-  background: var(--panel); border-top: var(--bevel);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  position: sticky; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(5, 1fr);
+  background: var(--midnight); border-top: 3px solid var(--gold); box-shadow: 0 -6px 0 rgba(0,0,0,.18);
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
 }
-.tabs button { background: none; border: 0; padding: 10px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 12px; font-weight: 700; color: var(--ink-2); position: relative; }
-.tabs button .em { height: 22px; line-height: 0; }
-.tabs button.active { color: var(--ink); background: var(--panel-2); }
-.tabs button.active::before { content: ''; position: absolute; top: -3px; left: 0; right: 0; height: 3px; background: var(--pink); }
-.tabs .dot { position: absolute; top: 8px; right: 22%; width: 10px; height: 10px; background: var(--pink); border: 2px solid var(--ink); }
+.tabs button { background: none; border: 0; padding: 4px 2px 2px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; letter-spacing: .02em; color: #9c92c4; position: relative; transition: color .15s, transform .15s; }
+.tabs button .em { width: 44px; height: 30px; display: grid; place-items: center; line-height: 0; border: 2px solid transparent; transition: background .15s, border-color .15s, transform .15s; }
+.tabs button:active .em { transform: translateY(2px); }
+.tabs button.active { color: #fff; }
+.tabs button.active .em { background: var(--gold); color: var(--ink); border-color: var(--ink); box-shadow: 2px 2px 0 var(--orange); transform: translateY(-4px); }
+.tabs button.active::after { content: ''; position: absolute; bottom: -6px; left: 50%; width: 18px; height: 3px; margin-left: -9px; background: var(--orange-2); }
+.tabs .dot { position: absolute; top: 2px; right: 18%; width: 10px; height: 10px; background: var(--pink); border: 2px solid #fff; box-shadow: 0 0 6px var(--pink); }
 
 /* ---------- overlays ---------- */
 .overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; background: rgba(43, 33, 64, .55); padding: 0 max(0px, env(safe-area-inset-left, 0px)) 0 max(0px, env(safe-area-inset-right, 0px)); }
@@ -278,8 +298,6 @@ main { flex: 1; background: var(--grass); padding: 14px 14px 90px; display: flex
 .topbar .sub b { color: var(--pet-2); }
 .meter.xp > i { background: var(--pet); }
 .tabs button.active::before { background: var(--accent); }
-.tabs { grid-template-columns: repeat(5, 1fr); }
-.tabs button { font-size: 11px; }
 main { transition: background .4s; }
 .panel h2 { color: var(--ink); }
 body[data-cls] .panel, body[data-cls] .friend, body[data-cls] .critter, body[data-cls] .quest { transition: background-color .4s; }
@@ -412,6 +430,7 @@ body[data-cls=legends] .topbar .name, body[data-cls=legends] .topbar .sub { colo
 </head>
 <body>
 <div class="phone" id="phone">
+  <div class="ribbon"><span class="star"><i data-icon="star" data-size="10" data-color="#ffc247"></i></span>HACKTX 2026 · <b>ONCE UPON A HACK</b><span class="star"><i data-icon="star" data-size="10" data-color="#ffc247"></i></span></div>
   <!-- top bar -->
   <header class="topbar">
     <div>
@@ -504,11 +523,11 @@ body[data-cls=legends] .topbar .name, body[data-cls=legends] .topbar .sub { colo
   </main>
 
   <nav class="tabs" id="tabs">
-    <button data-tab="home" class="active"><span class="em"><i data-icon="home" data-size="22"></i></span>Home</button>
-    <button data-tab="zoo"><span class="em"><i data-icon="egg" data-size="22"></i></span>Nest</button>
-    <button data-tab="shop"><span class="em"><i data-icon="coin" data-size="22"></i></span>Shop</button>
-    <button data-tab="village"><span class="em"><i data-icon="village" data-size="22"></i></span>Village<span class="dot" id="villageDot" hidden></span></button>
-    <button data-tab="story"><span class="em"><i data-icon="book" data-size="22"></i></span>Story</button>
+    <button data-tab="home" class="active"><span class="em"><i data-icon="home" data-size="20"></i></span>Home</button>
+    <button data-tab="zoo"><span class="em"><i data-icon="egg" data-size="20"></i></span>Nest</button>
+    <button data-tab="shop"><span class="em"><i data-icon="coin" data-size="20"></i></span>Shop</button>
+    <button data-tab="village"><span class="em"><i data-icon="village" data-size="20"></i></span>Village<span class="dot" id="villageDot" hidden></span></button>
+    <button data-tab="story"><span class="em"><i data-icon="book" data-size="20"></i></span>Story</button>
   </nav>
 </div>
 
