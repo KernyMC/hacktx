@@ -11,7 +11,7 @@
 /* Layout: one phone-shaped column (max 430px) centered on a dotted desktop ground.
    Sky header → pet stage → scrolling content → sticky pixel tab bar. */
 /* Palette: HackTX "Once Upon a Hack" — a storybook night (midnight ink, gold stars) with UT burnt orange,
-   parchment panels for the cards. Pet classes still recolor sky/grass on top of this. */
+   parchment panels for the cards. Each animal recolors sky/grass on top of this (Sprites.applyAnimalTheme). */
 :root {
   --sky: #bfe3ff;      --sky-2: #eaf6ff;
   --grass: #8fd48a;    --grass-2: #5fb35e;
@@ -305,24 +305,7 @@ main > .screen { padding: 0 14px; }
 .tabs button.active::before { background: var(--accent); }
 main { transition: background .4s; }
 .panel h2 { color: var(--ink); }
-body[data-cls] .panel, body[data-cls] .friend, body[data-cls] .critter, body[data-cls] .quest { transition: background-color .4s; }
-/* farm: hay-bale planks */
-body[data-cls=farm] main { background: var(--grass) repeating-linear-gradient(90deg, transparent 0 46px, rgba(0,0,0,.05) 46px 48px); }
-body[data-cls=farm] .panel { border-color: #6b3a24; box-shadow: 4px 4px 0 #6b3a24; }
-/* wild: leafy dashes */
-body[data-cls=wild] main { background: var(--grass) radial-gradient(rgba(0,60,20,.12) 2px, transparent 2px) 0 0/18px 18px; }
-body[data-cls=wild] .panel { outline: 2px dashed var(--grass-2); outline-offset: -7px; }
-/* prairie: sun-baked stripes */
-body[data-cls=prairie] main { background: var(--grass) repeating-linear-gradient(0deg, transparent 0 14px, rgba(120,70,0,.07) 14px 16px); }
-body[data-cls=prairie] .panel { box-shadow: 4px 4px 0 #a8641d; }
-/* water: waves */
-body[data-cls=water] main { background: var(--grass) repeating-linear-gradient(135deg, transparent 0 10px, rgba(255,255,255,.14) 10px 12px); }
-body[data-cls=water] .panel { border-color: #1f4f7a; box-shadow: 4px 4px 0 #1f4f7a; }
-/* austin legends: night-time burnt orange + gold */
-body[data-cls=legends] main { background: #3b2a5e radial-gradient(#5d4690 1px, transparent 1px) 0 0/12px 12px; }
-body[data-cls=legends] .panel, body[data-cls=legends] .quest, body[data-cls=legends] .friend, body[data-cls=legends] .critter { border-color: #bf5700; box-shadow: 4px 4px 0 #ffcf4d; }
-body[data-cls=legends] .topbar { background: #2b2140; color: #fff; border-bottom-color: #ffcf4d; }
-body[data-cls=legends] .topbar .name, body[data-cls=legends] .topbar .sub { color: #ffcf4d; }
+/* rarity frame around the stage */
 .phone[data-rarity=legendary] .stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 4px #ffcf4d; animation: glowin 1.4s infinite alternate; }
 .phone[data-rarity=mythic] .stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 3px #b79cff; }
 @keyframes glowin { to { box-shadow: inset 0 0 0 4px #ffcf4d, inset 0 0 26px rgba(255,207,77,.8); } }
