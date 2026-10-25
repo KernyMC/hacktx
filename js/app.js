@@ -69,15 +69,8 @@
   // ------------------------------------------------------------------
   function applyTheme() {
     if (!me || !me.pet) return;
-    const a = animal(me.pet), cl = Animals.CLASSES[a.cls], st = document.documentElement.style;
-    const rarity = Animals.normRarity(me.pet.rarity);
-    st.setProperty('--sky', cl.sky[1]); st.setProperty('--sky-top', cl.sky[0]);
-    st.setProperty('--grass', cl.grass); st.setProperty('--grass-2', cl.grass2);
-    st.setProperty('--accent', cl.accent); st.setProperty('--panel-2', cl.panel2);
-    st.setProperty('--pet', a.pal.b); st.setProperty('--pet-2', a.pal.d); st.setProperty('--pet-3', a.pal.a);
-    document.body.dataset.cls = a.cls;
-    $('phone').dataset.rarity = rarity;
-    const meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = cl.sky[0];
+    Sprites.applyAnimalTheme(me.pet.species);
+    $('phone').dataset.rarity = Animals.normRarity(me.pet.rarity);
   }
 
   // ------------------------------------------------------------------
@@ -166,9 +159,7 @@
 
     function frame(t) {
       ctx.clearRect(0, 0, W, H);
-      const cls = me && me.pet ? animal(me.pet).cls : 'water';
-      if (cls !== 'legends') { const g = ctx.createLinearGradient(0, 0, 0, H); const sky = Animals.CLASSES[cls].sky; g.addColorStop(0, sky[0]); g.addColorStop(1, sky[1]); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
-      (SCENES[cls] || SCENES.water)(t);
+      Sprites.drawHabitat(ctx, me && me.pet ? me.pet.species : 'axolotl', W, H);
       if (!me || !me.pet) { requestAnimationFrame(frame); return; }
 
       if (t > nextBlink) { blinkUntil = t + 140; nextBlink = t + 1800 + Math.random() * 2500; }
@@ -675,6 +666,7 @@
   // ------------------------------------------------------------------
   // Nest / collection / dex
   // ------------------------------------------------------------------
+  let clsFilter = 'all';   // Nest filter by rarity (Richard's visuals branch)
   function petCard(p, opts = {}) {
     const d = document.createElement('div'); const r = Animals.normRarity(p.rarity || animal(p).rarity);
     d.className = `critter r-${r}` + (opts.locked ? ' locked' : '');
@@ -684,7 +676,7 @@
     const a = animal(p);
     d.insertAdjacentHTML('beforeend', `<div class="nm"></div><div class="sp"></div><span class="rar ${r}">${r}</span>${p.isNew ? '<span class="new">NEW</span>' : ''}${p.shiny ? '<span class="shiny">SHINY</span>' : ''}`);
     d.querySelector('.nm').textContent = opts.locked ? '???' : (p.name || a.name);
-    d.querySelector('.sp').textContent = opts.locked ? `${Animals.RES[r]}px` : `${a.name}${(p.stage || 1) >= 2 ? ' · stage 2' : ''}${p.active ? ' · active' : ''}`;
+    d.querySelector('.sp').textContent = opts.locked ? `${cap(r)} · ${Animals.RES[r]}px` : `${a.name}${(p.stage || 1) >= 2 ? ' · stage 2' : ''}${p.active ? ' · active' : ''}`;
     return d;
   }
   async function renderZoo() {
@@ -702,8 +694,13 @@
     });
     // owned
     const all = (z.active ? [Object.assign({}, z.active, { active: true })] : []).concat(z.pets);
+    const fl = $('clsFilters'); fl.innerHTML = '';
+    ['all'].concat(RAR).forEach(k => {
+      const b = document.createElement('button'); b.textContent = k === 'all' ? 'All' : cap(k); b.classList.toggle('on', clsFilter === k);
+      b.onclick = () => { clsFilter = k; Audio8.play('tap'); renderZoo(); }; fl.appendChild(b);
+    });
     const zg = $('zooGrid'); zg.innerHTML = '';
-    const shown = all.slice()
+    const shown = all.filter(p => clsFilter === 'all' || Animals.normRarity(p.rarity) === clsFilter)
       .sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0) || RAR.indexOf(Animals.normRarity(b.rarity)) - RAR.indexOf(Animals.normRarity(a.rarity)));
     shown.forEach(p => { const d = petCard(p); d.onclick = () => openPet(p); zg.appendChild(d); });
     $('zooEmpty').hidden = all.length > 1;
@@ -712,7 +709,7 @@
     const ids = Object.keys(Animals.A);
     $('dexCount').textContent = `${owned.size} / ${ids.length}`;
     const dg = $('dexGrid'); dg.innerHTML = '';
-    ids.slice()
+    ids.filter(id => clsFilter === 'all' || Animals.A[id].rarity === clsFilter)
       .sort((a, b) => RAR.indexOf(Animals.A[a].rarity) - RAR.indexOf(Animals.A[b].rarity))
       .forEach(id => { const has = owned.has(id); const d = petCard({ species: id, rarity: Animals.A[id].rarity, name: Animals.A[id].name }, { locked: !has });
         d.onclick = () => { Audio8.play('tap'); toast(has ? `${Animals.A[id].name}: ${Animals.A[id].flavor}` : `Unknown Familiar. Hatches from ${Animals.A[id].rarity} eggs.`); };
@@ -731,11 +728,11 @@
       if (taps >= 3) {
         cv.onclick = null; flash(); Audio8.play(egg.rarity === 'legendary' ? 'legendary' : 'hatch'); confetti.burst(egg.rarity === 'legendary' ? 180 : 80);
         const pet = await API.hatchEgg(egg.id);
+        setTimeout(() => Audio8.cry(pet.species), 700);
         const hv = setInterval(() => { if (ov.hidden) return clearInterval(hv); c.clearRect(0, 0, 192, 240); Sprites.drawPet(c, pet, 0, 40, 12, { anim: 'happy', t: performance.now() }); }, 80);
         const a = animal(pet);
         $('eggHint').hidden = true; $('eggResult').hidden = false;
         $('eggResultText').innerHTML = `<b>${esc(pet.name)}</b> the <b>${esc(a.name)}</b> joined your collection.${pet.isNew ? ' <b>New to your Dex!</b>' : ''}<br><span class="rar ${pet.rarity}">${pet.rarity}</span> ${pet.shiny ? '<span class="rar legendary">shiny</span>' : ''}<br><span class="sub">${Animals.RES[pet.rarity]}px sprite · minigame: ${esc(Minigames.gameFor(a.id).name)}</span>`;
-        Audio8.cry(pet.species);
       }
     };
     $('eggClose').onclick = () => { ov.hidden = true; renderZoo(); };
@@ -928,8 +925,7 @@
   async function renderVillage() {
     village = await API.getVillage();
     const cv = $('villageCanvas'), c = cv.getContext('2d');
-    const cls = animal(me.pet).cls, CL = Animals.CLASSES[cls];
-    c.fillStyle = CL.sky[1]; c.fillRect(0, 0, 400, 120); c.fillStyle = CL.grass; c.fillRect(0, 84, 400, 36); c.fillStyle = CL.grass2; c.fillRect(0, 84, 400, 4);
+    Sprites.drawHabitat(c, me.pet.species, 400, 120);
     const pets = [me.pet].concat(village.friends.map(f => f.pet));
     const gap = 400 / pets.length;
     pets.forEach((p, i) => { const x = 8 + i * gap; Sprites.drawPet(c, p, x, 8, 5, { flip: i % 2 === 1, anim: i === 3 ? 'sad' : 'idle', fx: false }); c.fillStyle = '#2b2140'; c.font = '700 12px "Pixelify Sans", sans-serif'; c.fillText(p.name, x + 10, 108); });
@@ -1095,7 +1091,7 @@
       Audio8.unlock(); taps++; Audio8.play('crack'); cv.classList.remove('wob'); void cv.offsetWidth; cv.classList.add('wob'); draw(taps);
       $('hatchHint').textContent = `${3 - taps} tap${3 - taps === 1 ? '' : 's'} to go`;
       if (taps >= 3) {
-        cv.onclick = null; flash(); Audio8.play('hatch'); confetti.burst(100);
+        cv.onclick = null; flash(); Audio8.play('hatch'); setTimeout(() => Audio8.cry('axolotl'), 700); confetti.burst(100);
         const bc = { species: 'axolotl', rarity: 'common' }; let bt = 0;
         const biv = setInterval(() => { if (ov.hidden) return clearInterval(biv); c.clearRect(0, 0, 192, 240); bt += 100; Sprites.drawPet(c, bc, 0, 40, 12, { anim: 'happy', t: bt }); }, 100);
         $('hatchStep1').hidden = true; $('hatchStep2').hidden = false; $('hatchName').focus();

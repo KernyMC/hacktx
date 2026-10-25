@@ -11,7 +11,7 @@
 /* Layout: one phone-shaped column (max 430px) centered on a dotted desktop ground.
    Sky header → pet stage → scrolling content → sticky pixel tab bar. */
 /* Palette: HackTX "Once Upon a Hack" — a storybook night (midnight ink, gold stars) with UT burnt orange,
-   parchment panels for the cards. Pet classes still recolor sky/grass on top of this. */
+   parchment panels for the cards. Each animal recolors sky/grass on top of this (Sprites.applyAnimalTheme). */
 :root {
   --sky: #bfe3ff;      --sky-2: #eaf6ff;
   --grass: #8fd48a;    --grass-2: #5fb35e;
@@ -64,11 +64,13 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 /* App shell: the phone is a fixed-height column; only <main> scrolls, the top bar and tab bar stay put. */
 .phone {
   position: relative; max-width: 430px; margin: 0 auto; height: 100%;
+  height: 100dvh; /* mobile: the visible viewport, so the tab bar never hides under the browser toolbar */
   background: var(--sky); display: flex; flex-direction: column; overflow: hidden;
 }
+.phone > .ribbon, .phone > .topbar { flex: none; }
 @media (min-width: 560px) {
   body { padding-block: 24px; }
-  .phone { height: calc(100% - 48px); border: 4px solid var(--ink); box-shadow: 0 0 0 3px var(--gold), 10px 10px 0 rgba(0,0,0,.45); border-radius: 6px; }
+  .phone { height: calc(100% - 48px); height: calc(100dvh - 48px); border: 4px solid var(--ink); box-shadow: 0 0 0 3px var(--gold), 10px 10px 0 rgba(0,0,0,.45); border-radius: 6px; }
 }
 body.tut-on main { overflow: hidden; }
 .tut { touch-action: none; overscroll-behavior: contain; }
@@ -305,24 +307,7 @@ main > .screen { padding: 0 14px; }
 .tabs button.active::before { background: var(--accent); }
 main { transition: background .4s; }
 .panel h2 { color: var(--ink); }
-body[data-cls] .panel, body[data-cls] .friend, body[data-cls] .critter, body[data-cls] .quest { transition: background-color .4s; }
-/* farm: hay-bale planks */
-body[data-cls=farm] main { background: var(--grass) repeating-linear-gradient(90deg, transparent 0 46px, rgba(0,0,0,.05) 46px 48px); }
-body[data-cls=farm] .panel { border-color: #6b3a24; box-shadow: 4px 4px 0 #6b3a24; }
-/* wild: leafy dashes */
-body[data-cls=wild] main { background: var(--grass) radial-gradient(rgba(0,60,20,.12) 2px, transparent 2px) 0 0/18px 18px; }
-body[data-cls=wild] .panel { outline: 2px dashed var(--grass-2); outline-offset: -7px; }
-/* prairie: sun-baked stripes */
-body[data-cls=prairie] main { background: var(--grass) repeating-linear-gradient(0deg, transparent 0 14px, rgba(120,70,0,.07) 14px 16px); }
-body[data-cls=prairie] .panel { box-shadow: 4px 4px 0 #a8641d; }
-/* water: waves */
-body[data-cls=water] main { background: var(--grass) repeating-linear-gradient(135deg, transparent 0 10px, rgba(255,255,255,.14) 10px 12px); }
-body[data-cls=water] .panel { border-color: #1f4f7a; box-shadow: 4px 4px 0 #1f4f7a; }
-/* austin legends: night-time burnt orange + gold */
-body[data-cls=legends] main { background: #3b2a5e radial-gradient(#5d4690 1px, transparent 1px) 0 0/12px 12px; }
-body[data-cls=legends] .panel, body[data-cls=legends] .quest, body[data-cls=legends] .friend, body[data-cls=legends] .critter { border-color: #bf5700; box-shadow: 4px 4px 0 #ffcf4d; }
-body[data-cls=legends] .topbar { background: #2b2140; color: #fff; border-bottom-color: #ffcf4d; }
-body[data-cls=legends] .topbar .name, body[data-cls=legends] .topbar .sub { color: #ffcf4d; }
+/* rarity frame around the stage */
 .phone[data-rarity=legendary] .stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 4px #ffcf4d; animation: glowin 1.4s infinite alternate; }
 .phone[data-rarity=mythic] .stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 3px #b79cff; }
 @keyframes glowin { to { box-shadow: inset 0 0 0 4px #ffcf4d, inset 0 0 26px rgba(255,207,77,.8); } }
@@ -424,7 +409,8 @@ body[data-curse=whisper] .stage canvas { filter: brightness(.8) saturate(.6); }
 body[data-curse=tiny] .stage canvas { transform: scale(.55) translateY(36%); }
 body[data-curse=mime] .stage canvas { filter: grayscale(1) contrast(1.15); }
 body[data-curse=shakespeare] .qtext, body[data-curse=shakespeare] #questList .title { font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
-body[data-curse=opera] .stage { background: radial-gradient(circle at 50% 30%, rgba(255,255,255,.35), transparent 60%); }
+/* opera: a spotlight on the pet, drawn over the (opaque) stage canvas */
+body[data-curse=opera] .stage::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 55%, rgba(255,240,200,.3) 0 22%, rgba(20,10,40,.6) 58%); }
 body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-size: 12px; color: var(--ink-2); }
 .stage .fx { position: absolute; pointer-events: none; animation: floatUp 2.2s ease-out forwards; line-height: 0; }
 
@@ -503,6 +489,7 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
       <div class="panel"><h2>Nest</h2><div class="zoo-grid" id="eggGrid"></div><div class="empty" id="eggEmpty">No eggs yet. Complete quests to find some.</div></div>
       <div class="panel"><div class="row"><h2 class="grow">Collection</h2><span class="lbl" id="dexCount">0 / 30</span></div>
         <p class="sub" style="margin:0 0 8px">Tap a Familiar to make it active, play its minigame or challenge a friend. Rarer animals are drawn at higher resolution.</p>
+        <div class="filters" id="clsFilters"></div>
         <div class="zoo-grid" id="zooGrid"></div><div class="empty" id="zooEmpty" hidden>Hatch an egg to meet your second Familiar.</div></div>
       <div class="panel"><h2>Familiar Dex</h2><p class="sub" style="margin:0 0 8px">Every animal, rarest last. Silhouettes are still out there.</p><div class="zoo-grid" id="dexGrid"></div></div>
     </section>

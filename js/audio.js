@@ -102,11 +102,14 @@
     bat:        [[3000, .08, 'square', -800], [2600, .08, 'square', -600]],
     jackalope:  [[1300, .06, 'triangle', 300], [120, .1, 'square', -40]],
     longhorn:   [[180, .25, 'sawtooth', 40], [200, .36, 'sawtooth', -60]],
+    grackle:    [[2400, .05, 'square', -1200], [0, .03], [1800, .08, 'sawtooth', 800], [900, .1, 'square', -400]],
+    salamander: [[500, .06, 'sine', 300], [700, .06, 'sine', -200], [900, .08, 'sine', 400]],
+    hornedlizard: ['noise', [260, .1, 'triangle', 80], [320, .12, 'triangle', -60]],
   };
-  function cry(species) {
+  // at = start offset in seconds (lets hatch() end on the cry)
+  function cry(species, at = 0) {
     unlock();
     const seq = CRIES[species] || CRIES.axolotl;
-    let at = 0;
     seq.forEach(step => {
       if (step === 'noise' || step[0] === 'noise') { noise(at, 0.07, 0.08); at += 0.06; return; }
       const [f, d, w, s] = step;
@@ -115,7 +118,25 @@
     });
   }
 
+  // ------------------------------------------------------------------
+  // Pet / happy / hatch per species, sung in that species' voice: the wave and pitch of the first
+  // note of its cry (a frog stays a low sawtooth, a mouse a high square).
+  // ------------------------------------------------------------------
+  function voice(species) {
+    const n = (CRIES[species] || CRIES.axolotl).find(s => Array.isArray(s) && s[0] > 0) || [600, 0.08, 'square'];
+    return { f: Math.min(1800, Math.max(160, n[0])), w: n[2] || 'square' };
+  }
+  // a short run of notes: steps are pitch ratios of the voice's base pitch
+  function sing(species, steps, len, at = 0) {
+    const v = voice(species);
+    steps.forEach((r, i) => note(v.f * r, at + i * len, len * 1.3, v.w, 0.06));
+    return at + steps.length * len;
+  }
+  function pet(species) { unlock(); sing(species, [1, 1.26], 0.06); }
+  function happy(species) { unlock(); sing(species, [1, 1.26, 1.5, 2], 0.07); }
+  function hatch(species) { unlock(); cry(species, sing(species, [0.5, 0.63, 0.75, 1, 1.5, 2], 0.09) + 0.08); }
+
   function play(name) { unlock(); (SFX[name] || SFX.tap)(); }
 
-  global.Audio8 = { play, cry, unlock, setEnabled, isEnabled, CRIES };
+  global.Audio8 = { play, cry, pet, happy, hatch, unlock, setEnabled, isEnabled, CRIES };
 })(window);

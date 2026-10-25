@@ -13,7 +13,7 @@ drawn by hand do not fit in a hackathon.
 ## Decision
 
 - 5 tiers with a fixed resolution: common 20 · uncommon 24 · rare 32 · mythic 40 · legendary 48 px.
-  Each species has a fixed rarity (the Longhorn is the only legendary).
+  Each species has a fixed rarity (the Longhorn was the only legendary; superseded by ADR 0005).
 - Final art is written as code with **pxl** (`art/animals/<id>.px.js`), under one contract (4×4
   sheet, ink outline, standard `face()`), and packed into `assets/sprites/` + `manifest.json`.
 - `js/animals.js` (shapes + rasterizer) stays as the **fallback** for any species without a sheet.

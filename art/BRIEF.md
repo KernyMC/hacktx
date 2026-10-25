@@ -44,41 +44,44 @@ The result `art/out/<id>/<id>.png` must be exactly (4·N) × (4·N) px.
   small `grid()` patches for faces are fine.
 - Keep each file self-contained (no imports). Keep the file under ~150 lines.
 
-## Animal list (id · rarity · N · class · look)
+## Animal list (id · rarity · N · look)
 
 See `js/animals.js` for the full definitions (name, flavor, pal). Each `def('<id>', {...})` has `shapes` describing the
 current look: use it as the reference silhouette (ears, tail, horns, wings) and make it much better.
 
-axolotl · common · N=20 · water · Axolotl
-cat · common · N=20 · farm · Snack Cat
-dog · common · N=20 · farm · Party Pup
-bunny · common · N=20 · farm · Clover Bun
-chick · common · N=20 · farm · Sunny Chick
-hamster · common · N=20 · prairie · Pocket Hammy
-frog · common · N=20 · water · Puddle Frog
-mouse · common · N=20 · farm · Crumb Mouse
-duckling · common · N=20 · water · Splash Duck
-pig · uncommon · N=24 · farm · Mud Piglet
-sheep · uncommon · N=24 · farm · Cloud Lamb
-hedgehog · uncommon · N=24 · wild · Burr Hog
-squirrel · uncommon · N=24 · wild · Acorn Squirrel
-turtle · uncommon · N=24 · water · Pond Turtle
-prairiedog · uncommon · N=24 · prairie · Lookout Pup
-goat · uncommon · N=24 · farm · Hill Goat
-redpanda · rare · N=32 · wild · Ember Panda
-penguin · rare · N=32 · water · Tux Penguin
-fennec · rare · N=32 · prairie · Dune Fennec
-otter · rare · N=32 · water · River Otter
-raccoon · rare · N=32 · wild · Trash Bandit
-capybara · rare · N=32 · water · Chill Capy
-owl · rare · N=32 · wild · Night Owl
-roadrunner · rare · N=32 · prairie · Road Runner
-armadillo · mythic · N=40 · prairie · Armored Dillo
-snowleopard · mythic · N=40 · wild · Frost Leopard
-chameleon · mythic · N=40 · wild · Prism Chameleon
-bat · mythic · N=40 · legends · Congress Bat
-jackalope · mythic · N=40 · legends · Jackalope
-longhorn · legendary · N=48 · legends · Texas Longhorn
+axolotl · common · N=20 · Axolotl
+cat · common · N=20 · Snack Cat
+dog · common · N=20 · Party Pup
+bunny · common · N=20 · Clover Bun
+chick · common · N=20 · Sunny Chick
+hamster · common · N=20 · Pocket Hammy
+frog · common · N=20 · Puddle Frog
+mouse · common · N=20 · Crumb Mouse
+duckling · common · N=20 · Splash Duck
+pig · uncommon · N=24 · Mud Piglet
+sheep · uncommon · N=24 · Cloud Lamb
+hedgehog · uncommon · N=24 · Burr Hog
+squirrel · uncommon · N=24 · Acorn Squirrel
+turtle · uncommon · N=24 · Pond Turtle
+prairiedog · uncommon · N=24 · Lookout Pup
+goat · uncommon · N=24 · Hill Goat
+redpanda · rare · N=32 · Ember Panda
+penguin · rare · N=32 · Tux Penguin
+fennec · rare · N=32 · Dune Fennec
+otter · rare · N=32 · River Otter
+raccoon · rare · N=32 · Trash Bandit
+capybara · rare · N=32 · Chill Capy
+owl · rare · N=32 · Night Owl
+roadrunner · rare · N=32 · Road Runner
+armadillo · mythic · N=40 · Armored Dillo
+snowleopard · mythic · N=40 · Frost Leopard
+chameleon · mythic · N=40 · Prism Chameleon
+bat · mythic · N=40 · Congress Bat
+jackalope · mythic · N=40 · Jackalope
+longhorn · legendary · N=48 · Texas Longhorn
+grackle · legendary · N=48 · Grackle
+salamander · legendary · N=48 · Golden Salamander
+hornedlizard · legendary · N=48 · Horned Lizard
 
 ## Standard face v2 (REQUIRED: copy verbatim into every animal file; never draw your own eyes/mouth)
 
