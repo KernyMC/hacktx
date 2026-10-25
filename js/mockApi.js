@@ -144,6 +144,8 @@
       blessings: [],                  // active blessing ids waiting for next quest
       inventory: { curses: {}, blessings: {}, keys: 0 },
       inbox: [],                      // [{id, kind:'curse'|'bless'|'challenge', from, ...}]
+      plans: [],                      // group outings proposed to the village (Muse planner) [{id, title, place, when, who, why, type, at}]
+      chronicle: null,                // last village chronicle {title, paragraphs, engine, at}
       sentCurses: {},                 // friendId -> curseId
       duels: [],                      // challenges you sent [{id, friendId, petName, species, engine, difficulty, triesLeft, status, at}]
       raids: clone(RAIDS_SEED),
@@ -161,6 +163,44 @@
 
   function load() {
     try { const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+  }
+  // what the friends did this week (seed activity the planner and the chronicle read)
+  const FRIEND_WEEK = [
+    { who: 'Leo', petName: 'Pip', type: 'food', title: 'Breakfast taco crawl', place: 'Veracruz All Natural' },
+    { who: 'Leo', petName: 'Pip', type: 'social', title: 'Board game night', place: 'Emerald Tavern Games' },
+    { who: 'Ana', petName: 'Boulder', type: 'outdoor', title: 'Turtle pond walk', place: 'UT Turtle Pond' },
+    { who: 'Ana', petName: 'Boulder', type: 'creative', title: 'Mural hunt', place: 'The Drag (Guadalupe St)' },
+    { who: 'Mia', petName: 'Ziggy', type: 'outdoor', title: 'Sunrise on the trail', place: 'Lady Bird Lake Trail' },
+    { who: 'Mia', petName: 'Ziggy', type: 'food', title: 'Boba roulette', place: 'Tapioca House' },
+    { who: 'Mia', petName: 'Ziggy', type: 'social', title: 'Talk to a stranger', place: 'GDC Atrium' },
+  ];
+  const favoriteOf = (who) => { const c = {}; FRIEND_WEEK.filter(w => w.who === who).forEach(w => { c[w.type] = (c[w.type] || 0) + 1; }); return (Object.entries(c).sort((a, b) => b[1] - a[1])[0] || ['social'])[0]; };
+  function villagePayload() {
+    const me = { name: 'You', pet: { name: S.pet.name, species: S.pet.species }, favorite: dominantType() };
+    const friends = S.friends.map(f => ({ name: f.name, pet: { name: f.pet.name, species: f.pet.species }, status: f.status, vacation: !!f.vacation, favorite: favoriteOf(f.name) }));
+    const week = S.completed.slice(-8).map(d => ({ who: 'You', petName: S.pet.name, type: d.type, title: d.title, place: d.place })).concat(FRIEND_WEEK);
+    const places = S.quests.map(q => ({ name: q.place.name, kind: q.place.kind, dist: q.place.dist, rating: q.place.rating, hint: q.place.hint, type: q.type }))
+      .concat(QUEST_POOL.map(q => ({ name: q.place.name, kind: q.place.kind, dist: q.place.dist, rating: q.place.rating, hint: q.place.hint, type: q.type })))
+      .filter((p, i, arr) => arr.findIndex(x => x.name === p.name) === i).slice(0, 12);
+    return { me, friends, week, places };
+  }
+  function localPlans(payload) {
+    const avail = payload.friends.filter(f => !f.vacation).map(f => f.name);
+    const by = t => payload.places.find(p => p.type === t) || payload.places[0];
+    const P = [
+      { title: 'Taco run, then the bats', type: 'food', when: 'Today 6:30 pm', why: 'Everyone keeps picking food quests, and nobody has seen the bridge bats this week.' },
+      { title: 'Sunset lap around the lake', type: 'outdoor', when: 'Saturday 5 pm', why: 'The squad keeps questing alone. One loop gets everyone in the same photo.' },
+      { title: 'Museum speedrun and coffee', type: 'creative', when: 'Sunday 11 am', why: 'Creative quests are the rarest in this village. One trip fixes that.' },
+    ];
+    return P.map((p, i) => Object.assign({}, p, { place: by(p.type) || { name: 'Downtown' }, who: avail.slice(i % 2, i % 2 + 2).length ? avail.slice(i % 2, i % 2 + 2) : avail.slice(0, 2), pitch: `${S.pet.name} says: bring snacks.` }));
+  }
+  function localChronicle(payload) {
+    const pet = S.pet.name, mine = payload.week.filter(w => w.who === 'You'), theirs = payload.week.filter(w => w.who !== 'You');
+    const paragraphs = [`Once upon a hack, the village of Austin woke up to a quiet week. ${pet} stretched, sniffed the air, and decided something had to happen.`];
+    paragraphs.push(mine.length ? `You went out ${mine.length} time${mine.length > 1 ? 's' : ''}: ${mine.slice(0, 3).map(w => `${w.title} at ${w.place}`).join(', ')}. ${pet} told everyone about it twice.` : `You stayed in. ${pet} sat by the door with a look that said "three quests are waiting on the table".`);
+    paragraphs.push(`Meanwhile ${theirs.slice(0, 3).map(w => `${w.who} took ${w.petName} to ${w.place}`).join(', ')}. The village got louder, and nobody minded.`);
+    paragraphs.push(`Moral of the chapter: a Familiar grows fastest when the whole village goes outside together. ${pet} is already planning next week.`);
+    return { title: 'The Village Chronicle', paragraphs, engine: 'template' };
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* private mode: fine */ } }
 
@@ -705,12 +745,37 @@
     },
 
     // ---------------------------------------------------------------- village
+    /** POST /village/plan: Muse reads the village's week and proposes 3 outings at real places (template offline) */
+    async planTogether() {
+      const payload = villagePayload();
+      const j = await remoteJSON('/api/village/plan', payload, 30000);
+      if (j && j.ok && Array.isArray(j.plans) && j.plans.length) return { plans: j.plans, engine: j.engine || 'muse' };
+      return { plans: localPlans(payload), engine: 'template' };
+    },
+    /** POST /village/plans: propose a plan to the village (friends reply in the inbox) */
+    async proposePlan(plan) {
+      await delay(80);
+      S.plans = S.plans || [];
+      const p = Object.assign({ id: uid(), at: Date.now(), members: ['You'].concat(plan.who || []) }, plan);
+      S.plans.unshift(p); S.plans = S.plans.slice(0, 6);
+      const f = S.friends.find(x => (plan.who || []).includes(x.name)) || S.friends[0];
+      S.inbox.unshift({ id: uid(), kind: 'note', from: f.name, text: `${f.name}: "${plan.title}"? I am in. ${f.pet.name} is already packing.` });
+      save(); return { ok: true, plan: p, message: `Sent to the village. ${f.name} replied first.` };
+    },
+    /** POST /village/chronicle: this week's shared story (Muse, template offline) */
+    async villageChronicle(force) {
+      if (!force && S.chronicle && Date.now() - S.chronicle.at < 6 * 3600e3) return S.chronicle;
+      const payload = villagePayload();
+      const j = await remoteJSON('/api/village/chronicle', payload, 30000);
+      const out = j && j.ok && Array.isArray(j.paragraphs) && j.paragraphs.length ? { title: j.title, paragraphs: j.paragraphs, engine: j.engine || 'muse' } : localChronicle(payload);
+      S.chronicle = Object.assign({ at: Date.now() }, out); save(); return S.chronicle;
+    },
     /** GET /village */
     async getVillage() {
       await delay(80);
       tickDuels(); save();
       return { friends: S.friends.map(f => Object.assign({}, f, { cursedBy: S.sentCurses[f.id] || null })),
-        raids: S.raids, inbox: S.inbox, curses: CURSES, blessings: BLESSINGS, inventory: S.inventory, duels: S.duels,
+        raids: S.raids, inbox: S.inbox, curses: CURSES, blessings: BLESSINGS, inventory: S.inventory, duels: S.duels, plans: S.plans || [],
         onVacation: onVacation() };
     },
 

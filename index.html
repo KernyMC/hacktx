@@ -234,6 +234,12 @@ main > .screen { padding: 0 14px; }
 .place .pn { font-weight: 700; }
 .place .pm { font-size: 13px; color: var(--ink-2); }
 .qtext { font-size: 18px; line-height: 1.4; }
+.plan { background: var(--panel-2); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--lilac); padding: 10px 12px; }
+.plan .pt { font-weight: 700; font-size: 18px; } .plan .pm { font-size: 13px; color: var(--ink-2); margin: 2px 0 6px; }
+.plan .pw { font-size: 15px; line-height: 1.35; } .plan .pq { font-size: 14px; font-style: italic; color: var(--ink-2); margin-top: 6px; }
+.plan .who { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; } .plan .who span { font-size: 13px; font-weight: 700; padding: 2px 8px; border: 2px solid var(--ink); background: var(--panel); }
+.plan.sent { box-shadow: 4px 4px 0 var(--mint); } .plan .eng { font-family: var(--display); font-size: 8px; color: var(--ink-2); margin-left: 6px; }
+#chronText p { font-size: 16px; line-height: 1.45; margin: 0 0 10px; }
 .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 .demo-grid .btn { font-size: 14px; padding: 8px 6px; text-align: center; }
 .demo-grid .btn.wide { grid-column: 1 / -1; }
@@ -541,6 +547,7 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
     <!-- VILLAGE -->
     <section class="screen" id="screen-village" hidden>
       <div class="village-stage"><canvas id="villageCanvas" width="400" height="120"></canvas></div>
+      <div class="panel" id="planPanel"><h2>Plan something together</h2><p class="sub" style="margin:0 0 10px">Muse reads what the whole village did this week and proposes an outing everyone would enjoy, at a real place nearby.</p><div id="planList" style="display:flex;flex-direction:column;gap:10px"></div><button class="btn pink block" id="btnPlan" style="margin-top:10px">Plan something together</button></div>
       <div id="raidList" style="display:flex;flex-direction:column;gap:12px"></div>
       <div class="panel" id="duelPanel"><h2>Minigame duels</h2><p class="sub" style="margin:0">Challenge a friend from any Familiar in your Nest. They get 3 tries; if they fail all 3, you win coins.</p><div id="duelList"></div></div>
       <div id="friendList" style="display:flex;flex-direction:column;gap:12px"></div>
@@ -554,6 +561,7 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
         <div id="bookPages"></div>
         <div class="actions"><button class="btn ghost" id="bookCopy">Copy chapter</button><button class="btn pink" id="bookShare">Share to village</button></div>
       </div>
+      <div class="book" id="chronBook"><h2 id="chronTitle">The Village Chronicle</h2><div class="date" id="chronDate">What the whole village did this week, told by your pet. Written by Muse.</div><div id="chronText"></div><div class="actions"><button class="btn lilac block" id="btnChronicle">Write this week's chronicle</button></div></div>
     </section>
   </main>
 

@@ -969,6 +969,33 @@
     b.rows.forEach((row, r) => { for (let x = 0; x < row.length; x++) { const ch = row[x]; if (ch === '.') continue; c.fillStyle = ch === 'X' ? '#2b2140' : (b.pal[ch] || '#fff'); c.fillRect(x * k, r * k, k, k); } });
     return cv;
   }
+  // Group planner (Muse): proposals and the plans already sent to the village
+  const TYPE_LBL = { food: 'Food', social: 'Social', outdoor: 'Outdoor', creative: 'Creative' };
+  function planCard(p, opts = {}) {
+    const d = document.createElement('div'); d.className = 'plan' + (opts.sent ? ' sent' : '');
+    d.innerHTML = `<div class="pt"></div><div class="pm"></div><div class="pw"></div><div class="who"></div><div class="pq"></div>`;
+    d.querySelector('.pt').textContent = p.title;
+    d.querySelector('.pm').textContent = `${TYPE_LBL[p.type] || 'Group'} quest · ${p.place && p.place.name}${p.place && p.place.dist ? ' · ' + p.place.dist : ''} · ${p.when}`;
+    d.querySelector('.pw').textContent = p.why || '';
+    d.querySelector('.who').innerHTML = (opts.sent ? ['You'] : []).concat(p.who || []).map(n => `<span></span>`).join('');
+    [...d.querySelectorAll('.who span')].forEach((s, i) => { s.textContent = (opts.sent ? ['You'] : []).concat(p.who || [])[i]; });
+    d.querySelector('.pq').textContent = p.pitch || '';
+    if (opts.onSend) { const b = document.createElement('button'); b.className = 'btn sm pink'; b.style.marginTop = '8px'; b.textContent = 'Send to the village'; b.onclick = () => opts.onSend(p, b); d.appendChild(b); }
+    else if (opts.sent) { const t = document.createElement('div'); t.className = 'pm'; t.style.marginTop = '6px'; t.textContent = 'Sent to the village · ' + (p.members || []).join(', '); d.appendChild(t); }
+    return d;
+  }
+  function renderPlans(sent) {
+    const box = $('planList'); if (!box.dataset.proposing) { box.innerHTML = ''; sent.slice(0, 3).forEach(p => box.appendChild(planCard(p, { sent: true }))); }
+  }
+  $('btnPlan').onclick = async () => {
+    const btn = $('btnPlan'), box = $('planList'); if (btn.disabled) return;
+    btn.disabled = true; btn.textContent = `${me.pet.name} is reading the village's week...`; Audio8.play('tap'); stage.set('happy', 2500);
+    const r = await API.planTogether();
+    box.dataset.proposing = '1'; box.innerHTML = '';
+    const head = document.createElement('div'); head.className = 'pm'; head.innerHTML = `<b>${r.plans.length} plans for this village</b><br><span class="eng" style="margin:0">${r.engine === 'muse' ? 'WRITTEN BY MUSE SPARK (META)' : 'OFFLINE PLAN: ADD MODEL_API_KEY FOR MUSE'}</span>`; box.appendChild(head);
+    r.plans.forEach(p => box.appendChild(planCard(p, { onSend: async (plan, b) => { b.disabled = true; const s = await API.proposePlan(plan); Audio8.play('accept'); confetti.burst(40, ['#b79cff', '#fff', '#6fe3b1']); toast(s.message, 3200); delete box.dataset.proposing; await refreshMe(); renderVillage(); } })));
+    btn.disabled = false; btn.textContent = 'Plan again';
+  };
   async function renderVillage() {
     village = await API.getVillage();
     const cv = $('villageCanvas'), c = cv.getContext('2d');
@@ -984,6 +1011,7 @@
       c.fillStyle = '#fff'; c.fillText(p.name, x + box / 2, 131); c.textAlign = 'start';
     });
 
+    renderPlans(village.plans || []);
     // raids
     const names = { me: 'You' }; village.friends.forEach(f => names[f.id] = f.name);
     const rl = $('raidList'); rl.innerHTML = '';
@@ -1055,7 +1083,14 @@
   // ------------------------------------------------------------------
   // Storybook
   // ------------------------------------------------------------------
+  function renderChronicle(c) {
+    $('chronTitle').textContent = c.title; $('chronDate').textContent = (c.engine === 'muse' ? 'Written by Muse Spark' : 'Offline chapter') + ' · ' + new Date(c.at).toLocaleDateString();
+    $('chronText').innerHTML = c.paragraphs.map(() => '<p></p>').join(''); [...$('chronText').querySelectorAll('p')].forEach((el, i) => { el.textContent = c.paragraphs[i]; });
+    $('btnChronicle').textContent = 'Write it again';
+  }
+  $('btnChronicle').onclick = async () => { const b = $('btnChronicle'); if (b.disabled) return; b.disabled = true; b.textContent = `${me.pet.name} is gathering the village gossip...`; Audio8.play('tap'); const c = await API.villageChronicle(true); renderChronicle(c); b.disabled = false; Audio8.play('bless'); speak(c.paragraphs[0], me.pet, 'happy'); };
   async function renderStory() {
+    { const c = await API.villageChronicle(false).catch(() => null); if (c && c.paragraphs) renderChronicle(c); }
     const b = await API.getStorybook(); if (!b) return;
     $('bookTitle').textContent = b.title; $('bookDate').textContent = b.date;
     const pages = $('bookPages'); pages.innerHTML = '';

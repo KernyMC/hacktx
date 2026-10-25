@@ -221,3 +221,12 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
 - Settings > "Time of day": Auto / Dawn / Day / Sunset / Night. `Sprites.setPhaseOverride(phase)` (null = clock)
   drives the habitat, the CSS theme and the themed glyphs; the choice is remembered in localStorage so the
   demo phase survives a reload. This closes step 7 of the systems list.
+- Meta track: Muse (Meta Model API, `MODEL_API_KEY`, model `MUSE_MODEL` default muse-spark-1.3, OpenAI-compatible
+  Chat Completions in JSON mode at `MUSE_BASE_URL`) powers two social features. Village > "Plan something
+  together": the server sends the player's and friends' week (quests, favourite types, who is on vacation)
+  plus real places (today's SerpApi quests + the demo pool) and Muse proposes 3 group outings with a reason
+  per person; "Send to the village" stores the plan and a friend replies in the inbox. Story > "The Village
+  Chronicle": Muse weaves everyone's week into one shared chapter told by the pet (narrated by ElevenLabs).
+  Both fall back to templates without the key or on any failure (hard rule). api.meta.ai is unreachable from
+  this sandbox, so the Muse path was verified against a local stub of the endpoint (auth header, JSON-mode
+  parsing, code-fence stripping) and the fallback path end to end; the live call is to be checked on Vercel.

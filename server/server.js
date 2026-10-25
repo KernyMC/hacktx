@@ -100,7 +100,7 @@ async function readJson(req, limit) {
 // Strip anything key-like from strings before logging.
 function redact(s) {
   let out = String(s);
-  for (const k of ['ELEVENLABS_API_KEY', 'GEMINI_API_KEY', 'SERPAPI_API_KEY']) {
+  for (const k of ['ELEVENLABS_API_KEY', 'GEMINI_API_KEY', 'SERPAPI_API_KEY', 'MODEL_API_KEY']) {
     const v = env(k);
     if (v) out = out.split(v).join('***');
   }
@@ -631,6 +631,100 @@ Return JSON {"reply": "...", "mood": "happy|neutral|sad|excited"}.`;
 }
 
 // ---------------------------------------------------------------------------
+// Meta Model API (Muse): the village planner and the village chronicle.
+// POST /api/village/plan      { me, friends, week, places } -> { ok, plans:[...], engine }
+// POST /api/village/chronicle { me, friends, week }         -> { ok, title, paragraphs:[...], engine }
+// Chat Completions surface (OpenAI-compatible) at MUSE_BASE_URL (default https://api.meta.ai/v1).
+// Both routes fall back to local templates when the key is missing or the call fails.
+// ---------------------------------------------------------------------------
+const MUSE_FALLBACK_PLANS = [
+  { title: 'Taco run, then the bats', type: 'food', when: 'Today 6:30 pm', why: 'Everyone in the village has been picking food quests, and nobody has seen the Congress bridge bats yet this week.' },
+  { title: 'Sunset lap around the lake', type: 'outdoor', when: 'Saturday 5 pm', why: 'The squad keeps questing alone. A loop around Lady Bird Lake is the easiest way to get everyone in one photo.' },
+  { title: 'Museum speedrun and coffee', type: 'creative', when: 'Sunday 11 am', why: 'Creative quests are the rarest in this village. Free museum day plus a coffee stop fixes that in one trip.' },
+];
+function fallbackPlans(b) {
+  const friends = (b.friends || []).filter((f) => !f.vacation).map((f) => f.name);
+  const places = Array.isArray(b.places) ? b.places : [];
+  return MUSE_FALLBACK_PLANS.map((p, i) => {
+    const place = places.find((x) => x.type === p.type) || places[i % Math.max(1, places.length)] || { name: ['Veracruz All Natural', 'Lady Bird Lake Trail', 'Blanton Museum of Art'][i], kind: 'Austin spot', dist: '' };
+    const who = friends.slice(i % 2, i % 2 + 2); if (!who.length) who.push(...friends.slice(0, 2));
+    return { title: p.title, place: { name: place.name, kind: place.kind || 'Place', dist: place.dist || '' }, when: p.when, who, why: p.why, type: p.type, pitch: `${(b.me && b.me.pet && b.me.pet.name) || 'Your pet'} says: bring snacks.` };
+  });
+}
+function fallbackChronicle(b) {
+  const me = (b.me && b.me.name) || 'You', pet = (b.me && b.me.pet && b.me.pet.name) || 'your Familiar';
+  const week = Array.isArray(b.week) ? b.week : [];
+  const mine = week.filter((w) => w.who === me), theirs = week.filter((w) => w.who !== me);
+  const lines = [];
+  lines.push(`Once upon a hack, the village of Austin woke up to a quiet week. ${pet} stretched, sniffed the air, and decided something had to happen.`);
+  if (mine.length) lines.push(`${me} went out ${mine.length} time${mine.length > 1 ? 's' : ''}: ${mine.slice(0, 3).map((w) => `${w.title || w.type} at ${w.place}`).join(', ')}. ${pet} told everyone about it twice.`);
+  else lines.push(`${me} stayed in. ${pet} sat by the door with a look that said "three quests are waiting on the table".`);
+  if (theirs.length) lines.push(`Meanwhile ${theirs.slice(0, 3).map((w) => `${w.who} took ${w.petName || 'their pet'} to ${w.place}`).join(', ')}. The village got louder, and nobody minded.`);
+  lines.push(`Moral of the chapter: a Familiar grows fastest when the whole village goes outside together. ${pet} is already planning next week.`);
+  return { title: 'The Village Chronicle', paragraphs: lines };
+}
+
+const hasMuse = () => !!env('MODEL_API_KEY');
+async function museJSON(system, user, temperature = 0.7) {
+  const base = env('MUSE_BASE_URL', 'https://api.meta.ai/v1').replace(/\/$/, '');
+  const r = await fetchWithTimeout(`${base}/chat/completions`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env('MODEL_API_KEY')}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: env('MUSE_MODEL', 'muse-spark-1.3'), temperature, max_tokens: 900, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
+  }, 25000);
+  if (!r.ok) throw await upstreamError(r, 'Muse');
+  const j = await r.json();
+  const text = (((j.choices || [])[0] || {}).message || {}).content || '';
+  const clean = String(text).replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+  const start = clean.indexOf('{'), end = clean.lastIndexOf('}');
+  return JSON.parse(start >= 0 ? clean.slice(start, end + 1) : clean);
+}
+const villageBrief = (b) => {
+  const me = b.me || {}, pet = me.pet || {};
+  const friends = (Array.isArray(b.friends) ? b.friends : []).slice(0, 8).map((f) => `- ${f.name} with ${f.pet && f.pet.name} the ${f.pet && f.pet.species}${f.vacation ? ' (ON VACATION, unavailable)' : ''}. Favourite quest type: ${f.favorite || 'unknown'}. Status: ${f.status || ''}`).join('\n');
+  const week = (Array.isArray(b.week) ? b.week : []).slice(0, 24).map((w) => `- ${w.who}: ${w.type} quest "${w.title || ''}" at ${w.place}${w.caption ? ` ("${String(w.caption).slice(0, 80)}")` : ''}`).join('\n');
+  return `PLAYER: ${me.name || 'You'} with ${pet.name || 'a pet'} the ${pet.species || 'familiar'} (favourite quest type: ${me.favorite || 'unknown'}).\nVILLAGE FRIENDS:\n${friends || '- none'}\nWHAT EVERYONE DID THIS WEEK:\n${week || '- nothing yet'}`;
+};
+
+async function handlePlan(req, res) {
+  const b = await readJson(req, 256 * 1024);
+  const places = (Array.isArray(b.places) ? b.places : []).slice(0, 12).map((p) => ({ name: p.name, kind: p.kind, dist: p.dist, rating: p.rating, hint: p.hint, type: p.type }));
+  if (!hasMuse()) return sendJson(res, 200, { ok: true, plans: fallbackPlans(b), engine: 'template' });
+  try {
+    const system = 'You are the game master of "Familiars", a game where friends raise pixel pets by doing real-world quests together in Austin, Texas. You plan outings that bring people together in person. Be specific, warm and a little funny. Never invent places: use only the REAL PLACES list. Reply with JSON only.';
+    const user = `${villageBrief(b)}\n\nREAL PLACES NEARBY (JSON): ${JSON.stringify(places)}\n\nPropose 3 group plans for this village, each at one of the real places, each mixing friends who are available (never the ones on vacation) and matching what they enjoy. Vary the quest types (food, social, outdoor, creative). Mention one concrete reason per person in "why".\nReturn exactly: {"plans":[{"title":"<=6 words","place":{"name":"...","kind":"...","dist":"..."},"when":"e.g. Today 6:30 pm","who":["friend names"],"why":"2 sentences","type":"food|social|outdoor|creative","pitch":"one line in the pet's voice"}]}`;
+    const j = await museJSON(system, user, 0.8);
+    const plans = (Array.isArray(j.plans) ? j.plans : []).slice(0, 3).map((p) => ({
+      title: String(p.title || 'Group quest').slice(0, 60), place: { name: String((p.place && p.place.name) || places[0]?.name || 'Downtown'), kind: String((p.place && p.place.kind) || ''), dist: String((p.place && p.place.dist) || '') },
+      when: String(p.when || 'This week').slice(0, 40), who: (Array.isArray(p.who) ? p.who : []).map(String).slice(0, 4), why: String(p.why || '').slice(0, 400),
+      type: ['food', 'social', 'outdoor', 'creative'].includes(p.type) ? p.type : 'social', pitch: String(p.pitch || '').slice(0, 140),
+    }));
+    if (!plans.length) throw new Error('Muse returned no plans');
+    log(`village plan -> ${plans.map((p) => p.title).join(' | ')} (muse)`);
+    sendJson(res, 200, { ok: true, plans, engine: 'muse' });
+  } catch (e) {
+    logErr('village plan failed:', e.message);
+    sendJson(res, 200, { ok: true, plans: fallbackPlans(b), engine: 'template' });
+  }
+}
+
+async function handleChronicle(req, res) {
+  const b = await readJson(req, 256 * 1024);
+  if (!hasMuse()) return sendJson(res, 200, Object.assign({ ok: true, engine: 'template' }, fallbackChronicle(b)));
+  try {
+    const system = 'You write the shared weekly story of a village of friends who raise pixel pets by doing real-world quests in Austin, Texas (the game "Familiars", HackTX 2026 theme "Once Upon a Hack"). Storybook voice, playful, short. Use only the facts given; never invent places or events. Reply with JSON only.';
+    const user = `${villageBrief(b)}\n\nWrite this week's chapter of the village chronicle: a shared story that weaves what everyone did into one tale told by ${(b.me && b.me.pet && b.me.pet.name) || 'the pet'}. 3 to 4 short paragraphs (max 60 words each), name the friends and places, end with a nudge to go out together next week.\nReturn exactly: {"title":"<=6 words","paragraphs":["...","...","..."]}`;
+    const j = await museJSON(system, user, 0.9);
+    const paragraphs = (Array.isArray(j.paragraphs) ? j.paragraphs : []).map((p) => String(p).slice(0, 600)).filter(Boolean).slice(0, 5);
+    if (!paragraphs.length) throw new Error('Muse returned no paragraphs');
+    sendJson(res, 200, { ok: true, title: String(j.title || 'The Village Chronicle').slice(0, 60), paragraphs, engine: 'muse' });
+  } catch (e) {
+    logErr('village chronicle failed:', e.message);
+    sendJson(res, 200, Object.assign({ ok: true, engine: 'template' }, fallbackChronicle(b)));
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 async function handle(req, res) {
@@ -642,12 +736,14 @@ async function handle(req, res) {
 
   try {
     if (pathname.startsWith('/api/')) {
-      if (pathname === '/api/health' && req.method === 'GET') return sendJson(res, 200, { ok: true, elevenlabs: hasEleven(), gemini: hasGemini(), serpapi: hasSerp() });
+      if (pathname === '/api/health' && req.method === 'GET') return sendJson(res, 200, { ok: true, elevenlabs: hasEleven(), gemini: hasGemini(), serpapi: hasSerp(), muse: hasMuse() });
       if (pathname === '/api/quests' && req.method === 'GET') return await handleQuests(req, res, url);
       if (pathname === '/api/chat' && req.method === 'POST') return await handleChat(req, res);
       if (pathname === '/api/speech/transcribe' && req.method === 'POST') return await handleTranscribe(req, res, url);
       if (pathname === '/api/speech/say' && req.method === 'POST') return await handleSay(req, res);
       if (pathname === '/api/proof/verify' && req.method === 'POST') return await handleVerify(req, res);
+      if (pathname === '/api/village/plan' && req.method === 'POST') return await handlePlan(req, res);
+      if (pathname === '/api/village/chronicle' && req.method === 'POST') return await handleChronicle(req, res);
       req.resume();
       return sendJson(res, 404, { ok: false, error: `No route ${req.method} ${pathname}` });
     }
@@ -670,7 +766,7 @@ process.on('unhandledRejection', (e) => logErr('unhandledRejection:', e));
 
 server.listen(PORT, () => {
   console.log(`\n  Familiars running at  http://localhost:${PORT}/`);
-  console.log(`  .env: ${envLoaded ? 'loaded' : 'not found (using process env only)'} | ElevenLabs: ${hasEleven() ? 'on' : 'off'} | Gemini: ${hasGemini() ? 'on' : 'off (heuristic proofs)'} | SerpApi: ${hasSerp() ? 'on' : 'off (seed quests)'}\n`);
+  console.log(`  .env: ${envLoaded ? 'loaded' : 'not found (using process env only)'} | ElevenLabs: ${hasEleven() ? 'on' : 'off'} | Gemini: ${hasGemini() ? 'on' : 'off (heuristic proofs)'} | SerpApi: ${hasSerp() ? 'on' : 'off (seed quests)'} | Muse: ${hasMuse() ? 'on' : 'off (template plans)'}\n`);
 });
 server.on('error', (e) => {
   if (e.code === 'EADDRINUSE') console.error(`Port ${PORT} is already in use. Set PORT=xxxx in .env or your shell and try again.`);
