@@ -189,6 +189,7 @@
     currentTab = tab;
     document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     ['home', 'zoo', 'shop', 'village', 'story'].forEach(t => $('screen-' + t).hidden = t !== tab);
+    $('stage').hidden = tab === 'village';
     if (tab === 'home') renderQuests();
     if (tab === 'zoo') await renderZoo();
     if (tab === 'shop') await renderShop();
@@ -428,7 +429,7 @@
     $('qPlaceMeta').textContent = `${q.place.kind} · ${q.place.dist} away${q.place.rating ? ' · ' + q.place.rating + ' stars' : ''} · ${q.place.hint}`;
     $('qMaps').hidden = !q.place.mapsUrl; if (q.place.mapsUrl) $('qMaps').href = q.place.mapsUrl;
     drawMinimap(q);
-    $('qXp').textContent = q.xp; $('qEgg').textContent = Math.round(q.eggChance * 100) + '%';
+    renderQuestSheet(q);
     $('qTags').innerHTML = (q.cursed ? `<span class="tag curse">${ic(me.activeCurse.icon, 12)} ${esc(me.activeCurse.name)} by ${esc(me.activeCurse.from)}</span> ` : '') +
       (q.blessings || []).map(id => { const b = API.BLESSINGS.find(x => x.id === id); return b ? `<span class="tag bless">${ic(b.icon, 12)} ${esc(b.name)}</span> ` : ''; }).join('');
     $('qReroll').disabled = !!q.rerolled;
@@ -439,6 +440,27 @@
     setProofTab('photo');
     $('qSubmit').disabled = true;
     $('ovQuest').hidden = false;
+  }
+  // the pet narrates in a speech bubble; the tiles show what this quest really pays (blessings and curses applied)
+  function renderQuestSheet(q) {
+    const pc = $('qPetCv').getContext('2d'); pc.clearRect(0, 0, 80, 80);
+    Sprites.drawPet(pc, me.pet, 8, 8, 4, { anim: q.cursed ? 'sad' : 'happy', fx: false });
+    const bl = q.blessings || [], curse = q.cursed ? me.activeCurse : null;
+    const xp = q.xp * (bl.includes('double') ? 2 : 1);
+    let coins = Math.round(xp / 2) * (bl.includes('coinrain') ? 2 : 1); if (curse && curse.id === 'tiny') coins = Math.round(coins / 2);
+    const egg = bl.includes('lucky') ? 100 : Math.round(q.eggChance * 100);
+    const tile = (icon, col, val, lbl, x, bad) => `<div class="qtile">${ic(icon, 20, col, '#fff')}<b>${val}</b><span>${lbl}</span>${x ? `<i class="x${bad ? ' bad' : ''}">${x}</i>` : ''}</div>`;
+    $('qTiles').innerHTML =
+      tile('star', '#ffc247', '+' + xp, 'XP', bl.includes('double') ? '2x' : '') +
+      tile('coin', '#ffc247', '+' + coins, 'coins', bl.includes('coinrain') ? '2x' : (curse && curse.id === 'tiny' ? '1/2' : ''), curse && curse.id === 'tiny') +
+      tile('egg', '#5ab0ff', egg + '%', 'egg drop', bl.includes('lucky') ? 'sure' : (bl.includes('rarityup') ? '+1' : ''));
+    const TYPE_LBL = { food: 'Food quest', social: 'Social quest', outdoor: 'Outdoor quest', creative: 'Creative quest' };
+    const steps = [
+      ['Go to ' + q.place.name, `${q.place.dist} away · ${q.place.kind}`],
+      [q.title, TYPE_LBL[q.type] || 'Quest'],
+      ['Prove it with a photo', curse && curse.caption ? `Cursed caption: ${curse.caption}` : 'Plus a caption. The game master reads both.'],
+    ];
+    $('qSteps').innerHTML = steps.map(([t, s], i) => `<div class="qstep"><span class="n">${i + 1}</span><div class="grow"><div class="t">${esc(t)}</div><div class="s">${esc(s)}</div></div></div>`).join('');
   }
   function closeQuest() { $('ovQuest').hidden = true; Audio8.play('close'); }
   $('qClose').onclick = closeQuest;
@@ -833,10 +855,17 @@
   async function renderVillage() {
     village = await API.getVillage();
     const cv = $('villageCanvas'), c = cv.getContext('2d');
-    Sprites.drawHabitat(c, me.pet.species, 400, 120);
+    cv.width = 400; cv.height = 150; cv.parentElement.style.height = '150px';
+    Sprites.drawHabitat(c, me.pet.species, 400, 150);
     const pets = [me.pet].concat(village.friends.map(f => f.pet));
-    const gap = 400 / pets.length;
-    pets.forEach((p, i) => { const x = 8 + i * gap; Sprites.drawPet(c, p, x, 8, 5, { flip: i % 2 === 1, anim: i === 3 ? 'sad' : 'idle', fx: false }); c.fillStyle = '#2b2140'; c.font = '700 12px "Pixelify Sans", sans-serif'; c.fillText(p.name, x + 10, 108); });
+    const gap = 400 / pets.length, box = 80;           // every pet is drawn in a 16 x 5 box, names on their own line below
+    pets.forEach((p, i) => {
+      const x = Math.round(i * gap + (gap - box) / 2);
+      Sprites.drawPet(c, p, x, 22, 5, { flip: i % 2 === 1, anim: i === 3 ? 'sad' : 'idle', fx: false });
+      c.font = '700 13px "Pixelify Sans", sans-serif'; c.textAlign = 'center';
+      c.fillStyle = 'rgba(18,13,40,.75)'; const tw = c.measureText(p.name).width; c.fillRect(x + box / 2 - tw / 2 - 4, 118, tw + 8, 18);
+      c.fillStyle = '#fff'; c.fillText(p.name, x + box / 2, 131); c.textAlign = 'start';
+    });
 
     // raids
     const names = { me: 'You' }; village.friends.forEach(f => names[f.id] = f.name);

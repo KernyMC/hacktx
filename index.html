@@ -6,7 +6,7 @@
 <title>Familiars</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Pixelify+Sans:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: one phone-shaped column (max 430px) centered on a dotted desktop ground.
    Sky header → pet stage → scrolling content → sticky pixel tab bar. */
@@ -22,7 +22,7 @@
   --pink: #ff6f9c;     --gold: #ffc247;    --mint: #6fe3b1;   --lilac: #b79cff;  --sky-deep: #5ab0ff;
   --food: var(--pink); --social: var(--lilac); --outdoor: var(--mint); --creative: var(--gold);
   --common: #8fd48a; --rare: #5ab0ff; --epic: #b79cff; --legendary: #ffcf4d;
-  --display: 'Press Start 2P', 'Courier New', monospace;
+  --display: 'Silkscreen', 'Press Start 2P', 'Courier New', monospace;
   --body: 'Pixelify Sans', 'Trebuchet MS', sans-serif;
   --bevel: 3px solid var(--ink);
   --shadow: 4px 4px 0 var(--ink);
@@ -234,6 +234,21 @@ main > .screen { padding: 0 14px; }
 .place .pn { font-weight: 700; }
 .place .pm { font-size: 13px; color: var(--ink-2); }
 .qtext { font-size: 18px; line-height: 1.4; }
+/* quest sheet: pet bubble, reward tiles, checklist */
+.qbubble { display: flex; gap: 10px; align-items: flex-start; }
+.qbubble canvas { flex: none; width: 72px; height: 72px; margin-top: -4px; image-rendering: pixelated; }
+.qbubble .qtext { margin: 0; position: relative; background: #fff; border: 2px solid var(--ink); padding: 8px 10px; flex: 1; min-width: 0; }
+.qbubble .qtext::before { content: ''; position: absolute; left: -8px; top: 22px; width: 6px; height: 6px; background: #fff; border-left: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(45deg); }
+.qsteps { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 0; }
+.qstep { display: flex; gap: 10px; align-items: center; background: var(--panel-2); border: 2px solid var(--ink); padding: 6px 10px; }
+.qstep .n { flex: none; width: 24px; height: 24px; display: grid; place-items: center; font-family: var(--display); font-size: 10px; background: var(--ink); color: var(--gold); }
+.qstep .t { font-weight: 700; } .qstep .s { font-size: 13px; color: var(--ink-2); }
+.qtiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 8px; }
+.qtile { position: relative; background: #fff; border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); padding: 8px 4px 6px; text-align: center; }
+.qtile b { display: block; font-family: var(--display); font-size: 13px; line-height: 1.4; margin-top: 2px; }
+.qtile span { font-size: 12px; color: var(--ink-2); }
+.qtile .x { position: absolute; top: -8px; right: -6px; background: var(--gold); border: 2px solid var(--ink); font-family: var(--display); font-size: 7px; padding: 2px 4px; }
+.qtile .x.bad { background: var(--lilac); }
 .proof-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 12px; }
 .proof-tabs button { background: var(--panel-2); border: var(--bevel); padding: 8px; font-weight: 700; }
 .proof-tabs button + button { border-left: 0; }
@@ -560,10 +575,12 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
   <div class="sheet">
     <div class="head"><h2 id="qTitle">Quest</h2><button class="btn sm ghost speak" id="qSpeak" aria-label="Read quest aloud"><i data-icon="note"></i> Listen</button><button class="iconbtn" id="qClose" aria-label="Close"><i data-icon="close"></i></button></div>
     <div id="qTags"></div>
-    <p class="qtext" id="qText"></p>
+    <div class="qbubble"><canvas id="qPetCv" width="80" height="80"></canvas><p class="qtext" id="qText"></p></div>
+    <div class="qsteps" id="qSteps"></div>
     <div class="place"><span class="pin"><i data-icon="pin" data-size="24" data-color="#ff6f9c" data-color2="#fff"></i></span><div class="grow"><div class="pn" id="qPlace"></div><div class="pm" id="qPlaceMeta"></div></div><a class="btn sm ghost" id="qMaps" target="_blank" rel="noopener" hidden>Open in Maps</a></div>
     <div class="minimap" id="qMapWrap" hidden><canvas id="qMap" width="400" height="140"></canvas><span class="mm-lbl" id="qMapLbl"></span></div>
-    <div class="row"><span class="chip">+<b id="qXp">0</b> XP</span><span class="chip"><i data-icon="egg" data-color="#5ab0ff"></i><b id="qEgg">50%</b></span><span class="grow"></span><button class="btn sm ghost" id="qReroll">Reroll</button></div>
+    <div class="qtiles" id="qTiles"></div>
+    <div class="row" style="justify-content:flex-end"><button class="btn sm ghost" id="qReroll">Reroll quest</button></div>
     <div class="proof-tabs"><button id="tabPhoto" class="active"><i data-icon="camera"></i> Photo</button><button id="tabVoice"><i data-icon="mic"></i> Voice note</button></div>
     <div class="proofbox" id="proofPhoto">
       <div class="tiny">Show the game master you were there. An AI checks the photo, so no screenshots or reused pics.</div>
