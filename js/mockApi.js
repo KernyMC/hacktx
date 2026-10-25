@@ -487,15 +487,15 @@
 
     /** POST /speech/say (ElevenLabs TTS). Returns an audio Blob or null. */
     async say(text, voice, mood = 'neutral') {
-      api.lastSayError = '';
+      API.lastSayError = '';
       try {
         const r = await fetch(API_BASE + '/api/speech/say', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, voice, mood }) });
         if (!r.ok || !(r.headers.get('content-type') || '').includes('audio')) {
           let msg = ''; try { const j = await r.json(); msg = j.error || JSON.stringify(j); } catch { msg = r.statusText; }
-          api.lastSayError = `HTTP ${r.status}: ${String(msg).slice(0, 140)}`; return null;
+          API.lastSayError = `HTTP ${r.status}: ${String(msg).slice(0, 140)}`; return null;
         }
         return await r.blob();
-      } catch (e) { api.lastSayError = 'network: ' + e.message; return null; }
+      } catch (e) { API.lastSayError = 'network: ' + e.message; return null; }
     },
 
     /** GET /zoo */
