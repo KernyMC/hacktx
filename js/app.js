@@ -80,83 +80,6 @@
     const cv = $('stageCanvas'); const ctx = cv.getContext('2d');
     const W = cv.width, H = cv.height, PX = 10;
     let mode = 'idle', modeUntil = 0, blinkUntil = 0, nextBlink = performance.now() + 2000;
-    const clouds = [{ x: 30, y: 24, w: 7 }, { x: 220, y: 50, w: 5 }, { x: 330, y: 18, w: 6 }];
-    const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
-
-    function cloud(c, t, col = '#ffffff') {
-      const x = ((c.x + t / 90) % (W + 100)) - 60, y = c.y;
-      R(x, y + 8, c.w * 8, 8, col); R(x + 8, y, (c.w - 2) * 8, 8, col); R(x + 16, y - 8, (c.w - 4) * 8, 8, col);
-    }
-    function sun(c = '#ffcf4d') { R(W - 70, 20, 32, 32, c); R(W - 78, 28, 48, 16, c); R(W - 62, 12, 16, 48, c); }
-    function ground(top, base, dark) {
-      R(0, H - 60, W, 60, top); R(0, H - 52, W, 52, base);
-      ctx.fillStyle = dark;
-      for (let x = 0; x < W; x += 24) { ctx.fillRect(x + (x / 24 % 2) * 6, H - 56, 4, 6); ctx.fillRect(x + 14, H - 50, 4, 4); }
-    }
-    const SCENES = {
-      farm(t) {
-        sun(); clouds.forEach(c => cloud(c, t));
-        // barn
-        R(18, 88, 84, 72, '#d9483b'); R(10, 80, 100, 10, '#7a2a24'); R(26, 64, 68, 18, '#d9483b'); R(34, 56, 52, 10, '#7a2a24');
-        R(44, 116, 32, 44, '#fff8ea'); R(48, 120, 24, 40, '#7a2a24'); R(48, 120, 24, 3, '#fff8ea'); R(58, 120, 4, 40, '#fff8ea');
-        ground('#d7e89a', '#b9d97a', '#8db356');
-        // fence
-        for (let x = 120; x < W; x += 30) R(x, H - 82, 6, 30, '#fff8ea');
-        R(116, H - 76, W, 5, '#fff8ea'); R(116, H - 64, W, 5, '#fff8ea');
-        // hay bale
-        R(W - 70, H - 46, 44, 26, '#e8c24a'); R(W - 70, H - 38, 44, 3, '#c79a2a'); R(W - 70, H - 28, 44, 3, '#c79a2a');
-      },
-      wild(t) {
-        clouds.forEach(c => cloud(c, t, '#f4fff9'));
-        const tree = (x, h, c) => { for (let i = 0; i < 4; i++) R(x - 6 - i * 8, H - 60 - h + i * 18, 12 + i * 16, 20, c); R(x - 4, H - 70, 8, 14, '#6b4a2a'); };
-        [[30, 110, '#3f8f52'], [80, 140, '#2f7a45'], [330, 130, '#2f7a45'], [380, 100, '#3f8f52'], [290, 90, '#4fa362']].forEach(([x, h, c]) => tree(x, h, c));
-        ground('#8fd48a', '#6fbf73', '#3f8f52');
-        [[120, '#e8574a'], [260, '#ffcf4d']].forEach(([x, c]) => { R(x, H - 42, 16, 8, c); R(x + 4, H - 44, 8, 2, c); R(x + 6, H - 34, 4, 8, '#fff8ea'); R(x + 3, H - 40, 2, 2, '#fff'); });
-      },
-      prairie(t) {
-        R(W - 120, 30, 64, 64, '#ffe39a'); R(W - 128, 46, 80, 32, '#ffe39a'); R(W - 104, 22, 32, 80, '#ffe39a');
-        // mesas
-        R(0, H - 110, 120, 52, '#d9824a'); R(20, H - 126, 70, 18, '#d9824a'); R(0, H - 110, 120, 6, '#b8622d');
-        R(260, H - 96, 140, 40, '#e09a5a'); R(290, H - 108, 80, 14, '#e09a5a');
-        ground('#efd78a', '#e3c46a', '#c19a3d');
-        // cactus
-        R(150, H - 104, 14, 54, '#4f9e48'); R(136, H - 88, 8, 20, '#4f9e48'); R(136, H - 74, 16, 6, '#4f9e48'); R(170, H - 96, 8, 22, '#4f9e48'); R(162, H - 80, 16, 6, '#4f9e48');
-        // bluebonnets
-        for (let x = 20; x < W; x += 46) { R(x, H - 30, 6, 10, '#3f63c9'); R(x + 1, H - 34, 4, 4, '#ffffff'); R(x + 2, H - 20, 2, 8, '#4f9e48'); }
-      },
-      water(t) {
-        sun(); clouds.forEach(c => cloud(c, t));
-        ground('#a7dfa0', '#8fd48a', '#5fb35e');
-        // pond
-        R(40, H - 44, W - 80, 40, '#4aa6e8'); R(28, H - 36, W - 56, 26, '#4aa6e8'); R(60, H - 40, 60, 3, '#bfe6ff');
-        const wave = Math.floor(t / 300) % 2;
-        R(200 + wave * 6, H - 26, 30, 3, '#bfe6ff'); R(300 - wave * 6, H - 34, 24, 3, '#bfe6ff');
-        // lily pads
-        [[90, H - 26], [320, H - 20]].forEach(([x, y]) => { R(x, y, 22, 8, '#5fb35e'); R(x + 4, y - 2, 14, 2, '#5fb35e'); R(x + 16, y + 2, 4, 4, '#4aa6e8'); });
-        R(108, H - 34, 6, 6, '#ff9fb8');
-        // reeds
-        for (let i = 0; i < 5; i++) { R(12 + i * 6, H - 90 + (i % 2) * 10, 3, 50, '#4f9e48'); R(11 + i * 6, H - 94 + (i % 2) * 10, 5, 10, '#8a5a3c'); }
-      },
-      legends(t) {
-        // dusk
-        for (let i = 0; i < 6; i++) R(0, i * 28, W, 28, ['#3b2a5e', '#5b3f8f', '#8a4f9e', '#c9618a', '#ff8f5e', '#ffb36b'][i]);
-        // stars
-        [[30, 14], [90, 30], [160, 10], [220, 24], [300, 12], [370, 36]].forEach(([x, y], i) => { if ((Math.floor(t / 400) + i) % 3) R(x, y, 3, 3, '#fff'); });
-        // skyline + UT Tower
-        ctx.fillStyle = '#2b2140';
-        [[0, 60], [30, 90], [56, 70], [80, 110], [112, 64], [300, 86], [326, 120], [356, 72], [378, 96]].forEach(([x, h]) => ctx.fillRect(x, H - 56 - h, 26, h));
-        R(190, H - 160, 26, 104, '#2b2140'); R(184, H - 120, 38, 8, '#2b2140'); R(194, H - 176, 18, 18, '#2b2140'); R(200, H - 186, 6, 10, '#2b2140');
-        R(196, H - 150, 4, 6, '#ffcf4d'); R(206, H - 150, 4, 6, '#ffcf4d'); R(196, H - 136, 4, 6, '#ffcf4d'); R(206, H - 136, 4, 6, '#ffcf4d');
-        // bats leaving the bridge
-        for (let i = 0; i < 7; i++) { const bx = (i * 61 + t / 25) % (W + 40) - 20, by = 40 + ((i * 23) % 50) + Math.sin(t / 200 + i) * 6, f = Math.floor(t / 150 + i) % 2;
-          R(bx, by, 4, 3, '#2b2140'); R(bx - 4, by - f * 2, 4, 2, '#2b2140'); R(bx + 4, by - f * 2, 4, 2, '#2b2140'); }
-        ground('#7a5aa8', '#5d4690', '#3b2a5e');
-        // Congress bridge arches
-        R(0, H - 62, W, 6, '#bf5700');
-        for (let x = 10; x < W; x += 60) { R(x, H - 56, 6, 10, '#bf5700'); R(x + 40, H - 56, 6, 10, '#bf5700'); }
-      },
-    };
-
     function frame(t) {
       ctx.clearRect(0, 0, W, H);
       Sprites.drawHabitat(ctx, me && me.pet ? me.pet.species : 'axolotl', W, H);
@@ -195,7 +118,7 @@
   // tap the pet
   $('stage').addEventListener('pointerdown', e => {
     if (!me || !me.pet) return;
-    Audio8.cry(me.pet.species); stage.set('happy', 700);
+    Audio8.pet(me.pet.species); stage.set('happy', 700);
     const r = $('stage').getBoundingClientRect();
     const h = document.createElement('span'); h.className = 'heart'; h.innerHTML = Math.random() < 0.7 ? ic('heart', 22, ['#ff6f9c', '#ffcf4d', '#6fe3b1'][Math.floor(Math.random() * 3)]) : ic('sparkle', 22, '#ffcf4d');
     h.style.left = (e.clientX - r.left - 10 + (Math.random() - .5) * 30) + 'px'; h.style.top = (e.clientY - r.top - 20) + 'px';
@@ -203,16 +126,45 @@
     if (Math.random() < 0.35) say(petLine());
   });
 
-  const CLASS_LINES = {
-    farm: ['Is it snack time? It is always snack time.', 'I counted the chickens. Twice.', 'Barn life is good life.'],
-    wild: ['I heard a squirrel. We should follow it.', 'Trees are just tall quests.', 'Let us go somewhere with leaves.'],
-    prairie: ['Sun is up. Let us run somewhere.', 'Bluebonnets! Photo! Now!', 'Wide open spaces, wide open quests.'],
-    water: ['Splash first, questions later.', 'Turtle Pond? Turtle Pond.', 'I am chill. You should go outside though.'],
-    legends: ['Keep Austin weird.', 'The bats are flying tonight.', 'Legends do not wait. Quest.'],
+  // one voice per species: what the pet says when tapped (plus mood/hunger lines in petLine)
+  const SPECIES_LINES = {
+    axolotl: ["I regrow limbs. You can regrow a streak.", "Gills up! Let us go somewhere wet.", "I am small. My plans are not."],
+    cat: ["Second breakfast is a quest, right?", "I found the weird menu item. It was me.", "Knock something off a table for me."],
+    dog: ["WHO are we meeting today?!", "I smell a hallway full of friends.", "Ball? Quest? Ball? Quest!"],
+    bunny: ["Hop count so far: not enough.", "Clover is a food group.", "Ears up. Something fun is nearby."],
+    chick: ["Peep. Peep. PEEP.", "Seeds are the currency of joy.", "Sunrise is in a few hours. I am ready."],
+    hamster: ["Cheeks: loaded. Legs: ready.", "I stashed a snack somewhere in this app.", "Wheel time? No. Quest time."],
+    frog: ["This puddle is a portal. Trust me.", "Ribbit means go outside.", "Lily pads are just tiny quests."],
+    mouse: ["I know where the cheese is. Follow me.", "Tiny steps count as steps.", "Squeak if you are going out."],
+    duckling: ["Bread is a lifestyle.", "Waddle with purpose.", "Splash first, ask later."],
+    pig: ["Mud is a spa. Change my mind.", "Oink translates to: snacks.", "I rolled here on purpose."],
+    sheep: ["Baa. That was a full sentence.", "Nap now, quest later. Fine, quest now.", "I am ninety percent cloud."],
+    hedgehog: ["Prickly outside, marshmallow inside.", "Dig something up with me.", "Beetles are crunchy quests."],
+    squirrel: ["I buried a snack in 2019. Help.", "Up the tree! No, the quest first.", "Acorn count: never enough."],
+    turtle: ["I have seen four thousand finals weeks.", "Slow is a speed too.", "The Turtle Pond says hi."],
+    prairiedog: ["LOOKOUT! Oh. It is a cloud.", "Standing tall. Watching you.", "Burrow later. Quest now."],
+    goat: ["I will eat your homework. Then quest.", "Hills are just stairs for goats.", "Meh is a yes."],
+    redpanda: ["Bamboo break, then adventure.", "My tail has rings. Count them later.", "I am fluffier than my problems."],
+    penguin: ["Dressed for a gala. Where is it?", "Slide into something new today.", "Ice lanes are my runway."],
+    fennec: ["I heard your snack wrapper. Yes, that one.", "These ears hear quests coming.", "Desert speed. Go."],
+    otter: ["Hold my hand, hold my rock, let us go.", "River first. Everything else second.", "I kept the shiny rock for you."],
+    raccoon: ["Washed my hands. Washed your phone. Sorry.", "Porch light is on. Quest is on.", "Trash is treasure with better PR."],
+    capybara: ["Hot spring vibes only.", "Everyone is my friend. You too.", "Yuzu on my head. Peace in my heart."],
+    owl: ["Hoot. Explain the painting again.", "Night quests are the best quests.", "Museums are quests with air conditioning."],
+    roadrunner: ["Beep beep. Already finished. Twice.", "Catch me at the next quest.", "Anvils never land on me."],
+    armadillo: ["Rolled into a ball. Rolled back out. Quest?", "Texas state small mammal reporting in.", "Shell on, worries off."],
+    snowleopard: ["Ghost of the mountains, guest of Austin.", "Spots are earned. Go earn yours.", "Snow stalk, then nap."],
+    chameleon: ["My mood is rainbow today.", "Blend in later. Stand out now.", "Colours shift. Quests stay."],
+    bat: ["The bridge crowd flies at sunset. Join us.", "Screech means hello.", "Congress Avenue is my runway."],
+    jackalope: ["Nobody believed you saw me. Now you own me.", "Antlers up. Cacti down.", "Hop, dash, repeat."],
+    longhorn: ["Hook em. Then hook a quest.", "Burnt orange is a lifestyle.", "The rodeo waits for no one."],
+    grackle: ["HEB parking lot. Prime real estate.", "I will scream. You will quest.", "Shiny thing? Mine."],
+    salamander: ["Barton Springs or nothing.", "Golden means rare. Act accordingly.", "Cool water, warm heart."],
+    hornedlizard: ["Puff up. Horns out. Quest time.", "Ants are a food group.", "Horny toad, not a toad. Long story."],
   };
   function petLine() {
     const p = me.pet, n = p.name, a = animal(p);
-    const l = (CLASS_LINES[a.cls] || CLASS_LINES.water).concat([`${n} is a ${a.name}. ${a.flavor}`]);
+    const l = (SPECIES_LINES[p.species] || [`${n} is a ${a.name}.`]).concat([a.flavor]);
     if (me.vacation && me.vacation.active) return `${n} misses you... (on vacation, mood ${me.mood})`;
     if (me.hunger < 30) l.push(`${n} is STARVING. Food quest please.`);
     if (me.mood < 35) return `${n} feels lonely. A quest would help.`;
@@ -281,7 +233,7 @@
     $('coins').textContent = me.coins;
     $('villageDot').hidden = !me.inboxCount;
     // active curse: body attribute drives the CSS effects, the bar explains what is going on
-    document.body.dataset.curse = me.activeCurse ? me.activeCurse.id : '';
+    if (me.activeCurse) document.body.dataset.curse = me.activeCurse.id; else delete document.body.dataset.curse;
     const cb = $('cursebar'); cb.hidden = !me.activeCurse;
     if (me.activeCurse) cb.innerHTML = `${ic(me.activeCurse.icon, 18)} <span>CURSED: ${esc(me.activeCurse.name)} by ${esc(me.activeCurse.from)}</span> <small>${esc(me.activeCurse.desc)} Finish a quest to break it.</small>`;
     // vacation banner
@@ -321,6 +273,7 @@
     quests = await API.getQuests(loc);
     const qi = API.questInfo();
     $('questLocText').textContent = loc ? loc.label : UT.label;
+    const qIcon = $('questLoc').querySelector('i[data-icon]'); if (qIcon) qIcon.innerHTML = Icons.svg('quests', 12, '#ff6f9c', '#fff');
     $('questSource').textContent = qi.source === 'serpapi' ? `Real places via SerpApi${qi.writer === 'gemini' ? ', written by ' + me.pet.name + ' (Gemini)' : ''}. Tap the pin for new ones.` : 'Demo places (start the server for live SerpApi quests).';
     const list = $('questList'); list.innerHTML = '';
     quests.forEach(q => {
@@ -405,7 +358,7 @@
     const r = await API.chat(text, chatHistory.slice(-10, -1));
     th.remove(); $('chatSend').disabled = false;
     chatHistory.push({ role: 'pet', text: r.reply }); chatHistory = chatHistory.slice(-24);
-    chatBubble('pet', r.reply); Audio8.cry(me.pet.species);
+    chatBubble('pet', r.reply); Audio8.happy(me.pet.species);
     stage.set(r.mood === 'sad' ? 'sad' : 'happy', 1500);
     speak(r.reply, me.pet, r.mood === 'excited' ? 'excited' : r.mood === 'sad' ? 'sad' : r.mood === 'happy' ? 'happy' : 'neutral');
   }
@@ -622,7 +575,7 @@
   function rewardSequence(q, res) {
     const steps = [];
     steps.push(() => {
-      Audio8.play('reward'); stage.set(q.type === 'food' ? 'eat' : 'happy', 3000); confetti.burst(60);
+      Audio8.play('reward'); Audio8.happy(me.pet.species); stage.set(q.type === 'food' ? 'eat' : 'happy', 3000); confetti.burst(60);
       $('rwStep').innerHTML = `<div class="big">Quest complete!</div><p class="verdict"></p><div class="xpnum" id="xpCount">+0 XP</div>${res.blessed ? `<span class="tag bless">${ic('sparkle', 12)} blessed</span> ` : ''}${res.curseLifted ? '<span class="tag curse">curse broken</span>' : ''}<p class="sub">${coinIc()} +${res.coinsGained} coins${res.raidDamage ? ` · ${ic('monster', 14)} ${res.raidDamage} raid damage` : ''}${res.engine && res.engine !== 'mock' ? ` · judged by ${res.engine === 'gemini' ? 'Gemini' : 'the game master'}` : ''}</p>`;
       $('rwStep').querySelector('.verdict').textContent = '"' + res.message + '"';
       countUp($('xpCount'), res.xpGained);
@@ -649,7 +602,9 @@
       const from = Object.assign({}, me.pet, { species: ev.from, rarity: ev.fromRarity, stage: ev.fromStage || 1 }), to = Object.assign({}, me.pet, { species: ev.to, rarity: ev.toRarity, stage: ev.toStage || 2 });
       $('rwStep').innerHTML = `<div class="big">What?! ${esc(me.pet.name)} is evolving!</div><div class="evo"><canvas id="evoA" width="112" height="140"></canvas><span class="arrow">→</span><canvas id="evoB" width="112" height="140"></canvas></div><div class="big" style="font-size:12px">${esc(ev.toName)}</div><p class="sub">Same ${esc(Animals.A[ev.to].name)}, all grown up.<br><b>Resolution upgrade: ${Animals.RES[ev.fromRarity]}px → ${Animals.RES[ev.toRarity]}px</b></p>`;
       Sprites.drawPet($('evoA').getContext('2d'), from, 0, 20, 7, { anim: 'sad' }); const cb = $('evoB').getContext('2d');
-      let n = 0; const iv = setInterval(() => { cb.clearRect(0, 0, 112, 140); if (n++ % 2) Sprites.drawPet(cb, to, 0, 20, 7); else { cb.fillStyle = '#fff'; cb.fillRect(0, 0, 112, 140); } if (n > 9) { clearInterval(iv); const hv = setInterval(() => { if (!cb.canvas.isConnected) return clearInterval(hv); cb.clearRect(0, 0, 112, 140); Sprites.drawPet(cb, to, 0, 20, 7, { anim: 'happy', t: performance.now() }); }, 80); confetti.burst(140); } }, 120);
+      // the evolved form comes from Sprites.drawEvolved (crown + aura, or the redrawn _2 sheet)
+      const paint = (t, anim) => { const cv = Sprites.drawEvolved(ev.to, ev.toStage || 2, { t, anim, px: 5, rarity: ev.toRarity, shiny: me.pet.shiny }); cb.clearRect(0, 0, 112, 140); cb.imageSmoothingEnabled = false; const s = Math.min(112 / cv.width, 140 / cv.height); cb.drawImage(cv, (112 - cv.width * s) / 2, 140 - cv.height * s, cv.width * s, cv.height * s); };
+      let n = 0; const iv = setInterval(() => { if (n++ % 2) paint(0, 'idle'); else { cb.fillStyle = '#fff'; cb.fillRect(0, 0, 112, 140); } if (n > 9) { clearInterval(iv); const hv = setInterval(() => { if (!cb.canvas.isConnected) return clearInterval(hv); paint(performance.now(), 'happy'); }, 80); confetti.burst(140); } }, 120);
     });
     return new Promise(resolve => {
       let i = 0;
@@ -726,9 +681,9 @@
       taps++; Audio8.play('crack'); cv.classList.remove('wob'); void cv.offsetWidth; cv.classList.add('wob'); draw(taps);
       $('eggHint').textContent = `${3 - taps} to go`;
       if (taps >= 3) {
-        cv.onclick = null; flash(); Audio8.play(egg.rarity === 'legendary' ? 'legendary' : 'hatch'); confetti.burst(egg.rarity === 'legendary' ? 180 : 80);
+        cv.onclick = null; flash(); if (egg.rarity === 'legendary') Audio8.play('legendary'); confetti.burst(egg.rarity === 'legendary' ? 180 : 80);
         const pet = await API.hatchEgg(egg.id);
-        setTimeout(() => Audio8.cry(pet.species), 700);
+        Audio8.hatch(pet.species);
         const hv = setInterval(() => { if (ov.hidden) return clearInterval(hv); c.clearRect(0, 0, 192, 240); Sprites.drawPet(c, pet, 0, 40, 12, { anim: 'happy', t: performance.now() }); }, 80);
         const a = animal(pet);
         $('eggHint').hidden = true; $('eggResult').hidden = false;
@@ -1091,7 +1046,7 @@
       Audio8.unlock(); taps++; Audio8.play('crack'); cv.classList.remove('wob'); void cv.offsetWidth; cv.classList.add('wob'); draw(taps);
       $('hatchHint').textContent = `${3 - taps} tap${3 - taps === 1 ? '' : 's'} to go`;
       if (taps >= 3) {
-        cv.onclick = null; flash(); Audio8.play('hatch'); setTimeout(() => Audio8.cry('axolotl'), 700); confetti.burst(100);
+        cv.onclick = null; flash(); Audio8.hatch('axolotl'); confetti.burst(100);
         const bc = { species: 'axolotl', rarity: 'common' }; let bt = 0;
         const biv = setInterval(() => { if (ov.hidden) return clearInterval(biv); c.clearRect(0, 0, 192, 240); bt += 100; Sprites.drawPet(c, bc, 0, 40, 12, { anim: 'happy', t: bt }); }, 100);
         $('hatchStep1').hidden = true; $('hatchStep2').hidden = false; $('hatchName').focus();
