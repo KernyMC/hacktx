@@ -30,7 +30,8 @@ Living checklist. Update when something changes column — the "how" lives in `d
 
 ## In progress
 
-- [ ] **Minigames unique per species** (agent in progress): new engines dig/fly/swim/stack/sneak + per-species skins, `Minigames.gameFor(species)`.
+- [x] **Minigames unique per species**: 12 engines, per-species skins, `Minigames.gameFor(species)` (Oct 25).
+- [ ] Playtest round 1 fixes (see log 2026-10-25 "Playtest feedback round 1"): shell, cries, evolution, curse CSS done; welcome package, egg timing, class removal, tutorial lock pending.
 - [ ] Verify on the user's machine (this sandbox blocks those hosts): ElevenLabs v4 voices (does the
   plan include v4? otherwise it falls back to flash), Scribe v2 transcription, real SerpApi quests.
 

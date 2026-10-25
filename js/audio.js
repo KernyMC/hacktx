@@ -67,7 +67,55 @@
     tick()     { note(1600, 0, 0.02, 'square', 0.02); },
   };
 
+  // ------------------------------------------------------------------
+  // Species cries: every animal has its own little voice.
+  // Each entry: [freq, duration, wave, slide] notes played back to back; 'noise' = breath/huff burst.
+  // ------------------------------------------------------------------
+  const CRIES = {
+    axolotl:    [[700, .08, 'sine', 200], [900, .1, 'sine', -120]],
+    cat:        [[600, .16, 'square', 260], [820, .22, 'square', -320]],
+    dog:        ['noise', [300, .08, 'square', -120], [270, .1, 'square', -90]],
+    bunny:      [[1400, .05, 'triangle', 300], [1200, .06, 'triangle', -220]],
+    chick:      [[2000, .06, 'square', 400], [2200, .06, 'square', -300], [2100, .07, 'square', 200]],
+    hamster:    [[1500, .05, 'square', 220], [1600, .05, 'square', -200]],
+    frog:       [[180, .12, 'sawtooth', -40], [230, .16, 'sawtooth', 70]],
+    mouse:      [[2400, .06, 'square', 700], [2200, .05, 'square', -400]],
+    duckling:   [[500, .1, 'sawtooth', -160], [460, .12, 'sawtooth', -110]],
+    pig:        [[250, .08, 'sawtooth', 220], [330, .11, 'sawtooth', -170]],
+    sheep:      [[330, .15, 'sawtooth', 12], [342, .22, 'sawtooth', -14]],
+    hedgehog:   ['noise', [400, .06, 'square', -120]],
+    squirrel:   [[1800, .04, 'square', 0], [1700, .04, 'square', 0], [1800, .04, 'square', 0], [1600, .05, 'square', -200]],
+    turtle:     [[260, .26, 'sine', -70]],
+    prairiedog: [[1200, .07, 'square', 450], [1500, .05, 'square', -250]],
+    goat:       [[420, .12, 'sawtooth', 40], [400, .2, 'sawtooth', -70]],
+    redpanda:   [[900, .08, 'triangle', 300], [700, .1, 'triangle', -220]],
+    penguin:    [[380, .12, 'square', -80], [430, .14, 'square', -70]],
+    fennec:     [[1300, .06, 'square', 520], [1100, .08, 'square', -320]],
+    otter:      [[1000, .06, 'sine', 400], [1200, .06, 'sine', 200], [900, .08, 'sine', -200]],
+    raccoon:    [[800, .05, 'triangle', 120], [900, .05, 'triangle', -120], [800, .05, 'triangle', 120], [700, .06, 'triangle', -100]],
+    capybara:   [[200, .08, 'square', 0], [212, .08, 'square', 0], [190, .1, 'square', -20]],
+    owl:        [[440, .18, 'sine', -20], [392, .26, 'sine', -24]],
+    roadrunner: [[1200, .08, 'square', 0], [0, .06], [1200, .08, 'square', 0]],
+    armadillo:  [[240, .1, 'sawtooth', -60], ['noise']],
+    snowleopard:['noise', [300, .1, 'triangle', -50], [280, .1, 'triangle', -40]],
+    chameleon:  [[600, .12, 'sine', 900]],
+    bat:        [[3000, .08, 'square', -800], [2600, .08, 'square', -600]],
+    jackalope:  [[1300, .06, 'triangle', 300], [120, .1, 'square', -40]],
+    longhorn:   [[180, .25, 'sawtooth', 40], [200, .36, 'sawtooth', -60]],
+  };
+  function cry(species) {
+    unlock();
+    const seq = CRIES[species] || CRIES.axolotl;
+    let at = 0;
+    seq.forEach(step => {
+      if (step === 'noise' || step[0] === 'noise') { noise(at, 0.07, 0.08); at += 0.06; return; }
+      const [f, d, w, s] = step;
+      if (f) note(f, at, d, w || 'square', 0.07, s || 0);
+      at += d;
+    });
+  }
+
   function play(name) { unlock(); (SFX[name] || SFX.tap)(); }
 
-  global.Audio8 = { play, unlock, setEnabled, isEnabled };
+  global.Audio8 = { play, cry, unlock, setEnabled, isEnabled, CRIES };
 })(window);

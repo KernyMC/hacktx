@@ -271,8 +271,14 @@
 
   function drawPet(ctx, pet, x, y, px, opts = {}) {
     if (global.Animals && global.Animals.A[pet.species]) {
-      if (SHEETS[pet.species] && api.USE_SHEETS) drawSheetAtTier(ctx, SHEETS[pet.species], pet, x, y, px, opts);
-      else global.Animals.draw(ctx, pet, x, y, SIZE * px, opts);
+      // Evolved pets (stage >= 2) use their own "<species>_2" sheet when one exists; otherwise the same
+      // sheet drawn one tier larger with gold twinkles (Animals.sparkles).
+      const evolved = (pet.stage || 1) >= 2;
+      const sheetKey = evolved && SHEETS[pet.species + '_2'] ? pet.species + '_2' : pet.species;
+      if (SHEETS[sheetKey] && api.USE_SHEETS) {
+        drawSheetAtTier(ctx, SHEETS[sheetKey], Object.assign({}, pet, { species: sheetKey }), x, y, px, opts);
+        if (evolved && sheetKey === pet.species && opts.fx !== false) global.Animals.sparkles(ctx, 'legendary', x, y, SIZE * px, opts.t || 0);
+      } else global.Animals.draw(ctx, pet, x, y, SIZE * px, opts);
       return;
     }
     if (SHEETS[pet.species]) { drawFromSheet(ctx, SHEETS[pet.species], pet, x, y, px, opts); return; }

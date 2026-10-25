@@ -61,14 +61,17 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 :focus-visible { outline: 3px dashed var(--pink); outline-offset: 2px; }
 
 /* ---------- phone frame ---------- */
+/* App shell: the phone is a fixed-height column; only <main> scrolls, the top bar and tab bar stay put. */
 .phone {
-  position: relative; max-width: 430px; margin: 0 auto; min-height: 100%;
-  background: var(--sky); display: flex; flex-direction: column;
+  position: relative; max-width: 430px; margin: 0 auto; height: 100%;
+  background: var(--sky); display: flex; flex-direction: column; overflow: hidden;
 }
 @media (min-width: 560px) {
   body { padding-block: 24px; }
-  .phone { min-height: calc(100% - 0px); border: 4px solid var(--ink); box-shadow: 0 0 0 3px var(--gold), 10px 10px 0 rgba(0,0,0,.45); border-radius: 6px; overflow: hidden; }
+  .phone { height: calc(100% - 48px); border: 4px solid var(--ink); box-shadow: 0 0 0 3px var(--gold), 10px 10px 0 rgba(0,0,0,.45); border-radius: 6px; }
 }
+body.tut-on main { overflow: hidden; }
+.tut { touch-action: none; overscroll-behavior: contain; }
 /* HackTX ribbon above the top bar */
 .ribbon { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 5px 10px; background: var(--midnight); color: var(--gold); font-family: var(--display); font-size: 8px; letter-spacing: .08em; border-bottom: 3px solid var(--orange); }
 .ribbon b { color: #fff; }
@@ -105,7 +108,9 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .stage .tap-hint { position: absolute; bottom: 8px; right: 12px; font-size: 13px; color: var(--ink-2); }
 
 /* ---------- content ---------- */
-main { flex: 1; background: var(--grass); padding: 14px 14px 90px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+main { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; background: var(--grass); padding: 0 0 24px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+main > .screen { padding: 0 14px; }
+.stage { flex: none; }
 .screen[hidden] { display: none; }
 .screen { display: flex; flex-direction: column; gap: 14px; }
 .panel { background: var(--panel); border: var(--bevel); box-shadow: var(--shadow); padding: 12px; min-width: 0; }
@@ -200,7 +205,7 @@ main { flex: 1; background: var(--grass); padding: 14px 14px 90px; display: flex
 
 /* ---------- tab bar: midnight ribbon, gold lantern for the active tab ---------- */
 .tabs {
-  position: sticky; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(5, 1fr);
+  flex: none; z-index: 5; display: grid; grid-template-columns: repeat(5, 1fr);
   background: var(--midnight); border-top: 3px solid var(--gold); box-shadow: 0 -6px 0 rgba(0,0,0,.18);
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
 }
@@ -407,6 +412,22 @@ body[data-cls=legends] .topbar .name, body[data-cls=legends] .topbar .sub { colo
 .chips button { font-size: 13px; font-weight: 700; padding: 4px 8px; border: 2px solid var(--ink); background: var(--panel-2); }
 #chatInput { flex: 1; min-width: 0; padding: 10px; border: var(--bevel); background: #fff; }
 
+/* curses: each one visibly changes the app until a quest breaks it */
+.cursebar { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--lilac); border-bottom: 3px solid var(--ink); font-weight: 700; font-size: 14px; }
+.cursebar small { font-weight: 500; color: var(--ink-2); }
+body[data-curse=pirate] .stage canvas { filter: sepia(.45) contrast(1.1); }
+body[data-curse=shout] #questList .title, body[data-curse=shout] .qtext { text-transform: uppercase; letter-spacing: .04em; }
+body[data-curse=shout] .quest { animation: shake 1.6s infinite; }
+body[data-curse=backwards] #questList .title, body[data-curse=backwards] .qtext { direction: rtl; unicode-bidi: bidi-override; }
+body[data-curse=whisper] #questList .title, body[data-curse=whisper] .qtext { font-size: 13px; font-style: italic; letter-spacing: .12em; opacity: .75; }
+body[data-curse=whisper] .stage canvas { filter: brightness(.8) saturate(.6); }
+body[data-curse=tiny] .stage canvas { transform: scale(.55) translateY(36%); }
+body[data-curse=mime] .stage canvas { filter: grayscale(1) contrast(1.15); }
+body[data-curse=shakespeare] .qtext, body[data-curse=shakespeare] #questList .title { font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
+body[data-curse=opera] .stage { background: radial-gradient(circle at 50% 30%, rgba(255,255,255,.35), transparent 60%); }
+body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-size: 12px; color: var(--ink-2); }
+.stage .fx { position: absolute; pointer-events: none; animation: floatUp 2.2s ease-out forwards; line-height: 0; }
+
 /* pet detail */
 .petcard { text-align: center; }
 .petcard canvas.big { width: 192px; height: 192px; display: block; margin: 4px auto; }
@@ -444,15 +465,14 @@ body[data-cls=legends] .topbar .name, body[data-cls=legends] .topbar .sub { colo
     </div>
   </header>
 
-  <!-- pet stage -->
+  <main id="main">
+  <!-- pet stage (scrolls with the content; top bar + tab bar stay fixed) -->
   <section class="stage" id="stage">
     <canvas id="stageCanvas" width="400" height="230" aria-label="Your Familiar"></canvas>
     <div class="bubble hide" id="bubble"></div>
     <div class="tap-hint">tap to pet</div>
     <button class="btn sm ghost talk" id="btnTalk"><i data-icon="chat"></i> Talk</button>
   </section>
-
-  <main id="main">
     <!-- HOME -->
     <section class="screen" id="screen-home">
       <div class="banner vacation" id="vacBanner" hidden>

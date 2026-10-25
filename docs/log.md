@@ -87,3 +87,31 @@ the backend replaces. ChatGPT sheets (axolotl, cat, dog) at 80 px with magenta c
   jackalope) and reviewed in zoomed strips, 10 at a time, all four moods. Decision: the user asked that
   this review not be split across agents again; the main session owns face QA from now on.
 - Minigame uniqueness delegated to one agent (new engines + per-species skins); pending at write time.
+
+## 2026-10-25 — Playtest feedback round 1 (11 items)
+
+User notes after playing: narrator voice bad; tutorial lets you scroll; sprites need their own sounds;
+curses have no visible effect; challenges too easy; chat good but voice terrible; starter items should be
+a welcome package; page too long (bottom bar must stay fixed like an app); minigame wins not counting
+for eggs; egg time should depend on how many eggs you hold; evolution must be a better version of the
+same pet, not a random animal; drop the animal "types" (too Pokémon).
+
+Done in this batch (files not touched by the running minigames agent):
+- **App shell**: `.phone` is a fixed-height column, only `<main>` scrolls (the stage scrolls with it),
+  tab bar is a flex child, no more page-long scroll. `body.tut-on main { overflow: hidden }` for the tutorial.
+- **Species cries**: `Audio8.cry(species)` — a short procedural call per animal (meow, bark, peep, ribbit,
+  quack, oink, baa, hoot, moo, screech…) in `js/audio.js`.
+- **Evolution = same pet, better**: `pet.stage` (1→2). Stage 2 uses a `<species>_2` sheet when one exists
+  (`art/animals/axolotl_2.px.js`, rare tier 32 px: bigger, four gill fronds, gold crown) or the same sheet
+  with gold twinkles. `Animals.EVOLVE_TO` (axolotl → cat/dog/turtle/owl) is retired.
+- **Curse visuals** (CSS `body[data-curse=…]`): sepia for pirate, caps + shake for shout, mirrored text for
+  backwards, faded italics for whisper, shrunken pet for tiny, grayscale for mime, serif for shakespeare,
+  spotlight for opera; plus a curse bar under the top bar (JS, next batch).
+- **Narrator fallback**: ElevenLabs 402/403/422 on v4 → flash; 404/400 voice → narrator; failures logged.
+Pending in `app.js`/`mockApi.js` (after the minigames agent): welcome package, egg time by egg count,
+minigame wins always warm eggs, tutorial scroll lock, curse bar + hop/opera effects, remove class UI,
+browser-voice fallback tuned, harder duels.
+- **Minigames unique per species** (agent, tested in Chromium on 22 species): 5 new engines (dig, fly,
+  swim, stack, sneak) + `Minigames.SKINS` and `Minigames.gameFor(species)`; every one of the 30 animals
+  has its own named game (max 3 species per engine; rodeo stays Longhorn-only). Not tested: touch on a
+  real device, difficulty-5 balance, the duel inbox path end to end.
