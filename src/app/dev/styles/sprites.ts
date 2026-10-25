@@ -1,59 +1,6 @@
 import type { Sprite } from "@/game/sprite";
 
-// Meadow Cottage: round peach chibi with a leaf sprout.
-export const sprout: Sprite = {
-  palette: {
-    o: "#3b2417",
-    b: "#ffc58a",
-    s: "#e8955a",
-    h: "#fff0d6",
-    w: "#ffffff",
-    p: "#f7a1b0",
-    g: "#6abe30",
-    l: "#a8e063",
-    d: "#3f7a3a",
-  },
-  rows: [
-    "................................",
-    "...........ooo....ooo...........",
-    "..........ollgo..oglgo..........",
-    "..........ogggddddgggo..........",
-    "...........ooooddoooo...........",
-    "...............dd...............",
-    "...........oooooooooo...........",
-    ".........oobhhbbbbbbboo.........",
-    ".......oobhhhhbbbbbbbbboo.......",
-    "......obhhhbbbbbbbbbbbbbbo......",
-    ".....obhhbbbbbbbbbbbbbbbbso.....",
-    ".....obhbbbbbbbbbbbbbbbbbso.....",
-    "....obbbbbbbbbbbbbbbbbbbbbso....",
-    "....obbbbbbbbbbbbbbbbbbbbbso....",
-    "....obbbbbooobbbbbbooobbbbso....",
-    "....obbbbbwoobbbbbbwoobbbbso....",
-    "....obbbbbooobbbbbbooobbbbso....",
-    "....obbbbbooobbbbbbooobbbbso....",
-    "....obbbppbbbbobbobbbbppbbso....",
-    "....obbbbbbbbbboobbbbbbbbbso....",
-    "....obbbbbbbbbbbbbbbbbbbbbso....",
-    "....obbbbbbbbbbbbbbbbbbbbbso....",
-    "....obbbbbbbbbbbbbbbbbbbbsso....",
-    "....obbbbbbbbbbbbbbbbbbbbsso....",
-    ".....osbbbbbbbbbbbbbbbbbsso.....",
-    ".....ossbbbbbbbbbbbbbbbssso.....",
-    "......osssssbbbbbbbbssssso......",
-    ".......ossssssssssssssssso......",
-    "........obbbooooooooobbbo.......",
-    "........ooooo.......ooooo.......",
-    "................................",
-    "................................",
-  ],
-  blink: {
-    14: "....obbbbbbbbbbbbbbbbbbbbbso....",
-    15: "....obbbbbbbbbbbbbbbbbbbbbso....",
-    16: "....obbbbbooobbbbbbooobbbbso....",
-    17: "....obbbbbbbbbbbbbbbbbbbbbso....",
-  },
-};
+export { lumi, sprout } from "@/game/art/rares";
 
 // Pocket Device: tiny lilac blob with a big-eyed stare and an antenna.
 export const blip: Sprite = {
@@ -109,59 +56,6 @@ export const blip: Sprite = {
   },
 };
 
-// Starlit Dream: floaty moon-white spirit cat with a star on its forehead.
-export const lumi: Sprite = {
-  palette: {
-    o: "#120f26",
-    b: "#efe8ff",
-    s: "#a99be0",
-    h: "#ffffff",
-    e: "#2e2a5c",
-    w: "#ffffff",
-    p: "#ff7eb6",
-    y: "#fff3a8",
-  },
-  rows: [
-    "................................",
-    "................................",
-    "......o..................o......",
-    "......oo................oo......",
-    "......opo..............opo......",
-    "......oppo............oppo......",
-    "......obppo..........oppbo......",
-    "......obbpboooooooooobpbbo......",
-    "......ohhbbbbbbbbbbbbbbbso......",
-    "......ohbbbbbbbyybbbbbbbso......",
-    "......obbbbbbbyyyybbbbbbso......",
-    ".....obbbbbbbbbyybbbbbbbbso.....",
-    ".....obbbbbbbbbbbbbbbbbbbso.....",
-    ".....obbbbeeebbbbbbeeebbbso.....",
-    ".....obbbbweebbbbbbweebbbso.....",
-    ".....obbbbeeebbbbbbeeebbbso.....",
-    ".....obbbbeeebbbbbbeeebbbso.....",
-    ".....obbppbbbbebbebbbbppbso.....",
-    ".....obbbbbbbbbeebbbbbbbbso.....",
-    "......osbbbbbbbbbbbbbbbbso......",
-    ".......ossbbbbbbbbbbbbsso.......",
-    "........osbbbbbbbbbbbsso........",
-    "........osbbbbbbbbbbbsso........",
-    "........ossbbbbbbbbbssso........",
-    ".........ossbbbbbbbssso.........",
-    "..........osssbbbbssso..........",
-    "...........ossssssssooo.........",
-    "............oosssssssso.........",
-    "..............ooooosso..........",
-    "..................oso...........",
-    "...................o............",
-    "................................",
-  ],
-  blink: {
-    13: ".....obbbbbbbbbbbbbbbbbbbso.....",
-    14: ".....obbbbbbbbbbbbbbbbbbbso.....",
-    15: ".....obbbbeeebbbbbbeeebbbso.....",
-    16: ".....obbbbbbbbbbbbbbbbbbbso.....",
-  },
-};
 
 export const plant: Sprite = {
   palette: { o: "#3b2417", g: "#6abe30", l: "#a8e063", d: "#3f7a3a", t: "#c96f4a", u: "#8f4a30" },
