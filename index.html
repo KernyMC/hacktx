@@ -407,7 +407,18 @@ main { transition: background .4s; }
 .msg.you { align-self: flex-end; background: var(--gold); }
 .msg.pet { align-self: flex-start; background: #fff; display: grid; grid-template-columns: 36px 1fr; gap: 8px; align-items: start; }
 .msg.pet canvas { width: 36px; height: 36px; }
-.msg.pet.thinking { color: var(--ink-2); font-style: italic; }
+.msg.pet.thinking { color: var(--ink-2); }
+.msg { animation: pop .18s ease-out; }
+.msg .typing { display: flex; flex-direction: column; gap: 4px; justify-content: center; min-height: 36px; }
+.msg .dots { display: flex; gap: 5px; height: 14px; align-items: flex-end; }
+.msg .dots i { width: 8px; height: 8px; background: var(--ink); animation: dotbounce 1s steps(4, end) infinite; }
+.msg .dots i:nth-child(2) { animation-delay: .15s; background: var(--pink); }
+.msg .dots i:nth-child(3) { animation-delay: .3s; background: var(--gold); }
+.msg .tstat { font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.msg .tstat::after { content: ''; animation: ell 1.2s steps(4, end) infinite; }
+@keyframes dotbounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+@keyframes ell { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+@media (prefers-reduced-motion: reduce) { .msg .dots i, .msg .tstat::after, .msg { animation: none; } }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
 .chips button { font-size: 13px; font-weight: 700; padding: 4px 8px; border: 2px solid var(--ink); background: var(--panel-2); }
 #chatInput { flex: 1; min-width: 0; padding: 10px; border: var(--bevel); background: #fff; }

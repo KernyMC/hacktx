@@ -341,9 +341,29 @@
   const CHAT_CHIPS = ['Any hints?', 'Which quest first?', 'I am tired today', 'Tell me a secret', 'How are you?'];
   function chatBubble(role, text, thinking) {
     const d = document.createElement('div'); d.className = `msg ${role}` + (thinking ? ' thinking' : '');
-    if (role === 'pet') { const cv = document.createElement('canvas'); cv.width = 36; cv.height = 36; Sprites.drawPet(cv.getContext('2d'), me.pet, 0, 0, 2.25, { fx: false, anim: thinking ? 'idle' : 'happy' }); d.appendChild(cv); }
-    const s = document.createElement('span'); s.textContent = text; d.appendChild(s);
-    $('chatLog').appendChild(d); $('chatLog').scrollTop = 1e6; return d;
+    if (role === 'pet') {
+      const cv = document.createElement('canvas'); cv.width = 36; cv.height = 36; d.appendChild(cv);
+      const c = cv.getContext('2d'), t0 = performance.now();
+      const paint = () => { c.clearRect(0, 0, 36, 36); Sprites.drawPet(c, me.pet, 0, 0, 2.25, { fx: false, anim: thinking ? 'idle' : 'happy', t: performance.now() - t0 }); };
+      paint();
+      if (thinking) { const iv = setInterval(() => { if (!d.isConnected) return clearInterval(iv); paint(); }, 120); }   // the pet keeps moving while it "types"
+    }
+    let st = null;
+    if (thinking) {
+      // animated typing indicator: bouncing pixel dots + a status line that changes if the reply is slow
+      const box = document.createElement('span'); box.className = 'typing';
+      box.innerHTML = '<span class="dots"><i></i><i></i><i></i></span><small class="tstat"></small>';
+      st = box.querySelector('.tstat'); d.appendChild(box);
+    } else {
+      const s = document.createElement('span'); s.textContent = text; d.appendChild(s);
+    }
+    $('chatLog').appendChild(d); $('chatLog').scrollTop = 1e6;
+    if (st) {
+      const name = me.pet.name, steps = [[0, `${name} is typing`], [5000, `${name} is thinking hard`], [11000, `${name} is still on it, hang tight`]], t0 = performance.now();
+      const tick = () => { if (!d.isConnected) return clearInterval(iv); const el = performance.now() - t0; st.textContent = steps.filter(s => el >= s[0]).pop()[1]; };
+      const iv = setInterval(tick, 400); tick();
+    }
+    return d;
   }
   function openChat() {
     Audio8.play('open');
