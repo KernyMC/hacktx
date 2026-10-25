@@ -49,3 +49,8 @@ Living checklist. Update when something changes column — the "how" lives in `d
 - [ ] Deploy (Vultr) + `familiars.tech` domain.
 - [ ] Devpost + demo video + rehearse `docs/demo.md` twice.
 - [ ] Rotate the keys (ElevenLabs, Gemini, SerpApi) after the hackathon: they were pasted in chat.
+
+## systems branch (2026-10-25)
+- Done: steps 0-6 of the systems list; Vercel config (`api/[...path].js`, `vercel.json`); Village scene fix; quest sheet v2; Silkscreen display font.
+- Blocked: step 7 needs `Sprites.setPhaseOverride(phase)` in `js/sprites.js`; minigame win-rate tuning needs `js/minigames.js`.
+- Pending: import the repo in the Vercel dashboard (production branch `systems`, six env vars from `.env`) and check `/api/health`.

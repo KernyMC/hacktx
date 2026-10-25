@@ -145,3 +145,24 @@ warm eggs, same-pet evolution via `pet.stage` in `mockApi.js`, `axolotl_2` sheet
 curse bar + `body.dataset.curse`, browser-voice fallback, harder duels. The only conflicts were in
 `js/app.js` (Nest filters, stage-2 badges, a duplicated hatch cry); resolved by hand and re-tested in
 Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, no errors).
+
+## 2026-10-25 — `systems` branch: curses/blessings wired, eggs by quests, Vercel config, quest sheet v2
+
+- Steps 0-6 of the systems list (only `js/app.js`, `js/mockApi.js`, `server/`): `body.dataset.curse` set
+  from `me.activeCurse`; species sounds on tap/reply/reward/hatch; evolution reveal via `drawEvolved`;
+  voice proofs off (photo + typed caption, the judge reads both; cursed captions are judged on the caption);
+  welcome package as a tappable gift box; curses show as "<name> mode" on the quest card, blessings show
+  their badge; only real quests incubate eggs, needed = 2 + eggs in nest; practice = tier + 2, duels tier + 3.
+- Step 7 (time-of-day override in the tester section) is blocked: `Sprites.setPhaseOverride` does not exist
+  in `js/sprites.js` and that file is the teammate's. Per-engine minigame tuning (step 6) needs
+  `js/minigames.js`, same rule.
+- Vercel: `server/server.js` now exports `handle(req, res)` and only listens when run directly;
+  `api/[...path].js` routes every `/api/*` to it; `vercel.json` gives the function 60 s. Static files are
+  served by Vercel itself. Project creation through the Vercel MCP failed with 403 (hobby account token
+  cannot create projects), so the project has to be imported from the dashboard (repo KernyMC/hacktx,
+  production branch `systems`, the six `.env` keys as env vars).
+- UI (user request, touches `index.html`): Village no longer shows the home stage on top (it has its own
+  150 px scene with names on a label line); quest sheet got a pet speech bubble, a 3-step checklist
+  (go / do / prove), and XP / coins / egg tiles that show the real payout with blessing (2x) and curse (1/2)
+  badges. Display font is now Silkscreen with Press Start 2P as fallback: Press Start 2P's capital C has
+  spurs that close it at 8-12 px, so "Common" read as "Oommon". One-line revert in `--display` if unwanted.
