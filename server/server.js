@@ -69,6 +69,12 @@ function sendJson(res, status, obj) {
 }
 
 function readBody(req, limit) {
+  // Serverless hosts (Vercel) may have consumed the stream already and left the body on req.body.
+  if (req.body !== undefined && req.body !== null) {
+    const raw = Buffer.isBuffer(req.body) ? req.body : typeof req.body === 'string' ? Buffer.from(req.body, 'utf8') : Buffer.from(JSON.stringify(req.body), 'utf8');
+    if (raw.length > limit) return Promise.reject(new HttpError(413, `Body too large (max ${Math.round(limit / 1048576)} MB)`));
+    return Promise.resolve(raw);
+  }
   return new Promise((resolve, reject) => {
     const declared = parseInt(req.headers['content-length'] || '0', 10);
     if (declared > limit) { req.resume(); return reject(new HttpError(413, `Body too large (max ${Math.round(limit / 1048576)} MB)`)); }
