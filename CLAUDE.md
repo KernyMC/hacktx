@@ -111,3 +111,10 @@ Evolution: axolotl → cat/dog/turtle/owl by dominant quest type, and goes commo
 - Vacation: 12h–2 weeks or custom; mood decays 1.5/h; duel requests blocked; friends on vacation can't be dueled. Settings has "Skip 12 hours" + "Receive a duel" demo buttons.
 - Tutorial: 10-step spotlight walkthrough after hatch, replayable from Settings.
 - Starting coins 1200 (demo tuning). localStorage key is now `familiars.v2`.
+
+### v2.1 — SerpApi quests, minimap, chat (Oct 25)
+- `GET /api/quests?lat&lng&pet&species&flavor&curse` (server): SerpApi `google_maps` for 3 random categories (food/social/outdoor/creative keyword pools in `QUEST_CATEGORIES`) → filter ≤2.5 mi, prefer rating ≥4.3, no repeats → Gemini writes title/text/xp/eggChance in the pet's voice (template text if Gemini fails). Cached 10 min per rounded lat/lng. Returns `{ok:false, source:'seed'}` when SerpApi is missing/fails and the client keeps its seed quests. Place objects carry `lat, lng, distMi, bearing, mapsUrl, thumbnail, placeId`.
+- Client: `API.getQuests(loc)` pulls real quests once per day; tapping the pin by "Today's quests" calls `API.refreshQuests(loc)` (only while nothing is done). Location = `navigator.geolocation` with 4 s timeout, fallback GDC (30.2862, -97.7365). Seed places have coordinates (`SEED_COORDS`) so the minimap works offline.
+- **Minimap** (`drawMinimap` in app.js): pixel canvas, no map tiles. You in the centre, the pin at the real bearing/distance, compass, "Open in Maps" link. Decision: no Google Maps Platform (needs billing, clashes with pixel look, and SerpApi already provides the place data).
+- **Chat with your pet**: "Talk" button on the stage → `POST /api/chat` (Gemini, in character, knows mood/hunger/today's quests, steers you outside; canned lines offline). Replies are spoken with ElevenLabs TTS when available. Not a friend-to-friend chat (needs realtime backend).
+- `.env` keys: `SERPAPI_API_KEY` added. serpapi.com and api.elevenlabs.io could not be reached from the dev sandbox, so those two were tested only for clean fallback; Gemini chat/quest-writing/proof-judging were tested live.

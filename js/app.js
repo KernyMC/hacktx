@@ -293,9 +293,28 @@
   }
   $('vacEnd').onclick = async () => { Audio8.play('reward'); await API.endVacation(); await refreshMe(); stage.set('happy', 2000); say(`${me.pet.name} is SO happy you are back!`); };
 
+  // location: real GPS when allowed, otherwise the GDC building at UT (demo default)
+  const UT = { lat: 30.2862, lng: -97.7365, label: 'near GDC, Austin' };
+  let loc = null;
+  function getLocation() {
+    return new Promise(resolve => {
+      if (!navigator.geolocation) return resolve(UT);
+      const done = (v) => { resolve(v); };
+      const t = setTimeout(() => done(UT), 4000);
+      navigator.geolocation.getCurrentPosition(
+        p => { clearTimeout(t); done({ lat: p.coords.latitude, lng: p.coords.longitude, label: 'near you' }); },
+        () => { clearTimeout(t); done(UT); }, { timeout: 3500, maximumAge: 300000 });
+    });
+  }
+
   async function renderQuests() {
     if (!me || !me.pet) return;
-    quests = await API.getQuests();
+    $('questSource').textContent = 'Finding real places nearby…';
+    if (!loc) loc = await getLocation();
+    quests = await API.getQuests(loc);
+    const qi = API.questInfo();
+    $('questLocText').textContent = loc ? loc.label : UT.label;
+    $('questSource').textContent = qi.source === 'serpapi' ? `Real places via SerpApi${qi.writer === 'gemini' ? ', written by ' + me.pet.name + ' (Gemini)' : ''}. Tap the pin for new ones.` : 'Demo places (start the server for live SerpApi quests).';
     const list = $('questList'); list.innerHTML = '';
     quests.forEach(q => {
       const b = document.createElement('button');
@@ -312,6 +331,82 @@
     });
     await renderInbox();
   }
+  $('questLoc').onclick = async () => {
+    Audio8.play('tap'); $('questSource').textContent = 'Asking SerpApi for new places…';
+    loc = await getLocation();
+    const r = await API.refreshQuests(loc);
+    if (!r.ok) { Audio8.play('error'); toast(r.message); }
+    renderQuests();
+  };
+
+  // pixel minimap: you in the centre, the pin at the quest's real bearing and distance (no map tiles)
+  function drawMinimap(q) {
+    const cv = $('qMap'), c = cv.getContext('2d'), W = cv.width, H = cv.height;
+    const p = q.place; const has = typeof p.bearing === 'number' && typeof p.distMi === 'number';
+    $('qMapWrap').hidden = !has; if (!has) return;
+    const R = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+    R(0, 0, W, H, '#cfe9c2');
+    for (let y = 0; y < H; y += 20) for (let x = 0; x < W; x += 20) if ((x / 20 + y / 20) % 2) R(x, y, 20, 20, '#c3e2b5');
+    // a couple of fake blocks + a road toward the pin
+    [[30, 20, 60, 30], [320, 90, 50, 30], [70, 95, 40, 22], [300, 18, 70, 26]].forEach(([x, y, w, h]) => { R(x, y, w, h, '#e9e3d4'); R(x, y + h - 4, w, 4, '#d6cfbd'); });
+    const cx = W / 2, cy = H / 2;
+    const scale = Math.min(1, 0.35 / Math.max(0.15, p.distMi));   // pin stays inside the box even when far
+    const len = Math.min(cx - 24, 56 + p.distMi * 150 * scale);   // never closer than 56px so the pin clears the pet
+    const a = (p.bearing - 90) * Math.PI / 180;
+    const px = cx + Math.cos(a) * len, py = cy + Math.sin(a) * len * 0.75;
+    c.strokeStyle = '#fff8ea'; c.lineWidth = 8; c.setLineDash([10, 8]); c.beginPath(); c.moveTo(cx, cy); c.lineTo(px, py); c.stroke(); c.setLineDash([]);
+    // compass
+    R(W - 26, 8, 2, 20, '#2b2140'); c.fillStyle = '#2b2140'; c.font = '8px "Press Start 2P", monospace'; c.fillText('N', W - 30, 38);
+    // you
+    Sprites.drawPet(c, me.pet, cx - 20, cy - 36, 2.5, { fx: false });
+    c.font = '700 11px "Pixelify Sans", sans-serif'; c.fillStyle = '#2b2140'; c.fillText('you', cx - 10, cy + 16);
+    // pin
+    R(px - 7, py - 24, 14, 14, '#ff6f9c'); R(px - 4, py - 21, 8, 8, '#fff'); R(px - 3, py - 10, 6, 10, '#ff6f9c'); R(px - 7, py - 24, 14, 2, '#2b2140');
+    const name = p.name.length > 22 ? p.name.slice(0, 21) + '…' : p.name;
+    const tw = c.measureText(name).width + 10; const lx = Math.max(4, Math.min(W - tw - 4, px - tw / 2));
+    R(lx, py + 4, tw, 16, '#fff8ea'); R(lx, py + 4, tw, 2, '#2b2140'); c.fillStyle = '#2b2140'; c.fillText(name, lx + 5, py + 16);
+    $('qMapLbl').textContent = `${p.dist} · ${compass(p.bearing)}`;
+  }
+  const compass = b => ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(b / 45) % 8];
+
+  // ------------------------------------------------------------------
+  // Chat with your pet (Gemini in character via the server; canned lines offline)
+  // ------------------------------------------------------------------
+  let chatHistory = [];
+  const CHAT_CHIPS = ['Any hints?', 'Which quest first?', 'I am tired today', 'Tell me a secret', 'How are you?'];
+  function chatBubble(role, text, thinking) {
+    const d = document.createElement('div'); d.className = `msg ${role}` + (thinking ? ' thinking' : '');
+    if (role === 'pet') { const cv = document.createElement('canvas'); cv.width = 36; cv.height = 36; Sprites.drawPet(cv.getContext('2d'), me.pet, 0, 0, 2.25, { fx: false, anim: thinking ? 'idle' : 'happy' }); d.appendChild(cv); }
+    const s = document.createElement('span'); s.textContent = text; d.appendChild(s);
+    $('chatLog').appendChild(d); $('chatLog').scrollTop = 1e6; return d;
+  }
+  function openChat() {
+    Audio8.play('open');
+    $('chatTitle').textContent = `Talk to ${me.pet.name}`;
+    const log = $('chatLog'); log.innerHTML = '';
+    if (!chatHistory.length) { const hi = `Hi! I'm ${me.pet.name}. Ask me about today's quests, or just talk. I get chatty.`; chatHistory.push({ role: 'pet', text: hi }); }
+    chatHistory.forEach(m => chatBubble(m.role, m.text));
+    const chips = $('chatChips'); chips.innerHTML = '';
+    CHAT_CHIPS.forEach(t => { const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.onclick = () => sendChat(t); chips.appendChild(b); });
+    $('ovChat').hidden = false; $('chatInput').focus();
+  }
+  async function sendChat(text) {
+    text = (text || '').trim(); if (!text) return;
+    $('chatInput').value = ''; Audio8.play('tap');
+    chatHistory.push({ role: 'you', text }); chatBubble('you', text);
+    const th = chatBubble('pet', '…', true); $('chatSend').disabled = true;
+    const r = await API.chat(text, chatHistory.slice(-10, -1));
+    th.remove(); $('chatSend').disabled = false;
+    chatHistory.push({ role: 'pet', text: r.reply }); chatHistory = chatHistory.slice(-24);
+    chatBubble('pet', r.reply); Audio8.play('squeak');
+    stage.set(r.mood === 'sad' ? 'sad' : 'happy', 1500);
+    speak(r.reply);
+  }
+  $('btnTalk').addEventListener('pointerdown', e => e.stopPropagation());
+  $('btnTalk').onclick = openChat;
+  $('chatClose').onclick = () => { $('ovChat').hidden = true; Audio8.play('close'); if (speaking) { speaking.pause(); speaking = null; } };
+  $('ovChat').addEventListener('click', e => { if (e.target === $('ovChat')) $('chatClose').onclick(); });
+  $('chatForm').addEventListener('submit', e => { e.preventDefault(); sendChat($('chatInput').value); });
 
   async function renderInbox() {
     const v = await API.getVillage();
@@ -349,6 +444,8 @@
     $('qText').textContent = q.text;
     $('qPlace').textContent = q.place.name;
     $('qPlaceMeta').textContent = `${q.place.kind} · ${q.place.dist} away${q.place.rating ? ' · ' + q.place.rating + ' stars' : ''} · ${q.place.hint}`;
+    $('qMaps').hidden = !q.place.mapsUrl; if (q.place.mapsUrl) $('qMaps').href = q.place.mapsUrl;
+    drawMinimap(q);
     $('qXp').textContent = q.xp; $('qEgg').textContent = Math.round(q.eggChance * 100) + '%';
     $('qTags').innerHTML = (q.cursed ? `<span class="tag curse">${ic(me.activeCurse.icon, 12)} ${esc(me.activeCurse.name)} by ${esc(me.activeCurse.from)}</span> ` : '') +
       (q.blessings || []).map(id => { const b = API.BLESSINGS.find(x => x.id === id); return b ? `<span class="tag bless">${ic(b.icon, 12)} ${esc(b.name)}</span> ` : ''; }).join('');
@@ -1026,6 +1123,7 @@
   (async function boot() {
     Icons.mount();
     await Sprites.loadAll('assets/sprites/');
+    getLocation().then(l => { loc = l; });
     me = await API.getMe();
     Audio8.setEnabled(me.settings.sound !== false);
     if (!me.pet) { await runHatch(); return; }
