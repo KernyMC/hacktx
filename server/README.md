@@ -25,7 +25,9 @@ All JSON responses send `Access-Control-Allow-Origin: *`. Errors always come bac
 
 | Route | Request | Response |
 |---|---|---|
-| `GET /api/health` | – | `{ ok:true, elevenlabs:bool, gemini:bool }` |
+| `GET /api/health` | – | `{ ok:true, elevenlabs:bool, gemini:bool, serpapi:bool, muse:bool }` |
+| `POST /api/village/plan` | `{ me, friends, week, places }` | `{ ok, plans:[{ title, place, when, who, why, type, pitch }], engine:'muse'\|'template' }`. Meta Model API (Muse Spark, Chat Completions in JSON mode) plans 3 group outings at real places for the friends who are available. Template plans without `MODEL_API_KEY`. |
+| `POST /api/village/chronicle` | `{ me, friends, week }` | `{ ok, title, paragraphs, engine }`. Muse writes the village's shared weekly story in the pet's voice; template offline. |
 | `POST /api/speech/transcribe[?lang=en]` | raw audio bytes as the body, `Content-Type: audio/webm` (or `audio/mp4`, `audio/ogg`, …), max 10 MB | `{ ok:true, text, language, words?:[{text,start,end}] }` |
 | `POST /api/speech/say` | `{ text, voice }`. Text is trimmed to 400 chars. | `audio/mpeg` bytes. Cached in memory (the last 50). |
 | `POST /api/proof/verify` | `{ type:'photo'\|'voice', quest:{title,text,type,place:{name,kind}}, curse:{id,name,desc}\|null, petName, image?:dataURL, transcript?:string }`, max 12 MB | `{ ok, message, confidence, reasons:[], engine:'gemini'\|'heuristic' }` |

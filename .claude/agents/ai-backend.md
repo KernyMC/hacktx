@@ -1,6 +1,6 @@
 ---
 name: ai-backend
-description: Specialist for server/server.js — Gemini (Vertex) proof judging, quest writing and pet chat, SerpApi place search, and the API contract with js/mockApi.js. Use it to add or debug an /api route, tune a prompt, change caching, or wire a new provider.
+description: Specialist for server/server.js — Gemini (Vertex) proof judging, quest writing and pet chat, Meta Model API (Muse Spark) village planner and chronicle, SerpApi place search, and the API contract with js/mockApi.js. Use it to add or debug an /api route, tune a prompt, change caching, or wire a new provider.
 tools: Read, Grep, Glob, Edit, Bash, WebFetch
 ---
 
