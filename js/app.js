@@ -386,10 +386,28 @@
     const iconOf = it => it.kind === 'coins' ? ic('coin', 28, '#c9922a', '#ffcf4d') : it.kind === 'key' ? ic('pin', 28, '#2b2140', '#ffcf4d') : it.kind === 'egg' ? ic('egg', 28, '#5ab0ff')
       : ic((it.kind === 'curse' ? API.CURSES : API.BLESSINGS).find(x => x.id === it.id)?.icon || 'star', 28);
     const items = m.items || [];
-    const html = `<div class="big">${esc(m.title || 'A gift')}</div><p class="sub">${esc(m.from)} sent you this.</p><div class="caps" id="giftCaps" style="grid-template-columns:repeat(3,1fr)"></div>`;
+    // a closed pixel gift box you tap; the lid pops and the items drop in one by one
+    const html = `<div class="big">${esc(m.title || 'A gift')}</div><p class="sub" id="giftSub">${esc(m.from)} sent you this. Tap the box!</p><canvas id="giftBox" width="48" height="48" style="width:144px;height:144px;display:block;margin:4px auto;cursor:pointer"></canvas><div class="caps" id="giftCaps" style="grid-template-columns:repeat(3,1fr)" hidden></div>`;
+    const drawBox = (c, open, bob) => {
+      c.clearRect(0, 0, 48, 48); const R = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+      R(8, 20 + bob, 32, 24, '#2b2140'); R(10, 22 + bob, 28, 20, '#e8574a'); R(10, 22 + bob, 28, 3, '#ff8a7a'); R(22, 22 + bob, 4, 20, '#ffcf4d');
+      if (!open) { R(6, 14 + bob, 36, 8, '#2b2140'); R(8, 16 + bob, 32, 4, '#c0392b'); R(22, 14 + bob, 4, 8, '#ffcf4d'); R(16, 8 + bob, 6, 6, '#ffcf4d'); R(26, 8 + bob, 6, 6, '#ffcf4d'); R(21, 10 + bob, 6, 5, '#c9922a'); }
+      else { R(2, 2, 36, 8, '#2b2140'); R(4, 4, 32, 4, '#c0392b'); R(12, 20 + bob, 24, 2, '#fff6c0'); for (let i = 0; i < 6; i++) R(10 + i * 5, 12 + (i % 2) * 3, 2, 2, '#ffcf4d'); }
+    };
     const p = showInfo(html, [['Take it all', 'pink', null]], el => {
-      const caps = el.querySelector('#giftCaps');
-      items.forEach((it, i) => { const d = document.createElement('div'); d.className = 'cap common'; d.style.animationDelay = (i * 0.15) + 's'; d.innerHTML = `${iconOf(it)}<span class="lb">${esc(label(it))}</span>`; caps.appendChild(d); setTimeout(() => Audio8.play('xp'), i * 150); });
+      const cv = el.querySelector('#giftBox'), c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+      const btn = el.parentElement.querySelector('#infoActs button'); btn.disabled = true;
+      let open = false, t0 = performance.now();
+      const bob = setInterval(() => { if (!cv.isConnected) return clearInterval(bob); if (!open) drawBox(c, false, Math.round(Math.sin((performance.now() - t0) / 180) * 1.5)); }, 60);
+      cv.onclick = () => {
+        if (open) return; open = true; clearInterval(bob); Audio8.play('crack'); cv.style.animation = 'wobble .4s';
+        setTimeout(() => {
+          drawBox(c, true, 0); flash(); Audio8.play('hatch'); confetti.burst(60, ['#ffcf4d', '#fff', '#ff9a3c']);
+          el.querySelector('#giftSub').textContent = 'Inside:'; const caps = el.querySelector('#giftCaps'); caps.hidden = false;
+          items.forEach((it, i) => { const d = document.createElement('div'); d.className = 'cap common'; d.style.animationDelay = (i * 0.15) + 's'; d.innerHTML = `${iconOf(it)}<span class="lb">${esc(label(it))}</span>`; caps.appendChild(d); setTimeout(() => Audio8.play('xp'), i * 150); });
+          btn.disabled = false;
+        }, 350);
+      };
     });
     await p;
     await API.acceptInbox(m.id); Audio8.play('reward'); confetti.burst(70, ['#ffcf4d', '#fff', '#ff9a3c']);
@@ -486,13 +504,13 @@
 
   function showInfo(html, buttons, after) {
     $('infoBody').innerHTML = html; const acts = $('infoActs'); acts.innerHTML = '';
-    if (after) after($('infoBody'));
     return new Promise(resolve => {
       buttons.forEach(([label, cls, fn]) => {
         const b = document.createElement('button'); b.className = `btn ${cls} block`; b.textContent = label;
         b.onclick = () => { Audio8.play('tap'); $('ovInfo').hidden = true; if (fn) fn(); resolve(label); };
         acts.appendChild(b);
       });
+      if (after) after($('infoBody'));   // buttons exist by now, so `after` may disable/enable them
       $('ovInfo').hidden = false;
     });
   }
@@ -918,17 +936,13 @@
   // ------------------------------------------------------------------
   function tutorialSteps() {
     const n = me.pet.name;
+    // five steps: the pet, quests + proof, the social inbox, eggs, the shop
     return [
-      { tab: 'home', sel: '#stage', text: `Hi, I'm ${n}! Tap me anytime for hearts. I live off your real-world adventures.` },
-      { tab: 'home', sel: '.meters', text: 'XP levels me up. Mood and hunger drop if you ignore me, and go up when you do quests.' },
-      { tab: 'home', sel: '#questList', text: 'Every day you get 3 quests at real places nearby. Prove them with a photo or a voice note. An AI checks it, so no faking!' },
-      { tab: 'home', sel: '#inboxList', text: 'Friends send curses, blessings and minigame duels. Accept a curse and your next quest gets... weird.' },
-      { tab: 'zoo', sel: '#eggGrid', text: 'Quests drop eggs. Common, Uncommon, Rare, Mythic, Legendary. Rarer animals are drawn with more pixels.' },
-      { tab: 'zoo', sel: '#zooGrid', text: 'Tap any Familiar to make it active (the whole app restyles to match it), play its minigame, or duel a friend with it.' },
-      { tab: 'shop', sel: '#gachaPanel', text: 'The Lucky Capsule. One free pull every day. Pity timer guarantees a Mythic and eventually a Legendary.' },
-      { tab: 'shop', sel: '#shopGrid', text: 'Spend coins on eggs, blessings, curse scrolls and raid keys.' },
-      { tab: 'village', sel: '#raidList', text: 'Team up with friends on boss raids. Bigger bosses need more keys and drop rarer eggs.' },
-      { tab: 'home', sel: '#btnSettings', text: 'Going away? Turn on Vacation mode in settings. I will miss you, and nobody can duel you while you are gone. Have fun!' },
+      { tab: 'home', sel: '#stage', text: `Hi, I'm ${n}! Tap me for hearts. I only grow when you go outside and do real quests.` },
+      { tab: 'home', sel: '#questList', text: 'Three quests a day at real places nearby. Prove each one with a photo and a short caption. An AI game master checks it, so no faking!' },
+      { tab: 'home', sel: '#inboxList', text: 'Open your welcome package. Friends send curses, blessings and minigame duels here too. Accept a curse and your next quest gets weird.' },
+      { tab: 'zoo', sel: '#eggGrid', text: 'Quests drop eggs. The more eggs you keep warm, the longer each takes. Rarer animals hatch sharper: more pixels, more detail.' },
+      { tab: 'shop', sel: '#gachaPanel', text: 'The Lucky Capsule: one free pull a day, with a pity timer for Mythic and Legendary. Spend coins on eggs, blessings, curses and raid keys. Now go!' },
     ];
   }
   async function runTutorial() {
