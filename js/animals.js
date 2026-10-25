@@ -112,7 +112,7 @@
       E(50, 55, 11, 7, 'a', { clip: 'head' }),
     ], face: face({}) });
 
-  def('dog', { name: 'Party Pup', rarity: 'common', minigame: 'timing', voice: 'hyper',
+  def('dog', { name: 'Party Pup', rarity: 'common', minigame: 'herd', voice: 'hyper',
     flavor: 'Wags at strangers. Has never met a hallway it did not love.',
     pal: { b: '#e8c79a', d: '#9a6a43', a: '#fff4e2', c: '#ff7c95', n: '#2b2140' },
     shapes: [
@@ -156,7 +156,7 @@
       E(36, 79, 4, 4, 'c'), E(64, 79, 4, 4, 'c'),
     ], face: face({ eyes: [[38, 48], [62, 48]], nose: [50, 55], mouth: [50, 59], blush: [[26, 57], [74, 57]] }) });
 
-  def('frog', { name: 'Puddle Frog', rarity: 'common', minigame: 'hop', voice: 'chill',
+  def('frog', { name: 'Puddle Frog', rarity: 'common', minigame: 'pads', voice: 'chill',
     flavor: 'Thinks every puddle is a portal. Sometimes right.',
     pal: { b: '#7fd36a', d: '#4f9e48', a: '#e4f7b8', c: '#ff9fb2', n: '#2b2140' },
     shapes: [
@@ -209,7 +209,7 @@
       E(50, 50, 19, 18, 'd', { id: 'head' }), E(50, 34, 13, 7, 'b'),
     ], face: face({ eyes: [[42, 49], [58, 49]], nose: null, mouth: [50, 58], blush: [[36, 56], [64, 56]], eyeColor: '#ffffff', mouthColor: '#ffffff' }) });
 
-  def('hedgehog', { name: 'Burr Hog', rarity: 'uncommon', minigame: 'dig', voice: 'grumpy',
+  def('hedgehog', { name: 'Burr Hog', rarity: 'uncommon', minigame: 'roll', voice: 'grumpy',
     flavor: 'Prickly outside, absolute marshmallow inside.',
     pal: { b: '#f2d6b0', d: '#8a5a3c', a: '#fff1de', c: '#ffa9c0', n: '#2b2140' },
     shapes: [
@@ -231,7 +231,7 @@
       E(50, 76, 6, 6, 'c'), E(50, 71, 6, 3, 'd'),
     ], face: face({ eyes: [[40, 44], [60, 44]], nose: [50, 52], mouth: [50, 56], blush: [[32, 52], [68, 52]] }) });
 
-  def('turtle', { name: 'Pond Turtle', rarity: 'uncommon', minigame: 'stack', voice: 'wise',
+  def('turtle', { name: 'Pond Turtle', rarity: 'uncommon', minigame: 'pads', voice: 'wise',
     flavor: 'From the UT Turtle Pond. Has seen four thousand finals weeks.',
     pal: { b: '#9fd67a', d: '#5f8f3e', a: '#e6f4c8', c: '#b07a43', n: '#2b2140' },
     shapes: [
@@ -279,7 +279,7 @@
       E(37, 48, 4, 7, 'c', { clip: 'head', rot: 0.4 }), E(63, 48, 4, 7, 'c', { clip: 'head', rot: -0.4 }),
     ], face: face({ eyes: [[39, 43], [61, 43]], nose: [50, 52], blush: null }) });
 
-  def('penguin', { name: 'Tux Penguin', rarity: 'rare', minigame: 'swim', voice: 'regal',
+  def('penguin', { name: 'Tux Penguin', rarity: 'rare', minigame: 'fishing', voice: 'regal',
     flavor: 'Dressed for a gala at all times. Slides into every room.',
     pal: { b: '#3c3f5c', d: '#23253a', a: '#ffffff', c: '#ffa53c', n: '#2b2140' },
     shapes: [
@@ -301,7 +301,7 @@
       E(50, 58, 12, 8, 'a', { clip: 'head' }),
     ], face: face({ eyes: [[40, 47], [60, 47]], nose: [50, 55], mouth: [50, 59], blush: [[31, 55], [69, 55]] }) });
 
-  def('otter', { name: 'River Otter', rarity: 'rare', minigame: 'swim', voice: 'chill',
+  def('otter', { name: 'River Otter', rarity: 'rare', minigame: 'fishing', voice: 'chill',
     flavor: 'Holds hands while sleeping. Keeps a favourite rock.',
     pal: { b: '#9a6a48', d: '#6a4530', a: '#f0dcc4', c: '#b8d8ff', n: '#2b2140' },
     shapes: [
@@ -312,7 +312,7 @@
       E(50, 74, 9, 6, 'c'), E(34, 72, 5, 6, 'b'), E(66, 72, 5, 6, 'b'),
     ], face: face({ eyes: [[39, 42], [61, 42]], nose: [50, 50], mouth: [50, 55], whiskers: true }) });
 
-  def('raccoon', { name: 'Trash Bandit', rarity: 'rare', minigame: 'sneak', voice: 'spooky',
+  def('raccoon', { name: 'Trash Bandit', rarity: 'rare', minigame: 'trail', voice: 'spooky',
     flavor: 'Washes everything before eating it. Including your phone.',
     pal: { b: '#9c98a8', d: '#3a364a', a: '#eceaf2', c: '#5e5a6e', n: '#2b2140' },
     shapes: [
@@ -325,7 +325,7 @@
       P([[20, 40], [44, 38], [50, 46], [56, 38], [80, 40], [74, 50], [56, 48], [50, 50], [44, 48], [26, 50]], 'd', { clip: 'head' }),
     ], face: face({ eyes: [[38, 44], [62, 44]], nose: [50, 52], mouth: [50, 57], eyeColor: '#ffffff', blush: [[29, 55], [71, 55]] }) });
 
-  def('capybara', { name: 'Chill Capy', rarity: 'rare', minigame: 'timing', voice: 'chill',
+  def('capybara', { name: 'Chill Capy', rarity: 'rare', minigame: 'herd', voice: 'chill',
     flavor: 'Friends with everyone. Wears a yuzu as a hat.',
     pal: { b: '#b8865a', d: '#8a5f3a', a: '#d4a87a', c: '#ffb43c', n: '#4a3226' },
     shapes: [
@@ -365,7 +365,7 @@
     ], face: face({ eyes: [[40, 38], [54, 38]], nose: null, mouth: null, blush: [[34, 46], [58, 46]] }) });
 
   // ---------- MYTHIC ----------
-  def('armadillo', { name: 'Armored Dillo', rarity: 'mythic', minigame: 'whack', voice: 'cowboy',
+  def('armadillo', { name: 'Armored Dillo', rarity: 'mythic', minigame: 'roll', voice: 'cowboy',
     flavor: 'Texas state small mammal. Rolls into a ball when judged.',
     pal: { b: '#c9a6a0', d: '#8f6a66', a: '#f1ddd6', c: '#ffb0b8', n: '#2b2140' },
     shapes: [
@@ -449,7 +449,7 @@
       E(50, 68, 4, 3, 'n', { id: 'ring' }), E(50, 68, 2, 1.5, 'x', { clip: 'ring' }),
     ], face: face({ eyes: [[39, 42], [61, 42]], nose: null, mouth: null, blush: [[33, 50], [67, 50]] }) });
 
-  def('grackle', { name: 'Grackle', rarity: 'legendary', minigame: 'fly', voice: 'grumpy',
+  def('grackle', { name: 'Grackle', rarity: 'legendary', minigame: 'trail', voice: 'grumpy',
     flavor: 'A great-tailed grackle. Rules every HEB parking lot in Austin. Screams at sunset. Its tail is longer than your patience.',
     pal: { b: '#3a3d78', d: '#6a4fb0', a: '#b8c4f4', c: '#ffe066', n: '#2b2140' },
     shapes: [

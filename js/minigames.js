@@ -94,6 +94,7 @@
     snake: ['........', '..kkkk..', '.kGGGGk.', 'kGwkGGGk', 'kkkkkGGk', '....kGGk', 'kkkkkGk.', 'kGGGGk..'],
     bamboo: ['..kuuk..', '..kuuk..', '.kkkkkk.', '..kuuk..', '..kuuk..', '.kkkkkk.', '..kuuk..', '..kuuk..'],
     snow: ['...kk...', '.k.kk.k.', '..kkkk..', 'kkkwwkkk', 'kkkwwkkk', '..kkkk..', '.k.kk.k.', '...kk...'],
+    jelly: ['..kllllk..', '.kllwlllk.', 'kllllllllk', 'kllllllllk', '.kkkkkkkk.', '.l.l..l.l.', '.l.l..l.l.', '..l....l..'],
     log: ['.kkkkkkkkkk.', 'kbbbBbbbbNNk', 'kbBbbbbBbNdk', 'kbbbbBbbbNNk', '.kkkkkkkkkk.'],
     pizza: ['kkkkkkkk', 'kyyyyyyk', '.kyrykr.', '.kyyyyk.', '..kryk..', '..kyyk..', '...kk...', '........'],
   };
@@ -1034,6 +1035,263 @@
     },
 
     // ------------------------------------------------------------------
+    // ------------------------------------------------------------------
+    // roll: Turmac Roll style. The pet rolls down rolling hills, tap to jump over obstacles, snacks in the air.
+    roll: {
+      name: 'Hill Roll',
+      desc: 'Roll down the hills! Tap to jump over obstacles and grab snacks mid-air.',
+      controls: 'Tap or Space to jump',
+      make(G) {
+        const d = G.d, sk = G.skin;
+        G.mode = 'score'; G.duration = 25; G.target = 8 + d * 2; G.hearts = 3;
+        const petX = 96, px = 2.6, groundY = H - 84;
+        const snack = sk.snack || 'berry', obst = sk.obstacles || ['rock', 'bush'];
+        let vy = 0, py = 0, ang = 0, scroll = 0, spawn = 1.2, invul = 0, jumps = 0, spd = 0;
+        const items = [];
+        const speed = () => (120 + d * 18 + G.t * 3) * (sk.speed || 1);
+        const hillY = (x) => Math.sin((x + scroll) / 70) * 10 + Math.sin((x + scroll) / 31) * 4;
+        function jump() { if (jumps < 1) { vy = -(300 + d * 8); jumps++; sfx('tap'); G.burst(petX, groundY, C.white, 5); } }
+        G.hudLeft = () => (sk.hudText || 'Snacks') + ' ' + G.score + ' / ' + G.target;
+        return {
+          down() { jump(); }, action() { jump(); },
+          update(dt) {
+            spd = speed(); scroll += spd * dt; invul = Math.max(0, invul - dt);
+            vy += 900 * dt; py += vy * dt;
+            if (py > 0) { py = 0; vy = 0; jumps = 0; }
+            if (py === 0) ang += spd * dt / 14;
+            spawn -= dt;
+            if (spawn <= 0) {
+              spawn = Math.max(0.45, rnd(0.9, 1.3) - d * 0.09);
+              const kind = Math.random() < 0.55 ? 'snack' : 'obst';
+              if (kind === 'obst') items.push({ x: W + 20, kind, spr: pick(obst), h: 0 });
+              else { const high = Math.random() < 0.5; items.push({ x: W + 20, kind, spr: snack, h: high ? rnd(48, 78) : rnd(6, 16) }); if (high && Math.random() < 0.5) items.push({ x: W + 44, kind, spr: snack, h: rnd(48, 78) }); }
+            }
+            const feet = groundY + hillY(petX) + py;
+            for (let i = items.length - 1; i >= 0; i--) {
+              const it = items[i]; it.x -= spd * dt;
+              const iy = groundY + hillY(it.x) - it.h;
+              const hit = Math.abs(it.x - petX) < 16 && Math.abs(iy - (feet - 16)) < 22;
+              if (hit) {
+                items.splice(i, 1);
+                if (it.kind === 'snack') { G.burst(it.x, iy, C.gold, 8); G.pop(it.x, iy - 18, '+1', C.gold); sfx('xp'); G.petAnim('eat', 0.3); G.addScore(1); }
+                else if (invul <= 0) { invul = 1.2; vy = -120; G.burst(it.x, iy, C.stone, 12); G.hurt(); }
+                continue;
+              }
+              if (it.x < -30) items.splice(i, 1);
+            }
+          },
+          draw(c) {
+            rect(c, 0, 0, W, H, sk.sky || '#ffe4b5');
+            for (let i = 0; i < 4; i++) rect(c, ((i * 120 - scroll * 0.15) % (W + 60) + W + 60) % (W + 60) - 30, 40 + (i % 2) * 26, 46, 14, C.white);
+            for (let x = 0; x < W; x += 4) { const y = groundY + hillY(x); rect(c, x, y, 4, H - y, sk.ground || C.grass); rect(c, x, y, 4, 5, sk.ground2 || C.grass2); }
+            for (const it of items) sprC(c, it.spr, it.x, groundY + hillY(it.x) - it.h - (it.kind === 'obst' ? 10 : 8), it.kind === 'obst' ? 3.2 : 2.4);
+            const feet = groundY + hillY(petX) + py;
+            rect(c, petX - 16, groundY + hillY(petX) + 1, 32, 4, 'rgba(43,33,64,.25)');
+            if (!(invul > 0 && Math.floor(invul * 12) % 2)) {
+              c.save(); c.translate(petX, feet - 8 * px); c.rotate(py === 0 ? ang : ang + vy / 900);
+              drawPet(c, G.pet, 0, 8 * px, px, G.petOpts({ anim: py < 0 ? 'happy' : null })); c.restore();
+            }
+          },
+        };
+      },
+    },
+
+    // ------------------------------------------------------------------
+    // herd: Puffle Roundup style. Drag to move your pet; the critters run from it. Push them all into the pen.
+    herd: {
+      name: 'Round-Up',
+      desc: 'The critters scatter! Drag your pet to chase them into the pen before they run off the field.',
+      controls: 'Drag anywhere to move',
+      make(G) {
+        const d = G.d, sk = G.skin;
+        G.mode = 'score'; G.duration = 35; G.target = 4 + Math.ceil(d / 2); G.hearts = 3;
+        const penX = W - 78, penY = 92, penW = 64, penH = 116, px = 2.4;
+        const me = { x: 60, y: 150 }, crit = [];
+        const scare = 58 + d * 3, flee = 70 + d * 14, drift = 18 + d * 7;
+        for (let i = 0; i < G.target; i++) crit.push({ x: rnd(110, 230), y: rnd(50, 250), vx: 0, vy: 0, wob: rnd(0, 6), inPen: false, gone: false });
+        G.hudLeft = () => (sk.hudText || 'Penned') + ' ' + G.score + ' / ' + G.target;
+        return {
+          update(dt) {
+            if (G.ptr.down) { const dx = G.ptr.x - me.x, dy = G.ptr.y - me.y, l = Math.hypot(dx, dy), st = (150 + d * 10) * dt; if (l > 2) { me.x += dx / l * Math.min(l, st); me.y += dy / l * Math.min(l, st); } }
+            const dir = (G.input.right ? 1 : 0) - (G.input.left ? 1 : 0), dv = (G.input.down ? 1 : 0) - (G.input.up ? 1 : 0);
+            if (dir || dv) { me.x += dir * 150 * dt; me.y += dv * 150 * dt; }
+            me.x = clamp(me.x, 14, W - 14); me.y = clamp(me.y, 30, H - 14);
+            for (const k of crit) {
+              if (k.inPen || k.gone) continue;
+              const dx = k.x - me.x, dy = k.y - me.y, l = Math.hypot(dx, dy) || 1;
+              if (l < scare) { k.vx += dx / l * flee * dt * 6; k.vy += dy / l * flee * dt * 6; }
+              else { k.vx += Math.sin(G.t * 1.7 + k.wob) * drift * dt; k.vy += Math.cos(G.t * 1.3 + k.wob) * drift * dt; }
+              const sp = Math.hypot(k.vx, k.vy), max = flee; if (sp > max) { k.vx *= max / sp; k.vy *= max / sp; }
+              k.vx *= 0.96; k.vy *= 0.96; k.x += k.vx * dt; k.y += k.vy * dt;
+              if (k.x > penX + 6 && k.y > penY + 6 && k.y < penY + penH - 6) { k.inPen = true; k.x = clamp(k.x, penX + 12, penX + penW - 12); k.vx = k.vy = 0; G.burst(k.x, k.y, C.mint, 8); G.pop(k.x, k.y - 18, 'IN!', C.mint); sfx('accept'); G.addScore(1); continue; }
+              if (k.y < penY || k.y > penY + penH) { if (k.x > penX - 8) { k.x = penX - 8; k.vx = -Math.abs(k.vx); } }
+              if (k.x < -14 || k.y < 10 || k.y > H + 14 || k.x > W + 14) { k.gone = true; G.pop(clamp(k.x, 20, W - 20), clamp(k.y, 30, H - 20), 'ESCAPED', C.red); G.hurt(); if (G.hearts > 0) { k.gone = false; k.x = rnd(120, 200); k.y = rnd(60, 240); k.vx = k.vy = 0; } }
+            }
+          },
+          draw(c) {
+            rect(c, 0, 0, W, H, sk.ground || C.grass);
+            for (let i = 0; i < 24; i++) rect(c, (i * 53) % W, 20 + (i * 37) % (H - 30), 6, 3, sk.ground2 || C.grass2);
+            rect(c, penX - 4, penY - 4, penW + 8, penH + 8, C.ink); rect(c, penX, penY, penW, penH, sk.pen || C.sand);
+            rect(c, penX - 4, penY + 12, 6, penH - 24, sk.pen || C.sand);
+            for (let i = 0; i < 4; i++) { rect(c, penX + 8 + i * 15, penY - 10, 4, 10, C.brown2); rect(c, penX + 8 + i * 15, penY + penH, 4, 10, C.brown2); }
+            text(c, sk.penText || 'PEN', penX + penW / 2, penY + penH / 2, 12, C.ink2, 'center');
+            for (const k of crit) { if (k.gone) continue; sprC(c, sk.critter || 'critter', k.x, k.y + Math.sin(G.t * 8 + k.wob) * (k.inPen ? 0 : 2), 2.2); }
+            drawPet(c, G.pet, me.x, me.y + 14, px, G.petOpts({ flip: G.ptr.down && G.ptr.x < me.x, anim: G.ptr.down ? 'happy' : null }));
+          },
+        };
+      },
+    },
+
+    // ------------------------------------------------------------------
+    // pads: Thin Ice style. Hop across lily pads that sink behind you; reach the far shore without getting stuck.
+    pads: {
+      name: 'Sinking Pads',
+      desc: 'Hop to the far shore. Every pad sinks after you leave it, so plan your path and grab the snacks.',
+      controls: 'Tap a neighbouring pad, or arrow keys',
+      make(G) {
+        const d = G.d, sk = G.skin;
+        G.mode = 'score'; G.duration = 40; G.target = 2 + Math.ceil(d / 2); G.hearts = 2;
+        const COLS = 8, ROWS = 6, cell = 40, ox = (W - COLS * cell) / 2, oy = 34;
+        let grid, cx, cy, hop = 0, hx = 0, hy = 0, dead = 0;
+        function build() {
+          for (let tries = 0; tries < 60; tries++) {
+            grid = []; const holes = 0.12 + d * 0.05;
+            for (let y = 0; y < ROWS; y++) { grid.push([]); for (let x = 0; x < COLS; x++) grid[y].push(Math.random() < holes ? 0 : (Math.random() < 0.18 ? 2 : 1)); }   // 0 water, 1 pad, 2 pad + snack
+            cy = (Math.random() * ROWS) | 0; cx = 0; grid[cy][0] = 1; grid[(Math.random() * ROWS) | 0][COLS - 1] = 3;   // 3 = exit
+            const seen = new Set([cy + ',0']), q = [[0, cy]]; let ok = false;
+            while (q.length) { const [x, y] = q.shift(); if (grid[y][x] === 3) { ok = true; break; } for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + ax, ny = y + ay; if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS || !grid[ny][nx] || seen.has(ny + ',' + nx)) continue; seen.add(ny + ',' + nx); q.push([nx, ny]); } }
+            if (ok) return;
+          }
+          grid = Array.from({ length: ROWS }, () => Array(COLS).fill(1)); cy = 2; cx = 0; grid[2][COLS - 1] = 3;
+        }
+        build();
+        function move(ax, ay) {
+          if (hop > 0 || dead > 0) return;
+          const nx = cx + ax, ny = cy + ay;
+          if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return;
+          if (!grid[ny][nx]) { dead = 1; sfx('hit'); G.burst(ox + nx * cell + cell / 2, oy + ny * cell + cell / 2, C.sky, 12); G.hurt(); if (G.hearts > 0) setTimeout(() => { build(); dead = 0; }, 700); return; }
+          grid[cy][cx] = 0; cx = nx; cy = ny; hop = 0.18; hx = -ax; hy = -ay; sfx('tap');
+          if (grid[cy][cx] === 2) { grid[cy][cx] = 1; G.pop(ox + cx * cell + cell / 2, oy + cy * cell, '+1', C.gold); sfx('xp'); G.petAnim('eat', 0.3); }
+          if (grid[cy][cx] === 3) { G.burst(ox + cx * cell + cell / 2, oy + cy * cell + cell / 2, C.gold, 16); G.pop(W / 2, 20, 'SHORE!', C.mint); sfx('reward'); G.addScore(1); if (G.score < G.target) setTimeout(build, 300); return; }
+          const stuck = [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([a, b]) => { const x = cx + a, y = cy + b; return x < 0 || y < 0 || x >= COLS || y >= ROWS || !grid[y][x]; });
+          if (stuck) { dead = 1; G.pop(W / 2, 20, 'STUCK!', C.red); G.hurt(); if (G.hearts > 0) setTimeout(() => { build(); dead = 0; }, 700); }
+        }
+        G.hudLeft = () => (sk.hudText || 'Shores') + ' ' + G.score + ' / ' + G.target;
+        return {
+          down(x, y) { const gx = Math.floor((x - ox) / cell), gy = Math.floor((y - oy) / cell); const dx = gx - cx, dy = gy - cy; if (Math.abs(dx) + Math.abs(dy) === 1) move(dx, dy); else if (Math.abs(dx) >= Math.abs(dy) && dx) move(Math.sign(dx), 0); else if (dy) move(0, Math.sign(dy)); },
+          key(k) { if (k === 'ArrowLeft' || k === 'a') move(-1, 0); if (k === 'ArrowRight' || k === 'd') move(1, 0); if (k === 'ArrowUp' || k === 'w') move(0, -1); if (k === 'ArrowDown' || k === 's') move(0, 1); },
+          update(dt) { hop = Math.max(0, hop - dt); },
+          draw(c) {
+            rect(c, 0, 0, W, H, sk.water || '#5fb6e8');
+            for (let i = 0; i < 12; i++) rect(c, (i * 47 + G.t * 12) % W, 12 + (i * 29) % (H - 20), 14, 2, 'rgba(255,255,255,.5)');
+            rect(c, 0, 0, ox - 6, H, sk.shore || C.grass); rect(c, W - ox + 6, 0, ox, H, sk.shore || C.grass);
+            for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+              const v = grid[y][x]; if (!v) continue;
+              const px0 = ox + x * cell + 4, py0 = oy + y * cell + 4;
+              box(c, px0, py0, cell - 8, cell - 8, v === 3 ? C.gold : (sk.pad || '#8fd48a'), 2);
+              if (v !== 3) rect(c, px0 + 6, py0 + 6, 6, 4, sk.pad2 || '#5fb35e');
+              if (v === 2) sprC(c, sk.snack || 'star', px0 + cell / 2 - 4, py0 + cell / 2 - 4, 1.6);
+              if (v === 3) text(c, 'GO', px0 + cell / 2 - 4, py0 + cell / 2 - 4, 10, C.ink, 'center');
+            }
+            const k = hop / 0.18, jx = hx * k * cell, jy = hy * k * cell - Math.sin(k * Math.PI) * 14;
+            if (!(dead > 0 && Math.floor(G.t * 10) % 2)) drawPet(c, G.pet, ox + cx * cell + cell / 2 + jx, oy + cy * cell + cell - 4 + jy, 2.0, G.petOpts({ flip: hx > 0, anim: dead ? 'sad' : (hop > 0 ? 'happy' : null) }));
+          },
+        };
+      },
+    },
+
+    // ------------------------------------------------------------------
+    // fishing: Ice Fishing style. Drag to steer the hook, hold to lower it, let go to reel. Avoid the jellies.
+    fishing: {
+      name: 'Ice Fishing',
+      desc: 'Steer the hook over a fish and let go to reel it up. Jellyfish zap the line!',
+      controls: 'Drag to steer, hold to sink, release to reel',
+      make(G) {
+        const d = G.d, sk = G.skin;
+        G.mode = 'score'; G.duration = 30; G.target = 5 + d * 2; G.hearts = 3;
+        const surface = 86, px = 2.4;
+        let hx = W / 2, hy = surface, caught = null, spawn = 0.3, zap = 0;
+        const fishes = [];
+        const goods = sk.fish || ['fish'], bad = sk.hazard || 'jelly';
+        G.hudLeft = () => 'Fish ' + G.score + ' / ' + G.target;
+        return {
+          update(dt) {
+            if (G.ptr.down) { hx += (G.ptr.x - hx) * Math.min(1, dt * 8); hy = Math.min(H - 20, hy + (120 + d * 10) * dt); }
+            else hy = Math.max(surface, hy - (160 + d * 10) * dt);
+            if (G.input.left) hx -= 150 * dt; if (G.input.right) hx += 150 * dt; hx = clamp(hx, 20, W - 20);
+            zap = Math.max(0, zap - dt);
+            spawn -= dt;
+            if (spawn <= 0) {
+              spawn = Math.max(0.5, rnd(1.0, 1.5) - d * 0.1);
+              const dir = Math.random() < 0.5 ? 1 : -1, hazard = Math.random() < 0.22 + d * 0.04;
+              fishes.push({ x: dir > 0 ? -20 : W + 20, y: rnd(surface + 30, H - 30), vx: dir * (40 + d * 8 + rnd(0, 30)), kind: hazard ? bad : pick(goods), wob: rnd(0, 6) });
+            }
+            for (let i = fishes.length - 1; i >= 0; i--) {
+              const f = fishes[i]; if (f === caught) continue;
+              f.x += f.vx * dt; f.y += Math.sin(G.t * 3 + f.wob) * 10 * dt;
+              if (f.x < -40 || f.x > W + 40) { fishes.splice(i, 1); continue; }
+              if (Math.abs(f.x - hx) < 16 && Math.abs(f.y - hy) < 14) {
+                if (f.kind === bad) { if (zap <= 0) { zap = 1; G.burst(hx, hy, C.lilac, 14); G.hurt(); if (caught) { fishes.splice(fishes.indexOf(caught), 1); caught = null; } } }
+                else if (!caught) { caught = f; sfx('tap'); G.burst(hx, hy, C.white, 6); }
+              }
+            }
+            if (caught) { caught.x = hx; caught.y = hy + 10; if (hy <= surface + 1 && !G.ptr.down) { fishes.splice(fishes.indexOf(caught), 1); caught = null; G.burst(hx, surface, C.gold, 10); G.pop(hx, surface - 16, '+1', C.gold); sfx('xp'); G.petAnim('eat', 0.3); G.addScore(1); } }
+          },
+          draw(c) {
+            rect(c, 0, 0, W, H, sk.water || '#3a7cc9'); rect(c, 0, surface + 40, W, H, sk.water2 || '#2d63a8');
+            for (let i = 0; i < 10; i++) rect(c, (i * 41 + G.t * 8) % W, surface + 20 + (i * 43) % (H - surface - 30), 10, 2, 'rgba(255,255,255,.35)');
+            rect(c, 0, 0, W, surface, sk.ice || '#eaf4ff'); rect(c, 0, surface - 4, W, 4, C.ink);
+            rect(c, hx - 26, surface - 2, 52, 8, sk.hole || '#1e3f6e');
+            for (const f of fishes) { c.save(); if (f.vx < 0 && f.kind !== bad) { c.translate(f.x, 0); c.scale(-1, 1); sprC(c, f.kind, 0, f.y, 2.6); } else sprC(c, f.kind, f.x, f.y, 2.6); c.restore(); }
+            rect(c, hx - 1, surface, 2, hy - surface, C.ink); box(c, hx - 5, hy - 2, 10, 10, zap > 0 ? C.lilac : C.gold, 2);
+            drawPet(c, G.pet, hx, surface - 2, px, G.petOpts({ anim: caught ? 'happy' : null }));
+          },
+        };
+      },
+    },
+
+    // ------------------------------------------------------------------
+    // trail: Meerca Chase style. Keep moving, turn with taps or arrows, every snack joins your trail. Do not bite it.
+    trail: {
+      name: 'Snack Trail',
+      desc: 'Keep moving and turn to grab snacks. Each one joins your trail, and running into it costs a heart!',
+      controls: 'Tap a side of your pet to turn, or arrow keys',
+      make(G) {
+        const d = G.d, sk = G.skin;
+        G.mode = 'score'; G.duration = 35; G.target = 8 + d * 2; G.hearts = 3;
+        const cell = 20, COLS = W / cell, ROWS = (H - 20) / cell, oy = 20;
+        let dir = [1, 0], next = [1, 0], head = [4, 6], body = [], step = 0, snack = null, ouch = 0;
+        const items = sk.items || ['cookie', 'berry'];
+        const tick = () => Math.max(0.1, 0.26 - d * 0.03 - G.score * 0.004);
+        function place() { for (let t = 0; t < 50; t++) { const p = [(Math.random() * COLS) | 0, (Math.random() * ROWS) | 0]; if (!body.some(b => b[0] === p[0] && b[1] === p[1]) && !(p[0] === head[0] && p[1] === head[1])) { snack = { p, kind: pick(items) }; return; } } }
+        place();
+        function turn(nx, ny) { if (nx === -dir[0] && ny === -dir[1] && body.length) return; next = [nx, ny]; }
+        G.hudLeft = () => 'Trail ' + G.score + ' / ' + G.target;
+        return {
+          down(x, y) { const hxp = head[0] * cell + cell / 2, hyp = oy + head[1] * cell + cell / 2, dx = x - hxp, dy = y - hyp; if (Math.abs(dx) > Math.abs(dy)) turn(Math.sign(dx), 0); else turn(0, Math.sign(dy)); },
+          key(k) { if (k === 'ArrowLeft' || k === 'a') turn(-1, 0); if (k === 'ArrowRight' || k === 'd') turn(1, 0); if (k === 'ArrowUp' || k === 'w') turn(0, -1); if (k === 'ArrowDown' || k === 's') turn(0, 1); },
+          update(dt) {
+            ouch = Math.max(0, ouch - dt); step += dt; if (step < tick()) return; step = 0;
+            dir = next;
+            const nh = [head[0] + dir[0], head[1] + dir[1]];
+            const wall = nh[0] < 0 || nh[1] < 0 || nh[0] >= COLS || nh[1] >= ROWS, bite = body.some(b => b[0] === nh[0] && b[1] === nh[1]);
+            if (wall || bite) { ouch = 0.6; G.burst(head[0] * cell + 10, oy + head[1] * cell + 10, C.red, 12); G.pop(W / 2, 40, bite ? 'OUCH, MY TRAIL!' : 'WALL!', C.red); G.hurt(); body = []; head = [4, 6]; dir = next = [1, 0]; return; }
+            body.unshift(head.slice()); head = nh;
+            if (snack && head[0] === snack.p[0] && head[1] === snack.p[1]) { G.burst(head[0] * cell + 10, oy + head[1] * cell + 10, C.gold, 8); sfx('xp'); G.petAnim('eat', 0.3); G.addScore(1); place(); }
+            else body.pop();
+          },
+          draw(c) {
+            rect(c, 0, 0, W, H, sk.ground || '#4a4160');
+            for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if ((x + y) % 2) rect(c, x * cell, oy + y * cell, cell, cell, sk.ground2 || '#544a6c');
+            rect(c, 0, oy - 3, W, 3, C.ink);
+            body.forEach((b, i) => { sprC(c, items[i % items.length], b[0] * cell + cell / 2, oy + b[1] * cell + cell / 2, 1.8); });
+            if (snack) sprC(c, snack.kind, snack.p[0] * cell + cell / 2, oy + snack.p[1] * cell + cell / 2 + Math.sin(G.t * 6) * 2, 2.2);
+            if (!(ouch > 0 && Math.floor(G.t * 12) % 2)) drawPet(c, G.pet, head[0] * cell + cell / 2, oy + head[1] * cell + cell - 1, 1.6, G.petOpts({ flip: dir[0] < 0, anim: ouch ? 'sad' : null }));
+          },
+        };
+      },
+    },
+
     sneak: {
       name: 'Sneak Up',
       desc: 'Hold to creep forward. Freeze the moment the watcher turns around, or get spotted and lose ground!',
@@ -1187,39 +1445,40 @@
     pig: { engine: 'catch', name: 'Muffin Scramble', desc: 'Muffins and cookies are raining! Snack fast and dodge the mud pies.', good: ['muffin', 'cookie'], bad: 'mud', badCol: C.brown2, badText: 'SPLAT', badRate: 0.22, accent: C.orange, ground: '#c99a62', ground2: '#9a6a3c' },
     // ---- hop ----
     bunny: { engine: 'hop', name: 'Clover Hop', desc: 'Bounce over bushes and rocks across the clover field. Two hops in the air!', maxJumps: 2 },
-    frog: { engine: 'hop', name: 'Lily Leap', desc: 'Leap from pad to pad over the pond weeds. A double hop keeps you dry.', bush: 'lily', maxJumps: 2, sky: '#a8e6cf', hill: '#6fc7a5', ground: '#5fb6e8', ground2: '#4a9bd0' },
+    frog: { engine: 'pads', name: 'Sinking Pads', desc: 'Hop across the lily pads to the far bank. Every pad sinks once you leave it, so pick your path and snag the flies.', snack: 'star', pad: '#8fd48a', pad2: '#5fb35e', water: '#4a9bd0', shore: '#6fc7a5', hudText: 'Banks' },
     jackalope: { engine: 'hop', name: 'Antler Dash', desc: 'A full-speed desert sprint. Clear the cacti; the legend never slows down!', bush: 'cactus', speed: 1.25, maxJumps: 2, sky: '#ffd1a1', hill: '#e2956a', ground: C.sand, ground2: C.sand2, noTrees: true, deco: 'cactus' },
     // ---- memory ----
     owl: { engine: 'memory', name: 'Moonlit Eyes', desc: 'Pairs of eyes blink in the dark. Repeat the order they glowed.', style: 'eyes', cols: [C.gold, C.orange, C.mint, C.lilac], dark: ['#4a3a20', '#4a2e1a', '#1f4a3a', '#36284f'], bg: '#15102a' },
     redpanda: { engine: 'memory', name: 'Bamboo Echo', desc: 'The bamboo stalks rustle in a pattern. Tap them back in order.', style: 'bamboo', cols: ['#8fd48a', '#ffcf4d', '#ff9a4d', '#6fe3b1'], dark: ['#4f8f4a', '#b08a2a', '#b2652a', '#3f9a72'], bg: '#2f3d2a' },
     chameleon: { engine: 'memory', name: 'Color Shift', desc: 'Repeat the pattern, but the pads swap colours after every round. Remember positions, not colours!', shuffle: true, cols: [C.pink, C.gold, C.mint, C.sky] },
     // ---- timing ----
-    dog: { engine: 'timing', name: 'Fetch Snap', desc: 'The ball bounces back and forth. Snap it up when it crosses the green!', prop: 'bone', label: 'SNAP IN THE GREEN' },
-    capybara: { engine: 'timing', name: 'Hot Spring Soak', desc: 'Yuzu drift past the hot spring. Tap exactly when one floats into the green.', prop: 'yuzu', label: 'TAP WHEN THE YUZU FLOATS BY', steam: true, sky: '#f6d5c3', sky2: '#fbe9df', zone: '#ffb37a', platform: C.stone, speed: 0.9 },
+    dog: { engine: 'herd', name: 'Pup Round-Up', desc: 'The fluffballs got loose at the dog park. Chase them into the pen before they bolt down the street!', critter: 'critter', penText: 'PEN', hudText: 'Penned' },
+    capybara: { engine: 'herd', name: 'Duckling Parade', desc: 'The ducklings wandered off. Calmly nudge every one back into the hot spring. No rush. OK, some rush.', critter: 'critter', ground: '#f0d8b8', ground2: '#d9bb90', pen: '#9fd3ff', penText: 'SPRING', hudText: 'Ducklings' },
     // ---- whack ----
     prairiedog: { engine: 'whack', name: 'Lookout Pop', desc: 'Boop the lookouts as they pop up from the burrows. Never boop a snake!', bomb: 'snake', ground: C.sand, ground2: C.sand2 },
-    armadillo: { engine: 'whack', name: 'Grub Bop', desc: 'Grubs pop out of the dirt: bop them fast. Scorpions sting!', critter: 'grub', bomb: 'scorpion', ground: '#c99a62', ground2: '#9a6a3c', sky: '#ffd1a1' },
+    armadillo: { engine: 'roll', name: 'Dillo Roll', desc: 'Curl up and roll down the Hill Country! Jump the rocks and cacti, snatch the grubs mid-air.', snack: 'grub', obstacles: ['rock', 'cactus'], sky: '#ffd1a1', ground: '#c99a62', ground2: '#9a6a3c', hudText: 'Grubs' },
     // ---- dodge ----
     goat: { engine: 'dodge', name: 'Rockslide', desc: 'Boulders tumble down the mountain. Keep your hooves out from under them!', hazards: ['rock'], big: 'rock', bigRate: 0.2, mountains: true, sky: '#cfd8ea', sky2: '#e8eef8', ground: C.stone, ground2: C.stone2 },
     roadrunner: { engine: 'dodge', name: 'Anvil Alley', desc: 'Anvils and cacti drop out of a clear desert sky. Zip, zip, zip!', hazards: ['anvil', 'cactus'], big: 'anvil', bigRate: 0.15, speed: 1.2, sky: '#ffd1a1', sky2: '#ffe6c9', ground: C.sand, ground2: C.sand2 },
     // ---- dig ----
     hamster: { engine: 'dig', name: 'Seed Stash', desc: 'Your stash is somewhere under this dirt. Dig up every seed; pebbles hurt your cheeks!', snack: 'seed', hudText: 'FIND THE STASH' },
-    hedgehog: { engine: 'dig', name: 'Beetle Burrow', desc: 'Snuffle through the leaf litter for crunchy beetles. Dig around the stones.', snack: 'beetle', dirt: '#6b4a2b', dirt2: '#4f3520', dug: '#2e1c10', sky: '#8fb98a', hudText: 'SNUFFLE FOR BEETLES' },
+    hedgehog: { engine: 'roll', name: 'Burr Roll', desc: 'Roll through the leaf litter in a prickly ball. Hop the stones and logs, crunch the beetles on the way.', snack: 'beetle', obstacles: ['rock', 'bush'], sky: '#c8e6b8', ground: '#8fb98a', ground2: '#5f8f5a', hudText: 'Beetles', speed: 1.1 },
     fennec: { engine: 'dig', name: 'Dune Dig', desc: 'Berries hide under the dunes, but so do scorpions. Dig with those big ears listening!', snack: 'berry', rock: 'scorpion', rockText: 'STING', dirt: C.sand, dirt2: C.sand2, dug: '#b58c52', sky: '#ffd1a1', hudText: 'DIG THE DUNES' },
     // ---- fly ----
     bat: { engine: 'fly', name: 'Bridge Swoop', desc: 'Dusk over Lady Bird Lake. Swoop through the Congress Bridge arches with the colony!', gate: 'arch', sky: '#3d2a6e', sky2: '#c9548a', accent: C.lilac },
     duckling: { engine: 'fly', name: 'Reed Flutter', desc: 'Flutter between the reeds along the pond. Little wings, big gaps!', gate: 'reeds', sky: C.sky, water: '#5fb6e8', speed: 0.95 },
+    grackle: { engine: 'trail', name: 'Food Truck Heist', desc: 'Swoop around the South Congress truck lot stealing fries and tacos. The loot trails behind you: do not fly into it!', items: ['pizza', 'cheese', 'muffin'], ground: '#f3d9a4', ground2: '#e8cb8e' },
     // ---- swim ----
     axolotl: { engine: 'swim', name: 'Pond Paddle', desc: 'Paddle between the lanes and gobble up fish. Logs drift down the pond!', fish: ['fish'], hazard: 'log', water: '#8ec9f0', water2: '#6eb3e3', bank: '#ffb3c7', bankDeco: 'lily' },
-    penguin: { engine: 'swim', name: 'Icy Lane', desc: 'Slide down the icy lane snapping up fish. Dodge the drifting ice floes!', fish: ['fish'], hazard: 'ice', badCol: C.sky2, water: '#5a8fd8', water2: '#4a7cc4', bank: '#eaf4ff', bankDeco: 'snow', speed: 1.15 },
-    otter: { engine: 'swim', name: 'River Run', desc: 'Ride the fast river, grab fish and shells, and roll past the logs.', fish: ['fish', 'shell'], hazard: 'log', water: '#4fb8a5', water2: '#3f9f8e', bank: C.grass, speed: 1.2 },
+    penguin: { engine: 'fishing', name: 'Ice Fishing', desc: 'Drop the line through the ice hole, steer the hook over a fish and reel it up. Jellyfish zap the line!', fish: ['fish'], hazard: 'jelly', ice: '#eaf4ff', water: '#3a7cc9', water2: '#2d63a8' },
+    otter: { engine: 'fishing', name: 'River Grab', desc: 'Dangle your paws from the log: hook fish and shells from the current, dodge the jellies.', fish: ['fish', 'shell'], hazard: 'jelly', ice: '#b07a4f', hole: '#7a4e33', water: '#4fb8a5', water2: '#3f9f8e' },
     // ---- stack ----
     sheep: { engine: 'stack', name: 'Cloud Stack', desc: 'Pile up fluffy wool clouds. Line each one up or the fluff blows away!', block: 'cloud', cols: [C.white] },
-    turtle: { engine: 'stack', name: 'Shell Tower', desc: 'Stack the turtle shells into a tower, like the famous pond pile. Slow and steady wins.', block: 'shell', cols: ['#8fd48a', '#6fc7a5', '#a4d46a'], speed: 0.85, sky: '#a8e6cf', ground: '#5fb6e8' },
+    turtle: { engine: 'pads', name: 'Pond Crossing', desc: 'Cross the pond on the floating pads. Slow and steady: a pad only holds you once.', snack: 'shell', pad: '#a4d46a', pad2: '#6fa84a', water: '#5fb6e8', shore: '#8fd48a', hudText: 'Crossings' },
     squirrel: { engine: 'stack', name: 'Acorn Crates', desc: 'Stack the acorn crates for winter. Fast hands, straight tower!', block: 'crate', cols: [C.brown, C.sand2, C.orange], speed: 1.15, sky: '#ffd9a8' },
     // ---- sneak ----
     mouse: { engine: 'sneak', name: 'Crumb Creep', desc: 'The cat is dozing by the cheese. Creep closer, and freeze whenever it looks up!', watcher: 'cat', goal: 'cheese', tiles: true, ground: '#f3e3c3', ground2: '#e1cfa6', wall: '#ffe9c9', wall2: '#ffdfb0' },
-    raccoon: { engine: 'sneak', name: 'Porch Heist', desc: 'Midnight raid on the trash can. Move while the porch light is off, freeze when it flicks on!', watcher: 'lamp', goal: 'trash', night: true, ground: '#4a4160', ground2: '#5a5074', tiles: true },
+    raccoon: { engine: 'trail', name: 'Trash Trail', desc: 'Midnight alley run. Grab every snack and drag the loot behind you. Bite your own trail and the raid is over!', items: ['pizza', 'cookie', 'cheese'], ground: '#4a4160', ground2: '#544a6c' },
     snowleopard: { engine: 'sneak', name: 'Snow Stalk', desc: 'Stalk the mountain goat across the snow. Freeze when it turns, pounce when it looks away!', watcher: 'goat', ground: '#eaf4ff', ground2: '#d6e6f7', sky: '#b7c9e6' },
     // ---- rodeo (legendary, exclusive) ----
     longhorn: { engine: 'rodeo', name: 'Bull Rodeo', desc: 'Hold the left or right side to stay balanced. Keep the needle in the green!' },
@@ -1647,7 +1906,7 @@
   }
 
   // How hard each engine really is, 1-5 (reflexes, timing, memory). Rarer pets add a notch, duels another.
-  const BASE_DIFF = { catch: 1, whack: 2, swim: 2, dig: 2, hop: 3, dodge: 3, stack: 3, timing: 3, memory: 4, sneak: 4, fly: 4, rodeo: 5 };
+  const BASE_DIFF = { catch: 1, whack: 2, swim: 2, dig: 2, herd: 2, fishing: 2, hop: 3, dodge: 3, stack: 3, timing: 3, roll: 3, pads: 3, memory: 4, sneak: 4, fly: 4, trail: 4, rodeo: 5 };
   const DIFF_LABEL = ['Easy', 'Casual', 'Medium', 'Hard', 'Brutal'];
   function difficultyFor(species, opts = {}) {
     const g = gameFor(species), an = global.Animals && global.Animals.A[species];

@@ -202,3 +202,12 @@ Chromium (`#dev` account: 33 pets, 4 legendaries, grackle habitat, evolved cat, 
   every pet showing 5. The Tiny Coins curse shrinks the pet instead of the whole stage canvas (looked
   broken). Themed nav glyphs pick a readable accent: near-black animals (penguin, grackle) no longer get
   ink-coloured icons.
+- Five new minigame engines in `js/minigames.js`, inspired by Club Penguin and Neopets classics, each
+  skinned for two animals: `roll` (Turmac Roll: rolling hills, jump obstacles, snacks mid-air; armadillo
+  Dillo Roll, hedgehog Burr Roll), `herd` (Puffle Roundup: drag your pet, critters flee, push them into
+  the pen; dog Pup Round-Up, capybara Duckling Parade), `pads` (Thin Ice: pads sink behind you, reach the
+  far shore, BFS guarantees a path; frog Sinking Pads, turtle Pond Crossing), `fishing` (Ice Fishing:
+  steer the hook, hold to sink, release to reel, jellyfish zap; penguin Ice Fishing, otter River Grab) and
+  `trail` (Meerca Chase: snake-style snack trail; raccoon Trash Trail, grackle Food Truck Heist). The ten
+  animals' `minigame` fields in `js/animals.js` point at the new engines. All 33 games pass a random-input
+  smoke test in Chromium with no errors.
