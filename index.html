@@ -414,7 +414,12 @@ main { transition: background .4s; }
 .item .own { font-size: 11px; font-weight: 700; color: var(--ink-2); }
 .item .btn { width: 100%; }
 .price { display: inline-flex; align-items: center; gap: 3px; }
-.wallet { display: flex; gap: 8px; flex-wrap: wrap; }
+/* wallet: one compact strip of 4 counters, like a game HUD */
+.wallet { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--panel); border: var(--bevel); box-shadow: var(--shadow); }
+.wallet .w { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 4px; min-width: 0; }
+.wallet .w + .w { border-left: 2px dashed var(--ink-2); }
+.wallet .w b { font-family: var(--display); font-size: 11px; line-height: 1.3; white-space: nowrap; }
+.wallet .w small { font-size: 11px; color: var(--ink-2); line-height: 1; }
 .seg { display: grid; grid-template-columns: repeat(4, 1fr); border: var(--bevel); background: var(--panel); }
 .seg button { border: 0; background: none; padding: 8px 2px; font-weight: 700; font-size: 13px; }
 .seg button + button { border-left: 2px solid var(--ink); }
@@ -580,7 +585,7 @@ body[data-curse=rhyme] #questList .title::after { content: ' (in rhyme)'; font-s
 
     <!-- SHOP -->
     <section class="screen" id="screen-shop" hidden>
-      <div class="panel"><div class="row"><h2 class="grow">Wallet</h2></div><div class="wallet" id="wallet"></div></div>
+      <div class="wallet" id="wallet" aria-label="Wallet"></div>
       <div class="panel gacha" id="gachaPanel">
         <h2>Lucky Capsule</h2>
         <canvas id="gachaCanvas" width="180" height="210"></canvas>

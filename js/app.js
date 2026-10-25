@@ -793,7 +793,9 @@
     document.querySelectorAll('#shopTabs button').forEach(b => b.classList.toggle('on', b.dataset.s === shopSection));
     const inv = shop.inventory;
     const nCurses = Object.values(inv.curses).reduce((a, b) => a + b, 0), nBless = Object.values(inv.blessings).reduce((a, b) => a + b, 0);
-    $('wallet').innerHTML = `<span class="chip">${coinIc()} <b>${shop.coins}</b></span><span class="chip">${ic('orb', 14)} ${nCurses} curses</span><span class="chip">${ic('sparkle', 14, '#c9922a')} ${nBless} blessings</span><span class="chip">${ic('key', 14)} ${inv.keys} raid keys</span>`;
+    const short = n => n >= 10000 ? Math.round(n / 1000) + 'k' : String(n);
+    $('wallet').innerHTML = [[ic('coin', 24), short(shop.coins), 'coins'], [ic('orb', 24), nCurses, 'curses'], [ic('sparkle', 24), nBless, 'blessings'], [ic('key', 24), inv.keys, 'keys']]
+      .map(([i, n, l]) => `<div class="w">${i}<b>${n}</b><small>${l}</small></div>`).join('');
     const g = shop.gacha;
     $('gachaOdds').textContent = `Odds: ${RAR.map(r => `${cap(r)} ${Math.round(g.rates[r] * 100)}%`).join(' · ')} · 1 in 16 shiny`;
     $('gachaPity').textContent = `Mythic+ guaranteed in ${g.pityMythicIn} · Legendary guaranteed in ${g.pityLegendaryIn} · x10 always has a Rare+`;
