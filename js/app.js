@@ -176,12 +176,25 @@
   // fallback: when the server or the key is missing the pet simply stays quiet. Voice proofs stay off.
   // ------------------------------------------------------------------
 
-  let speaking = null;
+  // Playback goes through WebAudio: the context is created/resumed synchronously inside the tap, so iOS
+  // Safari still allows playback after the (async) fetch. An <audio> element created after an await is muted there.
+  let speaking = null, voiceCtx = null;
+  function unlockVoice() {
+    try { voiceCtx = voiceCtx || new (window.AudioContext || window.webkitAudioContext)(); if (voiceCtx.state === 'suspended') voiceCtx.resume().catch(() => {}); } catch { voiceCtx = null; }
+  }
   async function speak(text, pet = me.pet, mood = 'neutral') {
-    if (speaking) { speaking.pause(); speaking = null; }
+    unlockVoice();
+    if (speaking) { try { speaking.stop(); } catch {} speaking = null; }
     const blob = await API.say(text, animal(pet).voice, mood);
     if (!blob) return false;
-    speaking = new Audio(URL.createObjectURL(blob)); speaking.play().catch(() => {}); return true;
+    try {
+      const buf = await voiceCtx.decodeAudioData(await blob.arrayBuffer());
+      const src = voiceCtx.createBufferSource(); src.buffer = buf; src.connect(voiceCtx.destination); src.start(); speaking = src;
+    } catch (e) {
+      // decode unsupported: fall back to an <audio> element (works everywhere but iOS after an await)
+      const el = new Audio(URL.createObjectURL(blob)); el.play().catch(() => {}); speaking = { stop: () => el.pause() };
+    }
+    return true;
   }
 
   // ------------------------------------------------------------------
@@ -356,7 +369,7 @@
   }
   $('btnTalk').addEventListener('pointerdown', e => e.stopPropagation());
   $('btnTalk').onclick = openChat;
-  $('chatClose').onclick = () => { $('ovChat').hidden = true; Audio8.play('close'); if (speaking) { speaking.pause(); speaking = null; } };
+  $('chatClose').onclick = () => { $('ovChat').hidden = true; Audio8.play('close'); if (speaking) { try { speaking.stop(); } catch {} speaking = null; } };
   $('ovChat').addEventListener('click', e => { if (e.target === $('ovChat')) $('chatClose').onclick(); });
   $('chatForm').addEventListener('submit', e => { e.preventDefault(); sendChat($('chatInput').value); });
 
@@ -475,7 +488,7 @@
   $('tabPhoto').onclick = () => setProofTab('photo');
   // voice notes and the read-aloud button are OFF: proof = photo + a typed caption the judge also reads
   $('tabVoice').hidden = true; $('proofVoice').hidden = true; $('tabPhoto').style.gridColumn = '1 / -1';
-  $('qSpeak').onclick = async () => { Audio8.play('tap'); const ok = await speak(activeQuest.text, me.pet, 'excited'); if (!ok) toast('Voice needs the server with an ElevenLabs key (npm start).'); };
+  $('qSpeak').onclick = async () => { Audio8.play('tap'); const ok = await speak(activeQuest.text, me.pet, 'excited'); if (!ok) toast('Voice failed. ' + (API.lastSayError || 'Is the server running with an ElevenLabs key?'), 6000); };
   function captionBox() {
     let t = $('qCaption');
     if (!t) {
