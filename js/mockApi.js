@@ -700,6 +700,26 @@
     async setSettings(patch) { Object.assign(S.settings, patch); save(); return S.settings; },
     async setTutorialDone(v = true) { S.tutorialDone = v; save(); },
 
+    /** DEV: tester account — every animal, a hatchable egg of each tier, coins, items and keys */
+    async unlockAll() {
+      await delay(100);
+      const owned = new Set(allPets().map(p => p.species));
+      Object.keys(Animals.A).forEach(id => {
+        if (owned.has(id)) return;
+        const a = Animals.A[id];
+        S.zoo.push({ id: uid(), name: a.name.split(' ').pop().slice(0, 12), species: id, rarity: a.rarity, shiny: id === 'chameleon', bornAt: Date.now() });
+      });
+      S.coins += 50000; S.inventory.keys += 20;
+      CURSES.forEach(c => { S.inventory.curses[c.id] = (S.inventory.curses[c.id] || 0) + 5; });
+      BLESSINGS.forEach(b => { S.inventory.blessings[b.id] = (S.inventory.blessings[b.id] || 0) + 5; });
+      RAR.forEach(r => newEgg(r, 'dev', r === 'legendary'));
+      S.eggs.forEach(e => { e.progress = e.needed; });
+      S.user = { id: 'me', name: 'Tester', role: 'admin' };
+      S.tutorialDone = true;
+      save();
+      return snapshot();
+    },
+
     /** DEV: wipe demo */
     async reset() { S = freshState(); save(); return true; },
   };

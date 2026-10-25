@@ -972,6 +972,7 @@
     $('hatchGo').onclick = async () => {
       const name = $('hatchName').value.trim() || $('hatchName').placeholder;
       await API.hatch({ name }); ov.hidden = true; Audio8.play('reward');
+      if (DEV) { await unlockAll(); return; }
       await refreshMe(); renderQuests(); say(`Hi! I'm ${name}. Let me show you around!`, 3000); stage.set('happy', 1500);
       await sleep(1200); runTutorial();
     };
@@ -986,6 +987,12 @@
   $('tglSound').onclick = async () => { const on = !Audio8.isEnabled(); Audio8.setEnabled(on); $('tglSound').classList.toggle('on', on); await API.setSettings({ sound: on }); Audio8.play('tap'); };
   $('tglLegend').onclick = async () => { const on = !me.settings.forceLegendary; await API.setSettings({ forceLegendary: on }); $('tglLegend').classList.toggle('on', on); await refreshMe(); Audio8.play(on ? 'legendary' : 'tap'); };
   $('btnReset').onclick = async () => { await API.reset(); location.reload(); };
+  const DEV = location.hash === '#dev' || /[?&]dev\b/.test(location.search);
+  async function unlockAll() {
+    await API.unlockAll(); await refreshMe(); Audio8.play('legendary'); confetti.burst(120, ['#ffcf4d', '#fff', '#ff9a3c']);
+    $('ovSettings').hidden = true; toast('Tester account: everything unlocked. Check the Nest and the Shop.', 4000); showTab('zoo');
+  }
+  $('btnUnlock').onclick = unlockAll;
   $('btnTutorial').onclick = () => { $('ovSettings').hidden = true; runTutorial(); };
   $('btnFakeDuel').onclick = async () => { const r = await API.simulateIncomingChallenge(); Audio8.play(r.ok ? 'open' : 'error'); toast(r.message, 3600); $('ovSettings').hidden = true; await refreshMe(); showTab('home'); };
   $('btnSkip').onclick = async () => { $('ovSettings').hidden = true; const v = await API.skipVacationTime(12); if (!v) { toast('Start a vacation first.'); return; } Audio8.play('tick'); await refreshMe(); toast(`12 hours later... ${me.pet.name}'s mood is ${me.mood}.`); };
@@ -1022,6 +1029,7 @@
     me = await API.getMe();
     Audio8.setEnabled(me.settings.sound !== false);
     if (!me.pet) { await runHatch(); return; }
+    if (DEV && me.user.role !== 'admin') { await unlockAll(); return; }
     renderTop(); applyTheme(); renderQuests();
     if (!me.tutorialDone) setTimeout(runTutorial, 600);
     else setTimeout(() => say(petLine()), 900);
