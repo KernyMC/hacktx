@@ -270,7 +270,8 @@
   }
 
   // ------------------------------------------------------------------
-  // Evolution: the same animal, upgraded. Built from the pet's own native-resolution frame:
+  // Evolution: the same animal, upgraded. (stage 0 = the legendary aura alone, see drawPet)
+  // Built from the pet's own native-resolution frame:
   // richer palette, a crown on top of the head (found by scanning the frame) and a pulsing aura
   // from its silhouette. Stage 3 = bigger crown with a gem, stronger colours, gold aura.
   // ------------------------------------------------------------------
@@ -291,10 +292,10 @@
     const body = document.createElement('canvas'); body.width = body.height = M;
     const b = body.getContext('2d'); b.imageSmoothingEnabled = false;
     // a redrawn "<species>_2" sheet is the base when there is one (it already wears its own crown)
-    const own = !!(SHEETS[pet.species + '_2'] && api.USE_SHEETS);
+    const own = !!(stage && SHEETS[pet.species + '_2'] && api.USE_SHEETS);
     drawPet(b, Object.assign({}, pet, { stage: own ? 2 : 1 }), pad, pad, N / SIZE, Object.assign({}, opts, { fx: false }));
     // richer palette: push every pixel away from its grey (works where ctx.filter does not, e.g. older Safari)
-    const img = b.getImageData(0, 0, M, M), d = img.data, sat = stage >= 3 ? 1.55 : 1.3;
+    const img = b.getImageData(0, 0, M, M), d = img.data, sat = stage >= 3 ? 1.55 : stage ? 1.3 : 1;
     let top = M, left = M, right = -1;
     for (let i = 0; i < d.length; i += 4) {
       if (!d[i + 3]) continue;
@@ -310,15 +311,15 @@
     const crown = CROWNS[stage >= 3 ? 3 : 2], k = Math.max(1, Math.round(N / 20));
     const cx = Math.round((left + right) / 2 - (crown[0].length * k) / 2), cy = Math.max(0, top - crown.length * k + k);
     const cpal = { w: '#fff6c0', g: '#ffcf4d', y: '#a8661a', r: '#ff4a6a' };
-    if (!own) crown.forEach((row, r) => [...row].forEach((ch, c) => { if (ch !== '.') { b.fillStyle = cpal[ch]; b.fillRect(cx + c * k, cy + r * k, k, k); } }));
+    if (stage && !own) crown.forEach((row, r) => [...row].forEach((ch, c) => { if (ch !== '.') { b.fillStyle = cpal[ch]; b.fillRect(cx + c * k, cy + r * k, k, k); } }));
 
     // aura: the silhouette grown by 1-2 px, in the animal's accent (gold at stage 3)
     const sil = document.createElement('canvas'); sil.width = sil.height = M;
     const s = sil.getContext('2d'); s.drawImage(body, 0, 0);
     s.globalCompositeOperation = 'source-in';
-    s.fillStyle = stage >= 3 ? '#ffcf4d' : global.Animals.A[pet.species].pal.c; s.fillRect(0, 0, M, M);
+    s.fillStyle = stage >= 3 || !stage ? '#ffcf4d' : global.Animals.A[pet.species].pal.c; s.fillRect(0, 0, M, M);
     const halo = document.createElement('canvas'); halo.width = halo.height = M;
-    const h = halo.getContext('2d'), r = stage >= 3 ? 2 : 1;
+    const h = halo.getContext('2d'), r = stage >= 3 || !stage ? 2 : 1;
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx || dy) h.drawImage(sil, dx, dy);
 
     // native px the crown + aura reach above the normal box
@@ -339,7 +340,7 @@
     ctx.globalAlpha = 1;
     ctx.drawImage(body, x - pad * s, y - pad * s, body.width * s, body.height * s);
     ctx.restore();
-    if (opts.fx !== false && stage >= 3) global.Animals.sparkles(ctx, 'legendary', x, y, size, t);
+    if (opts.fx !== false && (stage >= 3 || !stage)) global.Animals.sparkles(ctx, 'legendary', x, y, size, t);
   }
 
   /**
@@ -370,6 +371,8 @@
       // otherwise the same animal upgraded in place: richer palette, crown and aura (drawUpgrade).
       const stage = pet.stage || 1, evolved = stage >= 2;
       if (evolved && !SHEETS[pet.species + '_2']) { drawUpgrade(ctx, pet, stage, x, y, SIZE * px, opts, true); return; }
+      // legendaries wear a pulsing gold aura (stage 0 = aura only: no crown, palette untouched)
+      if (!evolved && opts.fx !== false && global.Animals.normRarity(pet.rarity || global.Animals.A[pet.species].rarity) === 'legendary') { drawUpgrade(ctx, pet, 0, x, y, SIZE * px, opts); return; }
       const sheetKey = evolved ? pet.species + '_2' : pet.species;
       if (SHEETS[sheetKey] && api.USE_SHEETS) drawSheetAtTier(ctx, SHEETS[sheetKey], Object.assign({}, pet, { species: sheetKey }), x, y, px, opts);
       else global.Animals.draw(ctx, pet, x, y, SIZE * px, opts);
@@ -842,6 +845,21 @@
       S('tower', 80, 26), HL('#a8885a', 58, 3, 0.04, 2), S('windmill', 146, 44), S('flag', 14, 50),
       HL('#c8a85a', 70, 2, 0.05, 6), S('fence', 0, 66), S('fence', 22, 66), S('fence', 130, 66), S('fence', 152, 66),
       S('hay', 120, 80), SC('bluebonnet', 80, 98, 10, 5), SC('dryGrass', 76, 98, 20, 6)] },
+    // Grocery parking lot: store front, lamp posts, painted bays
+    grackle: { ground: '#5a5a6a', layers: [
+      HL('#6a9a5a', 50, 3, 0.08, 2), RC('#e0d0b4', 14, 38, 146, 36), RC('#c8443c', 14, 38, 146, 5), RC('#b8a888', 14, 72, 146, 2),
+      RC('#7ab8e8', 74, 54, 26, 18), RC('#5a8ab8', 86, 54, 2, 18), ...[24, 46, 124, 146].map(x => RC('#7ab8e8', x, 52, 12, 10)),
+      RC('#5a5a6a', 0, 74, HW, 26), ...Array.from({ length: 9 }, (_, i) => RC('#f0f0e8', i * 20 + 6, 82, 2, 14)),
+      S('lamp', 4, 62, true), S('lamp', 166, 62, true), S('bread', 50, 92), SC('crumb', 80, 98, 8, 3)] },
+    // Barton Springs: limestone edge, clear spring water, pecan trees, diving board
+    salamander: { ground: '#4ab8b0', layers: [
+      HL('#4f8a3a', 52, 4, 0.06, 2), S('oak', 4, 42), S('oak', 154, 44), RC('#e8dcc0', 0, 64, HW, 4),
+      WA('#4ab8b0', 68), S('limestone', 6, 60), RC('#f4f4f4', 124, 60, 34, 2), RC('#8a8a9a', 154, 62, 3, 6),
+      S('kelp', 36, 84), S('kelp', 132, 86), S('pebble', 60, 94), SC('bubble', 72, 98, 8, 4), SC('sparkle', 70, 92, 3, 6)] },
+    // Sun-baked red dirt: a big flat basking rock, prickly pear, ant hills
+    hornedlizard: { sky: { day: ['#5aa8f0', '#7cc0ff', '#a8d8ff', '#ffe8c0'] }, ground: '#d8905a', layers: [
+      HL('#c8784a', 56, 6, 0.04, 2), HL('#d8905a', 70, 3, 0.06, 4), S('bigRock', 18, 70), S('rock', 140, 80),
+      S('cactus', 152, 60), S('cactus', 6, 64), S('mound', 120, 86), S('mound', 40, 90), SC('pebble', 78, 98, 12, 6), SC('dryGrass', 74, 98, 12, 7)] },
   };
 
   function renderHabitat(ctx, hab, phase) {

@@ -449,6 +449,36 @@
       E(50, 68, 4, 3, 'n', { id: 'ring' }), E(50, 68, 2, 1.5, 'x', { clip: 'ring' }),
     ], face: face({ eyes: [[39, 42], [61, 42]], nose: null, mouth: null, blush: [[33, 50], [67, 50]] }) });
 
+  def('grackle', { name: 'Grackle', rarity: 'legendary', minigame: 'fly', voice: 'grumpy',
+    flavor: 'A great-tailed grackle. Rules every HEB parking lot in Austin. Screams at sunset. Its tail is longer than your patience.',
+    pal: { b: '#3a3d78', d: '#6a4fb0', a: '#b8c4f4', c: '#ffe066', n: '#2b2140' },
+    shapes: [
+      P([[62, 74], [96, 30], [100, 44], [70, 84]], 'd', { a: 'tail', pv: [64, 78] }),
+      E(42, 92, 3, 6, 'n'), E(56, 92, 3, 6, 'n'), ...body({ belly: false, rx: 25, ry: 20 }), E(60, 72, 13, 10, 'd'),
+      E(50, 40, 26, 24, 'b', { id: 'head' }), E(40, 40, 6, 7, 'c'), E(60, 40, 6, 7, 'c'),
+      P([[45, 50], [55, 50], [50, 58]], 'n'),
+    ], face: face({ nose: null, mouth: null, blush: [[30, 52], [70, 52]] }) });
+
+  def('salamander', { name: 'Golden Salamander', rarity: 'legendary', minigame: 'swim', voice: 'chill',
+    flavor: 'Lives only in the Barton Springs, nowhere else on Earth. Golden, rare, and very relaxed about it.',
+    pal: { b: '#e8b04a', d: '#a8682a', a: '#fff0c0', c: '#ff8a6a', n: '#2b2140' },
+    shapes: [
+      P([[70, 82], [96, 70], [100, 62], [74, 90]], 'b', { a: 'tail', pv: [72, 84] }),
+      ...[38, 46, 54].flatMap(y => [P([[24, y], [4, y - 4], [6, y + 2]], 'c'), P([[76, y], [96, y - 4], [94, y + 2]], 'c')]),
+      E(30, 92, 6, 4, 'd'), E(68, 92, 6, 4, 'd'), E(50, 82, 30, 10, 'b', { id: 'body' }), E(50, 86, 20, 4, 'a', { clip: 'body' }),
+      E(48, 48, 28, 24, 'b', { id: 'head' }),
+    ], face: face({ eyes: [[38, 46], [58, 46]], nose: null, mouth: [48, 58], blush: [[29, 54], [67, 54]] }) });
+
+  def('hornedlizard', { name: 'Horned Lizard', rarity: 'legendary', minigame: 'dig', voice: 'cowboy',
+    flavor: 'The Texas horny toad. Puffs up to look tough, wears a crown of horns, completely harmless.',
+    pal: { b: '#c89a64', d: '#7a4a2a', a: '#f4e0b8', c: '#efe0c0', n: '#2b2140' },
+    shapes: [
+      P([[78, 82], [100, 88], [78, 90]], 'b'), E(16, 90, 9, 5, 'b'), E(84, 90, 9, 5, 'b'),
+      E(50, 80, 38, 14, 'b', { id: 'body' }), E(36, 78, 5, 3, 'd', { clip: 'body' }), E(64, 78, 5, 3, 'd', { clip: 'body' }),
+      ...[22, 34, 50, 66, 78].map(x => P([[x - 5, 34], [x, 14], [x + 5, 34]], 'c')),
+      E(50, 46, 30, 20, 'b', { id: 'head' }),
+    ], face: face({ eyes: [[39, 44], [61, 44]], nose: null, mouth: [50, 56], blush: [[30, 52], [70, 52]] }) });
+
   // ------------------------------------------------------------------
   // Pools + lookups
   // ------------------------------------------------------------------

@@ -193,6 +193,18 @@
       ['....o....', '...ooo...', '...oao...', '..ooooo..', '..oafao..', '..oaaao..', '..oafao..', '.ooaaaoo.', 'ooooooooo'],
       ['..ooooo..', '.o.....o.', 'o.......o', '.o.....o.', '..ooooo..', '....o....', '....o....', '...o.....', '..o......'],
       ['.........', '.........', '...ooo...', '..oaaao..', '..oaaao..', '..offfo..', 'ooooooooo', 'oaaaaaaao', '.ooooooo.']),
+    grackle: set(['..aaa', '.aa..', 'aaaa.', '.aa..', '.a.a.'],
+      ['..ooooo..', '..offfo..', '....o....', '....o....', '....o....', 'ooooooooo', 'oaaaaaaao', 'oafaaafao', 'ooooooooo'],
+      ['o........', 'oo.......', '.ooooooo.', '.oaaaaao.', '.oafafao.', '..ooooo..', '..o...o..', '.ofo.ofo.', '..o...o..'],
+      ['..o.o.o..', '..ofofo..', '..ofofo..', '.ooooooo.', '.oaaaaao.', '.oaafaao.', '.oaaaaao.', '..oaaao..', '...ooo...']),
+    salamander: set(['aa.aa', '.aaa.', 'aafaa', 'aaaaa', '.aaa.'],
+      ['.........', 'oooooo...', 'offfffo..', '.....o...', '.....o...', 'ooooooooo', 'oaafaaaao', 'oaaaafaao', 'ooooooooo'],
+      ['.........', '.........', '.ooo.ooo.', 'oafaoafao', 'oaaoooaao', '.ooo.ooo.', '.........', '.........', '.........'],
+      ['..ooooo..', '.oaaaaao.', 'oaafffaao', 'oaf...fao', 'oaf...fao', 'oaf...fao', 'oaafffaao', '.oaaaaao.', '..ooooo..']),
+    hornedlizard: set(['a.a.a', 'a.a.a', 'aaaaa', 'afafa', 'aaaaa'],
+      ['......ooo', '.....ofao', '......ooo', '.........', '..ooooo..', '.oaaaaao.', 'oaafaaaao', 'oaaaaafao', 'ooooooooo'],
+      ['..o...o..', '...o.o...', '...ooo...', '..oaaao..', '...ooo...', '..oaaao..', '.oaaaaao.', '..oaaao..', '.o.ooo.o.'],
+      ['..ooooo..', '..oaaao..', '..oafao..', '..oaaao..', '..oafao..', '..oaaaooo', '.oaaaaaao', 'oaaaaaaao', 'ooooooooo']),
   };
   const THEMED = ['home', 'quests', 'shop', 'book', 'coin'];
   let theme = null;   // { grids, a, f } once setTheme() ran
