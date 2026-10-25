@@ -21,6 +21,7 @@ Living checklist. Update when something changes column — the "how" lives in `d
   tags by mood, fallbacks; STT `scribe_v2` with keyterms.
 - [x] HackTX "Once Upon a Hack" visual theme: starry night + UT burnt orange + parchment; HackTX
   ribbon; new tab bar with a gold "lantern" on the active tab.
+- [x] All 30 animals drawn with pxl and reviewed sprite by sprite (Oct 25): per-species face kinds (kitty/dog/bunny/snout/beak/wide/eyes) with nose and mouth placed on each muzzle.
 - [x] Art pipeline with pxl: `tools/pxl`, `art/BRIEF.md` (contract + style guide + standard `face()`),
   `tools/pack_sprites.js`, loader in `js/sprites.js` via `manifest.json`.
 - [x] Documentation system (`CLAUDE.md` router, `CONTEXT.md`, `docs/`, `.claude/agents/`) created
@@ -29,10 +30,7 @@ Living checklist. Update when something changes column — the "how" lives in `d
 
 ## In progress
 
-- [ ] **pxl sprites for all 30 animals** (3 agents in parallel, by class). First round rejected by the
-  user ("goofy, the mouth is not properly made") → new rule: solid ink outline + mandatory standard
-  `face()`. Water/prairie batch (10) is done; farm and wild/legends batches still running. When done:
-  `node tools/pack_sprites.js`, review the full contact sheet, publish.
+- [ ] **Minigames unique per species** (agent in progress): new engines dig/fly/swim/stack/sneak + per-species skins, `Minigames.gameFor(species)`.
 - [ ] Verify on the user's machine (this sandbox blocks those hosts): ElevenLabs v4 voices (does the
   plan include v4? otherwise it falls back to flash), Scribe v2 transcription, real SerpApi quests.
 

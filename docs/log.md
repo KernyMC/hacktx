@@ -75,3 +75,15 @@ the backend replaces. ChatGPT sheets (axolotl, cat, dog) at 80 px with magenta c
   penguin, duckling, otter strong; turtle the weakest (blobby shell seams, small legs).
 - This documentation system was created mirroring Galápagos & Beyond (`CLAUDE.md` router,
   `CONTEXT.md`, `docs/status.md`, `docs/log.md`, `docs/adr/`, `.claude/agents/`), in English.
+
+## 2026-10-25 — Faces v2 per species; sprite-by-sprite review
+
+- User feedback on the 30 sheets: "you gave them all the same face, some have the mouth on the nose".
+  Root cause: the standard `face()` always placed nose/mouth at a fixed offset under the eyes, ignoring
+  the muzzle each species drew, and had a single mouth type.
+- Fix: **face v2** with kinds (`kitty`, `dog`, `bunny`, `snout`, `beak`, `wide`, `eyes`) and
+  explicit `noseY`/`mouthY`. Applied by hand to all 30 files (species-drawn noses/beaks removed where
+  the face now draws them: chick, duckling, penguin, owl, pig, capybara, armadillo, longhorn, snowleopard,
+  jackalope) and reviewed in zoomed strips, 10 at a time, all four moods. Decision: the user asked that
+  this review not be split across agents again; the main session owns face QA from now on.
+- Minigame uniqueness delegated to one agent (new engines + per-species skins); pending at write time.
