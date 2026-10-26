@@ -547,7 +547,17 @@
 
 
   $('qReroll').onclick = async () => {
-    Audio8.play('tap'); const q = await API.rerollQuest(activeQuest.id); if (q) { openQuest(q); toast('New quest rolled.'); renderQuests(); }
+    const button = $('qReroll');
+    if (button.disabled) return;
+    button.disabled = true;
+    Audio8.play('tap');
+    try {
+      const q = await API.rerollQuest(activeQuest.id, loc);
+      if (q) { openQuest(q); toast('New quest rolled.'); await renderQuests(); }
+      else toast('No different nearby place available. Try again later.');
+    } finally {
+      button.disabled = !!activeQuest.rerolled;
+    }
   };
 
   $('qSubmit').onclick = async () => {
@@ -816,13 +826,13 @@
     if (shopSection === 'eggs') RAR.forEach(r => {
       const cv = document.createElement('canvas'); cv.width = 48; cv.height = 48; Sprites.drawEgg(cv.getContext('2d'), r, 0, 0, 3, 0); cv.style.width = '48px';
       const pool = Animals.POOL[r].length;
-      item(cv, `${cap(r)} egg`, `${pool} possible animal${pool > 1 ? 's' : ''} · ${Animals.RES[r]}px${r === 'legendary' ? ' · Longhorn!' : ''}`, shop.eggPrice[r], null, () => API.buy('egg', r).then(x => (x.ok && toast(`${cap(r)} egg added to your Nest. Quest or win minigames to hatch it.`), x)));
+      item(cv, `${cap(r)} egg`, `${pool} possible animal${pool > 1 ? 's' : ''} · ${Animals.RES[r]}px${r === 'legendary' ? ' · Longhorn!' : ''}`, shop.eggPrice[r], null, () => API.buy('egg', r).then(x => (x.ok && toast(`${cap(r)} egg added to your Nest. Complete quests to hatch it.`), x)));
     });
     if (shopSection === 'blessings') shop.blessings.forEach(b => {
       const own = inv.blessings[b.id] || 0;
       let use = null;
       if (own) { use = document.createElement('button'); use.className = 'btn sm mint'; use.style.width = '100%'; use.textContent = 'Use on me';
-        use.onclick = async () => { const r = await API.useBlessing(b.id); Audio8.play(r.ok ? 'bless' : 'error'); toast(r.message); confetti.burst(30, ['#ffcf4d', '#fff']); await refreshMe(); renderShop(); }; }
+        use.onclick = async () => { const r = await API.useBlessing(b.id); Audio8.play(r.ok ? 'bless' : 'error'); toast(r.message); if (r.ok) confetti.burst(30, ['#ffcf4d', '#fff']); await refreshMe(); renderShop(); }; }
       item(b.icon, b.name, b.desc, b.price, own, () => API.buy('blessing', b.id), use);
     });
     if (shopSection === 'curses') shop.curses.forEach(c => item(c.icon, c.name, c.desc, c.price, inv.curses[c.id] || 0, () => API.buy('curse', c.id)));
