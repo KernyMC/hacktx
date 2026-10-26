@@ -136,7 +136,8 @@
       xp: 0, level: 1, streak: 4, coins: 0,            // starter goods come in the Welcome Package (inbox gift)
       mood: 70, hunger: 55,
       typeCounts: { food: 0, social: 0, outdoor: 0, creative: 0 },
-      completed: [],                  // [{questId, type, title, place, xp, at, proofType}]
+      completed: [],                  // today's completed quests
+      weekHistory: [],                // persisted last-seven-day quest history for the village
       quests: [],                     // today's 3
       eggs: [],                       // [{id, rarity, progress, needed, shiny, source}]
       zoo: [],                        // other pets (not active)
@@ -172,6 +173,7 @@
     S.questSource = 'seed';
     S.questDay = null;
     S.questWriter = null;
+    S.questAttemptAt = 0;
     save();
   }
 
@@ -192,7 +194,9 @@
   function villagePayload() {
     const me = { name: 'You', pet: { name: S.pet.name, species: S.pet.species }, favorite: dominantType() };
     const friends = S.friends.map(f => ({ name: f.name, pet: { name: f.pet.name, species: f.pet.species }, status: f.status, vacation: !!f.vacation, favorite: favoriteOf(f.name) }));
-    const week = S.completed.slice(-8).map(d => ({ who: 'You', petName: S.pet.name, type: d.type, title: d.title, place: d.place })).concat(FRIEND_WEEK);
+    const since = Date.now() - 7 * 864e5;
+    const records = Array.isArray(S.weekHistory) ? S.weekHistory : S.completed;
+    const week = records.filter(d => d.at >= since).slice(-20).map(d => ({ who: 'You', petName: S.pet.name, type: d.type, title: d.title, place: d.place })).concat(FRIEND_WEEK);
     const places = S.quests.map(q => ({ name: q.place.name, kind: q.place.kind, dist: q.place.dist, rating: q.place.rating, hint: q.place.hint, type: q.type }))
       .concat(QUEST_POOL.map(q => ({ name: q.place.name, kind: q.place.kind, dist: q.place.dist, rating: q.place.rating, hint: q.place.hint, type: q.type })))
       .filter((p, i, arr) => arr.findIndex(x => x.name === p.name) === i).slice(0, 12);
@@ -313,6 +317,7 @@
   // Keeps the seed quests when the server/SerpApi is unavailable.
   async function fetchRealQuests(loc) {
     if (!S.pet || !loc) return false;
+    S.questAttemptAt = Date.now(); save();
     const a = Animals.A[S.pet.species] || {};
     const qs = new URLSearchParams({ lat: loc.lat, lng: loc.lng, pet: S.pet.name, species: a.name || S.pet.species, flavor: a.flavor || '', curse: S.activeCurse ? S.activeCurse.name : '' });
     const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 52000);
@@ -480,7 +485,8 @@
       await delay(60);
       if (!S.quests.length && S.pet) makeQuests();
       const fresh = S.questSource === 'serpapi' && S.questDay === new Date().toDateString();
-      if (loc && !fresh && S.quests.every(q => q.status === 'open')) await fetchRealQuests(loc);
+      if (loc && !fresh && S.quests.every(q => q.status === 'open') &&
+          Date.now() - (S.questAttemptAt || 0) >= 5 * 60 * 1000) await fetchRealQuests(loc);
       return S.quests.map(publicQuest);
     },
     /** POST /quests/refresh — pull a new set of real places (only while nothing is done yet) */
@@ -511,16 +517,32 @@
     },
 
     /** POST /quests/:id/reroll — one free reroll per quest */
-    async rerollQuest(id) {
+    async rerollQuest(id, loc) {
       ensureDay();
-      await delay(300);
       const i = S.quests.findIndex(q => q.id === id);
       if (i < 0 || S.quests[i].status !== 'open' || S.quests[i].rerolled) return null;
-      const used = S.quests.map(q => q.title);
-      const choices = QUEST_POOL.filter(p => !used.includes(p.title));
-      if (!choices.length) return null;
+      let choices;
+      if (S.quests[i].real) {
+        // A live quest must never reroll into an unrelated fixed Austin demo place.
+        if (!loc || !Number.isFinite(+loc.lat) || !Number.isFinite(+loc.lng)) return null;
+        const a = Animals.A[S.pet.species] || {};
+        const qs = new URLSearchParams({ lat: loc.lat, lng: loc.lng, refresh: '1',
+          pet: S.pet.name, species: a.name || S.pet.species, flavor: a.flavor || '' });
+        const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 52000);
+        try {
+          const r = await fetch(`${API_BASE}/api/quests?${qs}`, { signal: ctl.signal });
+          const data = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
+          choices = data && data.ok && Array.isArray(data.quests) ? data.quests.filter(q =>
+            q.place && !S.quests.some(existing => existing.place.name === q.place.name)) : [];
+        } catch { return null; }
+        finally { clearTimeout(tm); }
+      } else {
+        const used = S.quests.map(q => q.title);
+        choices = QUEST_POOL.filter(q => !used.includes(q.title));
+      }
+      if (!choices.length || !S.quests[i] || S.quests[i].id !== id || S.quests[i].status !== 'open') return null;
       const q = rnd(choices);
-      S.quests[i] = questFrom(q, { rerolled: true });
+      S.quests[i] = questFrom(q, { rerolled: true, real: !!S.quests[i].real });
       save();
       return publicQuest(S.quests[i]);
     },
@@ -583,7 +605,11 @@
       q.status = 'done';
       { const today = new Date().toDateString(), y = new Date(Date.now() - 864e5).toDateString();
         if (S.lastQuestDay !== today) { S.streak = S.lastQuestDay === y ? (S.streak || 0) + 1 : (S.lastQuestDay ? 1 : (S.streak || 0) + 1); S.lastQuestDay = today; } }
-      S.completed.push({ questId: q.id, type: q.type, title: q.title, place: q.place.name, xp, at: Date.now(), proofType: proof.type });
+      const record = { questId: q.id, type: q.type, title: q.title, place: q.place.name, xp, at: Date.now(), proofType: proof.type };
+      S.completed.push(record);
+      S.weekHistory = (Array.isArray(S.weekHistory) ? S.weekHistory : []).filter(d => d.at >= Date.now() - 7 * 864e5);
+      S.weekHistory.push(record);
+      S.weekHistory = S.weekHistory.slice(-100);
 
       let levelUp = false;
       while (S.xp >= LEVEL_XP(S.level)) { S.xp -= LEVEL_XP(S.level); S.level++; levelUp = true; }
@@ -594,6 +620,11 @@
       else if (demo && demo.egg) egg = newEgg(rollRarity(0), 'quest', false);
       else if (Math.random() < q.eggChance || has('lucky') || S.settings.forceLegendary || S.completed.length === 1) {
         egg = newEgg(rollRarity(has('rarityup') ? 1 : 0), 'quest', Math.random() < GACHA.shinyChance);
+      }
+      // Golden Touch says "next egg", so keep it until an egg actually drops.
+      if (has('rarityup') && !egg) {
+        S.blessings.push('rarityup');
+        used.splice(used.indexOf('rarityup'), 1);
       }
       S.eggs.forEach(e => { if (e !== egg) e.progress = Math.min(e.needed, e.progress + 1); });
       const readyEggs = S.eggs.filter(e => e.progress >= e.needed).map(e => e.id);
@@ -808,12 +839,13 @@
       const today = new Date().toDateString();
       if (S.games.day !== today) S.games = { day: today, rewarded: 0 };
       const p = allPets().find(x => x.id === petId);
+      if (!p) return { ok: false, message: 'Pet not found.' };
       if (!win) { save(); return { ok: true, reward: null }; }
       // minigames never incubate eggs (only real quests do); they lift mood and pay a few capped coins
       S.mood = Math.min(100, S.mood + 8);
       const readyEggs = 0;
       let coins = 0;
-      if (S.games.rewarded < 5) { S.games.rewarded++; coins = 15 + tierOf(p ? p.rarity : 'common') * 15; S.coins += coins; }
+      if (S.games.rewarded < 5) { S.games.rewarded++; coins = 15 + tierOf(p.rarity) * 15; S.coins += coins; }
       save();
       return { ok: true, reward: { coins, warmed: 0, readyEggs }, left: Math.max(0, 5 - S.games.rewarded) };
     },
