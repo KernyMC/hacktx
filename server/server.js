@@ -286,6 +286,10 @@ async function handleSay(req, res) {
 // Proof verification (Gemini, with heuristic fallback)
 // ---------------------------------------------------------------------------
 const acceptedHashes = new Set();
+const rememberAccepted = hash => {
+  acceptedHashes.add(hash);
+  if (acceptedHashes.size > 5000) acceptedHashes.delete(acceptedHashes.values().next().value);
+};
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const clamp01 = (n) => Math.max(0, Math.min(1, Number(n) || 0));
 
@@ -383,7 +387,6 @@ function heuristicPhoto(p, img) {
   if (acceptedHashes.has(hash)) {
     return { ok: false, message: pick([`Nice try! ${name} has seen this exact photo before. Fresh proof only!`, `${name} smells a recycled photo. Go make a new memory!`]), confidence: 0.95, reasons: ['duplicate of a previously accepted proof'], engine: 'heuristic' };
   }
-  acceptedHashes.add(hash);
   const place = p.quest?.place?.name;
   return { ok: true, message: pick([`${name} approves! ${place ? place + ' looks' : 'That looks'} quest-worthy to me.`, `Ooh! ${name} is doing a happy wiggle. Proof accepted!`]), confidence: 0.6, reasons: ['photo looks like a real, new image (offline check)'], engine: 'heuristic' };
 }
@@ -440,6 +443,30 @@ function heuristicVoice(p) {
   return { ok: confidence >= 0.55, message: msg, confidence, reasons, engine: 'heuristic' };
 }
 
+// Validate caption rules before contacting Gemini. A rejected curse should not
+// consume a proof image, and the offline judge must enforce the same rules.
+function captionCurseFailure(c, caption) {
+  if (!c) return null;
+  const id = String(c.id || '').toLowerCase(), text = String(caption || '').trim();
+  if (id === 'mime') return text ? 'Mime Time needs a photo without a caption.' : null;
+  if (!['pirate', 'rhyme', 'shout', 'shakespeare', 'opera', 'whisper'].includes(id)) return null;
+  if (text.split(/\s+/).length < 3) return 'Write a longer caption to satisfy the curse.';
+  if (id === 'pirate' && !/\b(arr+|ahoy|matey|aye|ye|avast|scallywag|landlubber)\b/i.test(text)) return 'Use pirate words in the caption.';
+  if (id === 'rhyme') {
+    const ends = text.toLowerCase().split(/[\n.!?;,]+/).map(line => WORDS(line).pop()).filter(w => w && w.length >= 2);
+    if (!ends.some((w, i) => ends.some((other, j) => j !== i && other.slice(-2) === w.slice(-2)))) return 'Two lines or sentences must rhyme.';
+  }
+  if (id === 'shout') {
+    const letters = text.replace(/[^a-z]/gi, '');
+    if (text.replace(/!/g, '').length === text.length &&
+        text.replace(/[^A-Z]/g, '').length / Math.max(1, letters.length) < 0.6) return 'Shout the caption in capital letters or with exclamation marks.';
+  }
+  if (id === 'shakespeare' && !/\b(thee|thou|thy|thine|hark|forsooth|doth)\b/i.test(text)) return 'Use Shakespearean language in the caption.';
+  if (id === 'opera' && !/ooo/i.test(text)) return 'Sing an ooo in the caption.';
+  if (id === 'whisper' && (/[A-Z!]/.test(text))) return 'The whisper curse needs lowercase text without exclamation marks.';
+  return null;
+}
+
 async function handleVerify(req, res) {
   const p = await readJson(req, 12 * 1024 * 1024);
   const type = p.type === 'photo' ? 'photo' : p.type === 'voice' ? 'voice' : null;
@@ -447,7 +474,12 @@ async function handleVerify(req, res) {
   const petName = String(p.petName || 'Your familiar').slice(0, 40);
   const input = { type, quest: p.quest || {}, curse: p.curse || null, petName, transcript: p.transcript || '', caption: String(p.caption || '').slice(0, 400) };
   const img = type === 'photo' ? parseDataUrl(p.image) : null;
-  if (type === 'photo' && img && !/^image\//.test(img.mime)) img.mime = 'image/jpeg';
+  if (img && !/^image\/(jpeg|png|webp)$/i.test(img.mime)) throw new HttpError(400, 'Unsupported proof image format');
+  if (type === 'photo') {
+    const failure = captionCurseFailure(input.curse, input.caption);
+    if (failure) return sendJson(res, 200, { ok: false, confidence: 0.9, reasons: [failure],
+      message: `${petName} says: ${failure}`, engine: 'heuristic' });
+  }
 
   let result = null;
   // Cheap local rejects first (no point paying for an LLM call on a blank/duplicate image).
@@ -456,14 +488,11 @@ async function handleVerify(req, res) {
     const hash = bytes ? crypto.createHash('sha256').update(bytes).digest('hex') : null;
     if (!img || bytes.length < 8 * 1024 || acceptedHashes.has(hash)) result = heuristicPhoto(input, img);
     else if (hasGemini()) {
-      try { result = await verifyWithGemini(input, img); if (result.ok) acceptedHashes.add(hash); }
+      try { result = await verifyWithGemini(input, img); }
       catch (e) { logErr('Gemini verify failed, falling back to heuristics:', e.message); }
     }
     if (!result) result = heuristicPhoto(input, img);
-    if (result.ok && input.curse && input.caption && result.engine === 'heuristic') {
-      const cc = heuristicVoice(Object.assign({}, input, { transcript: input.caption }));
-      if (!cc.ok && cc.reasons.some((r) => /curse/i.test(r))) result = cc;
-    }
+    if (result.ok && hash) rememberAccepted(hash);
   } else {
     if (hasGemini() && WORDS(input.transcript).length >= 2) {
       try { result = await verifyWithGemini(input, null); }
@@ -519,7 +548,8 @@ async function serpMaps(q, lat, lng) {
 
 function placeFromSerp(x, me) {
   const g = x.gps_coordinates || {};
-  if (typeof g.latitude !== 'number') return null;
+  if (!Number.isFinite(g.latitude) || !Number.isFinite(g.longitude) || Math.abs(g.latitude) > 90 ||
+      Math.abs(g.longitude) > 180 || !x.title) return null;
   const dist = milesBetween(me, { lat: g.latitude, lng: g.longitude });
   const open = x.open_state || (x.hours ? String(x.hours) : '');
   return {
@@ -542,7 +572,8 @@ const SEED_TEXT = {
 
 async function handleQuests(req, res, url) {
   const lat = parseFloat(url.searchParams.get('lat')), lng = parseFloat(url.searchParams.get('lng'));
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new HttpError(400, 'lat and lng are required');
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)
+    throw new HttpError(400, 'Valid lat and lng are required');
   if (!hasSerp()) return sendJson(res, 200, { ok: false, error: 'SERPAPI_API_KEY is not configured', source: 'seed' });
   const pet = { name: String(url.searchParams.get('pet') || 'Your Pixling').slice(0, 20), species: String(url.searchParams.get('species') || 'axolotl').slice(0, 20),
     flavor: String(url.searchParams.get('flavor') || '').slice(0, 160), curse: String(url.searchParams.get('curse') || '').slice(0, 30) };
