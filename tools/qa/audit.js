@@ -48,5 +48,6 @@ const step = async (name, fn) => { cur = name; errs = []; try { await fn(); resu
   const bad = results.filter(r => r[1] !== 'ok');
   console.log(results.map(r => (r[1] === 'ok' ? 'PASS ' : 'FAIL ') + r[0] + (r[1] === 'ok' ? '' : ' -> ' + r[1])).join('\n'));
   console.log(`\n${results.length - bad.length}/${results.length} passed`);
+  if (bad.length) process.exitCode = 1;
   await b.close();
 })();
