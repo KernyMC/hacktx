@@ -387,17 +387,19 @@
   // friends resolve duels after a few seconds (mock realtime)
   function tickDuels() {
     const now = Date.now();
+    let changed = false;
     S.duels.forEach(d => {
       if (d.status !== 'pending' || now - d.at < 8000) return;
       const f = S.friends.find(x => x.id === d.friendId);
       const pTry = [0.8, 0.65, 0.5, 0.35, 0.18][d.difficulty - 1] || 0.5;
       let tries = 0, won = false;
       while (tries < 3 && !won) { tries++; won = Math.random() < pTry; }
-      d.triesUsed = tries; d.status = won ? 'beaten' : 'failed';
+      d.triesUsed = tries; d.status = won ? 'beaten' : 'failed'; changed = true;
       if (!won) { const prize = 30 + d.difficulty * 25; d.prize = prize; S.coins += prize;
         S.inbox.push({ id: uid(), kind: 'note', from: f.name, text: `${f.name} failed ${d.petName}'s ${d.engineName} 3 times. You win ${prize} coins.` }); }
       else S.inbox.push({ id: uid(), kind: 'note', from: f.name, text: `${f.name} beat ${d.petName}'s ${d.engineName} on try ${tries}. Rematch?` });
     });
+    if (changed) save();
   }
 
   // ------------------------------------------------------------------
@@ -452,6 +454,7 @@
     rollStarter() { return rnd(Object.keys(Animals.A).filter(k => Animals.A[k].rarity === 'common')); },
     async hatch({ name, species }) {
       await delay(200);
+      if (S.pet) return S.pet;
       if (!Animals.A[species] || Animals.A[species].rarity !== 'common') species = API.rollStarter();
       S.pet = { id: uid(), name: name || rnd(PET_NAMES), species, rarity: 'common', bornAt: Date.now() };
       makeQuests();
@@ -528,6 +531,8 @@
       const started = Date.now();
       const q = S.quests.find(x => x.id === id);
       if (!q || q.status !== 'open') return { ok: false, message: 'Quest not found.' };
+      if (!demo && (!proof || !['photo', 'voice'].includes(proof.type)))
+        return { ok: false, rejected: true, message: 'Choose a photo to prove your quest.', reasons: [] };
       if (completingQuests.has(id)) return { ok: false, message: 'This quest is already being verified.' };
       completingQuests.add(id);
       try {
@@ -736,6 +741,7 @@
       await delay(100);
       const b = BLESSINGS.find(x => x.id === id);
       if (!b || !S.inventory.blessings[id]) return { ok: false, message: 'You do not own that blessing.' };
+      if (S.blessings.includes(id)) return { ok: false, message: 'That blessing is already active.' };
       S.inventory.blessings[id]--;
       let message = `${b.name} is active on your next quest.`;
       if (id === 'incubate') { S.eggs.forEach(e => { e.progress = Math.min(e.needed, e.progress + 1); }); message = 'Every egg in the nest got warmer (+1).'; }
@@ -750,6 +756,8 @@
     /** POST /gacha/pull { count:1|10, free? } — Lucky Capsule machine */
     async pullGacha(count = 1, free = false) {
       await delay(200);
+      if (!free && count !== 1 && count !== 10)
+        return { ok: false, message: 'Choose a single capsule or a pack of ten.' };
       const today = new Date().toDateString();
       if (free) { if (S.gacha.freeDay === today) return { ok: false, message: 'Free capsule already used today.' }; S.gacha.freeDay = today; count = 1; }
       else {
