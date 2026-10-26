@@ -93,8 +93,12 @@ function readBody(req, limit) {
 async function readJson(req, limit) {
   const buf = await readBody(req, limit);
   if (!buf.length) return {};
-  try { return JSON.parse(buf.toString('utf8')); }
+  let value;
+  try { value = JSON.parse(buf.toString('utf8')); }
   catch { throw new HttpError(400, 'Invalid JSON body'); }
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new HttpError(400, 'JSON body must be an object');
+  return value;
 }
 
 // Strip anything key-like from strings before logging.
@@ -581,7 +585,8 @@ async function handleQuests(req, res, url) {
   const cacheKey = `${lat.toFixed(3)},${lng.toFixed(3)}`;
   const cached = questCache.get(cacheKey);
   const now = Date.now();
-  let places = cached && now - cached.at < 10 * 60 * 1000 ? cached.places : null;
+  const refresh = url.searchParams.get('refresh') === '1';
+  let places = !refresh && cached && now - cached.at < 10 * 60 * 1000 ? cached.places : null;
   if (!places) {
     const types = Object.keys(QUEST_CATEGORIES).sort(() => Math.random() - 0.5).slice(0, 3);
     const settled = await Promise.allSettled(types.map((t) => serpMaps(pick(QUEST_CATEGORIES[t].q), lat, lng)));
@@ -674,8 +679,8 @@ const MUSE_FALLBACK_PLANS = [
   { title: 'Museum speedrun and coffee', type: 'creative', when: 'Sunday 11 am', why: 'Creative quests are the rarest in this village. Free museum day plus a coffee stop fixes that in one trip.' },
 ];
 function fallbackPlans(b) {
-  const friends = (b.friends || []).filter((f) => !f.vacation).map((f) => f.name);
-  const places = Array.isArray(b.places) ? b.places : [];
+  const friends = (Array.isArray(b.friends) ? b.friends : []).filter((f) => f && !f.vacation).map((f) => f.name);
+  const places = (Array.isArray(b.places) ? b.places : []).filter(p => p && typeof p.name === 'string' && p.name.trim());
   return MUSE_FALLBACK_PLANS.map((p, i) => {
     const place = places.find((x) => x.type === p.type) || places[i % Math.max(1, places.length)] || { name: ['Veracruz All Natural', 'Lady Bird Lake Trail', 'Blanton Museum of Art'][i], kind: 'Austin spot', dist: '' };
     const who = friends.slice(i % 2, i % 2 + 2); if (!who.length) who.push(...friends.slice(0, 2));
@@ -684,7 +689,7 @@ function fallbackPlans(b) {
 }
 function fallbackChronicle(b) {
   const me = (b.me && b.me.name) || 'You', pet = (b.me && b.me.pet && b.me.pet.name) || 'your Pixling';
-  const week = Array.isArray(b.week) ? b.week : [];
+  const week = (Array.isArray(b.week) ? b.week : []).filter(w => w && typeof w === 'object');
   const mine = week.filter((w) => w.who === me), theirs = week.filter((w) => w.who !== me);
   const lines = [];
   lines.push(`Once upon a hack, the village of Austin woke up to a quiet week. ${pet} stretched, sniffed the air, and decided something had to happen.`);
@@ -729,18 +734,33 @@ const villageBrief = (b) => {
 
 async function handlePlan(req, res) {
   const b = await readJson(req, 256 * 1024);
-  const places = (Array.isArray(b.places) ? b.places : []).slice(0, 12).map((p) => ({ name: p.name, kind: p.kind, dist: p.dist, rating: p.rating, hint: p.hint, type: p.type }));
+  const places = (Array.isArray(b.places) ? b.places : []).filter(p => p && typeof p.name === 'string' && p.name.trim())
+    .slice(0, 12).map(p => ({ name: p.name.slice(0, 120), kind: String(p.kind || '').slice(0, 80),
+      dist: String(p.dist || '').slice(0, 40), rating: p.rating, hint: String(p.hint || '').slice(0, 160), type: p.type }));
+  const available = new Set((Array.isArray(b.friends) ? b.friends : []).filter(f => f && !f.vacation && typeof f.name === 'string').map(f => f.name));
+  const placeByName = new Map(places.map(p => [p.name.trim().toLowerCase(), p]));
   if (!hasMuse()) return sendJson(res, 200, { ok: true, plans: fallbackPlans(b), engine: 'template' });
   try {
     const system = 'You are the game master of "Pixlings", a game where friends raise pixel pets by doing real-world quests together in Austin, Texas. You plan outings that bring people together in person. Be specific, warm and a little funny. Never invent places: use only the REAL PLACES list. Reply with JSON only.';
     const user = `${villageBrief(b)}\n\nREAL PLACES NEARBY (JSON): ${JSON.stringify(places)}\n\nPropose 3 group plans for this village, each at one of the real places, each mixing friends who are available (never the ones on vacation) and matching what they enjoy. Vary the quest types (food, social, outdoor, creative). Mention one concrete reason per person in "why".\nReturn exactly: {"plans":[{"title":"<=6 words","place":{"name":"...","kind":"...","dist":"..."},"when":"e.g. Today 6:30 pm","who":["friend names"],"why":"2 sentences","type":"food|social|outdoor|creative","pitch":"one line in the pet's voice"}]}`;
     const j = await museJSON(system, user, 0.8);
-    const plans = (Array.isArray(j.plans) ? j.plans : []).slice(0, 3).map((p) => ({
-      title: String(p.title || 'Group quest').slice(0, 60), place: { name: String((p.place && p.place.name) || places[0]?.name || 'Downtown'), kind: String((p.place && p.place.kind) || ''), dist: String((p.place && p.place.dist) || '') },
-      when: String(p.when || 'This week').slice(0, 40), who: (Array.isArray(p.who) ? p.who : []).map(String).slice(0, 4), why: String(p.why || '').slice(0, 400),
-      type: ['food', 'social', 'outdoor', 'creative'].includes(p.type) ? p.type : 'social', pitch: String(p.pitch || '').slice(0, 140),
-    }));
-    if (!plans.length) throw new Error('Muse returned no plans');
+    // Never trust model-generated locations or attendee names. The model may
+    // invent venues or invite friends marked as unavailable even with a prompt.
+    const plans = (Array.isArray(j.plans) ? j.plans : []).slice(0, 3).map(p => {
+      if (!p || typeof p !== 'object') return null;
+      const place = placeByName.get(String(p.place?.name || '').trim().toLowerCase());
+      if (!place) return null;
+      return {
+        title: String(p.title || 'Group quest').slice(0, 60),
+        place: { name: place.name, kind: place.kind, dist: place.dist },
+        when: String(p.when || 'This week').slice(0, 40),
+        who: [...new Set((Array.isArray(p.who) ? p.who : []).filter(name => typeof name === 'string' && available.has(name)))].slice(0, 4),
+        why: String(p.why || '').slice(0, 400),
+        type: ['food', 'social', 'outdoor', 'creative'].includes(p.type) ? p.type : 'social',
+        pitch: String(p.pitch || '').slice(0, 140),
+      };
+    }).filter(Boolean);
+    if (plans.length !== 3) throw new Error('Muse returned fewer than three plans at verified places');
     log(`village plan -> ${plans.map((p) => p.title).join(' | ')} (muse)`);
     sendJson(res, 200, { ok: true, plans, engine: 'muse' });
   } catch (e) {
