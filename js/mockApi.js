@@ -161,6 +161,20 @@
 
   let S = load() || freshState();
 
+  // Daily quests and the storybook's "today" entries must not survive midnight.
+  // Keep collection, inventory and lastQuestDay so streaks can continue normally.
+  function ensureDay() {
+    const today = new Date().toDateString();
+    if (S.day === today) return;
+    S.day = today;
+    S.quests = [];
+    S.completed = [];
+    S.questSource = 'seed';
+    S.questDay = null;
+    S.questWriter = null;
+    save();
+  }
+
   function load() {
     try { const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
   }
@@ -389,11 +403,34 @@
   // ------------------------------------------------------------------
   // Public API — each maps to an endpoint in SPECS.md
   // ------------------------------------------------------------------
+  // When run from a static host, the verifier is unavailable. Do not treat
+  // an absent response as unconditional success. Keep the advertised offline
+  // demo playable, but require an actual photo and honour caption curses.
+  function offlineProof(proof, curse) {
+    if (!proof || !['photo', 'voice'].includes(proof.type)) return false;
+    const caption = String(proof.caption || '').trim();
+    if (proof.type === 'photo' && (typeof proof.data !== 'string' ||
+        !/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(proof.data) ||
+        proof.data.length < 11000)) return false;
+    if (proof.type === 'voice' && String(proof.data?.transcript || '').trim().split(/\s+/).length < 4) return false;
+    if (!curse) return true;
+    const words = caption.toLowerCase();
+    if (curse.id === 'pirate') return /\b(arr+|ahoy|matey|aye|ye|avast|scallywag|landlubber)\b/.test(words);
+    if (curse.id === 'shout') return (caption.match(/!/g) || []).length >= 2 ||
+      (caption.replace(/[^A-Z]/g, '').length / Math.max(1, caption.replace(/[^a-z]/gi, '').length)) >= 0.6;
+    if (curse.id === 'rhyme') {
+      const ends = words.split(/[\n.!?;,]+/).map(line => line.trim().split(/\s+/).pop()).filter(w => w && w.length >= 2);
+      return ends.some((w, i) => ends.some((other, j) => j !== i && other.slice(-2) === w.slice(-2)));
+    }
+    return true;
+  }
+
+  const completingQuests = new Set();
   const API = {
     CURSES, BLESSINGS, EGG_PRICE, KEY_PRICE,
 
     /** GET /me */
-    async getMe() { await delay(60); tickDuels(); return snapshot(); },
+    async getMe() { ensureDay(); await delay(60); tickDuels(); return snapshot(); },
 
     /** GET /activity: new notifications since the last poll (prime = mark what is already there as seen) */
     async pollActivity({ prime = false, force = false } = {}) {
@@ -431,6 +468,7 @@
 
     /** GET /quests?lat&lng — SerpApi places + Gemini text when the server runs; seed pool otherwise */
     async getQuests(loc) {
+      ensureDay();
       await delay(60);
       if (!S.quests.length && S.pet) makeQuests();
       const fresh = S.questSource === 'serpapi' && S.questDay === new Date().toDateString();
@@ -439,6 +477,7 @@
     },
     /** POST /quests/refresh — pull a new set of real places (only while nothing is done yet) */
     async refreshQuests(loc) {
+      ensureDay();
       if (S.quests.some(q => q.status !== 'open')) return { ok: false, message: 'Finish today\'s quests first.' };
       S.questSource = 'seed';
       const ok = await fetchRealQuests(loc);
@@ -465,11 +504,14 @@
 
     /** POST /quests/:id/reroll — one free reroll per quest */
     async rerollQuest(id) {
+      ensureDay();
       await delay(300);
       const i = S.quests.findIndex(q => q.id === id);
-      if (i < 0) return null;
+      if (i < 0 || S.quests[i].status !== 'open' || S.quests[i].rerolled) return null;
       const used = S.quests.map(q => q.title);
-      const q = rnd(QUEST_POOL.filter(p => !used.includes(p.title)));
+      const choices = QUEST_POOL.filter(p => !used.includes(p.title));
+      if (!choices.length) return null;
+      const q = rnd(choices);
       S.quests[i] = questFrom(q, { rerolled: true });
       save();
       return publicQuest(S.quests[i]);
@@ -481,11 +523,15 @@
      * heuristic fallback). Rejected proofs return ok:false + rejected:true and no XP.
      */
     async completeQuest(id, proof, demo = null) {
+      ensureDay();
       // demo (settings > Demo events): skip the judge and force outcomes { egg, legendary, levelUp, evolve, raidWin }
       const started = Date.now();
       const q = S.quests.find(x => x.id === id);
       if (!q || q.status !== 'open') return { ok: false, message: 'Quest not found.' };
-      if (!demo && S.activeCurse && S.activeCurse.caption && !(proof.caption && proof.caption.trim().split(/\s+/).length >= 3))
+      if (completingQuests.has(id)) return { ok: false, message: 'This quest is already being verified.' };
+      completingQuests.add(id);
+      try {
+      if (!demo && S.activeCurse && S.activeCurse.caption && !(proof?.caption && proof.caption.trim().split(/\s+/).length >= 3))
         return { ok: false, rejected: true, message: `Cursed! ${S.activeCurse.name}: write a caption with your photo (${S.activeCurse.caption}).`, reasons: [] };
 
       const verdict = demo ? { ok: true, message: 'Demo run: the game master waves you through.', engine: 'mock' } : await remoteJSON('/api/proof/verify', {
@@ -497,6 +543,8 @@
         transcript: proof.type === 'voice' ? proof.data.transcript : undefined,
       });
       if (!demo) await delay(Math.max(0, 1100 - (Date.now() - started)));   // let the judging animation breathe
+      if (!demo && !verdict && !offlineProof(proof, S.activeCurse))
+        return { ok: false, rejected: true, message: 'Could not verify that proof offline. Use a real photo and follow any active curse.', reasons: ['Unverifiable offline proof'], engine: 'fallback' };
       if (verdict && verdict.ok === false)
         return { ok: false, rejected: true, message: verdict.message || 'The game master is not convinced.', reasons: verdict.reasons || [], engine: verdict.engine };
 
@@ -562,11 +610,15 @@
       const reaction = rnd(['Leo: "no way you actually did that"', 'Ana sent you a heart', 'Mia is suddenly questing too', 'Sam\'s owl hooted from vacation']);
       save();
       return { ok: true, message, xpGained: xp, coinsGained: coins, blessed: used.length > 0, blessingsUsed: used, curseLifted, levelUp, level: S.level,
-        egg, readyEggs, evolution, raidDamage, raidWins, reaction, engine: verdict ? verdict.engine : 'mock', state: snapshot(), quest: publicQuest(q) };
+        egg, readyEggs, evolution, raidDamage, raidWins, reaction, engine: verdict ? verdict.engine : 'offline', state: snapshot(), quest: publicQuest(q) };
+      } finally {
+        completingQuests.delete(id);
+      }
     },
 
     /** DEV (settings > Demo events): complete the first open quest with forced outcomes, no proof needed */
     async demoQuest(opts = {}) {
+      ensureDay();
       if (!S.quests.length) makeQuests();
       if (!S.quests.some(x => x.status === 'open')) S.quests.forEach(x => { x.status = 'open'; });
       const q = S.quests.find(x => x.status === 'open');
@@ -622,7 +674,7 @@
     async hatchEgg(id) {
       await delay(200);
       const i = S.eggs.findIndex(e => e.id === id);
-      if (i < 0) return null;
+      if (i < 0 || S.eggs[i].progress < S.eggs[i].needed) return null;
       const egg = S.eggs.splice(i, 1)[0];
       const owned = new Set(allPets().map(p => p.species));
       const pool = Animals.POOL[egg.rarity];
@@ -660,15 +712,18 @@
     /** POST /shop/buy { kind:'egg'|'curse'|'blessing'|'key', id, qty } */
     async buy(kind, id, qty = 1) {
       await delay(150);
-      let price = 0;
-      if (kind === 'egg') price = EGG_PRICE[id];
-      if (kind === 'curse') price = (CURSES.find(c => c.id === id) || {}).price;
-      if (kind === 'blessing') price = (BLESSINGS.find(c => c.id === id) || {}).price;
-      if (kind === 'key') price = qty >= 3 ? 250 : KEY_PRICE * qty;
-      if (!price) return { ok: false, message: 'Unknown item.' };
+      if (!Number.isSafeInteger(qty) || qty < 1 || qty > 99)
+        return { ok: false, message: 'Quantity must be an integer from 1 to 99.' };
+      let unit = 0;
+      if (kind === 'egg') unit = EGG_PRICE[id];
+      if (kind === 'curse') unit = CURSES.find(c => c.id === id)?.price;
+      if (kind === 'blessing') unit = BLESSINGS.find(b => b.id === id)?.price;
+      if (kind === 'key') unit = KEY_PRICE;
+      if (!unit) return { ok: false, message: 'Unknown item.' };
+      const price = kind === 'key' ? Math.floor(qty / 3) * 250 + (qty % 3) * KEY_PRICE : unit * qty;
       if (S.coins < price) return { ok: false, message: `Not enough coins. You need ${price - S.coins} more. Go do a quest!` };
       S.coins -= price;
-      if (kind === 'egg') newEgg(id, 'shop', Math.random() < GACHA.shinyChance);
+      if (kind === 'egg') for (let i = 0; i < qty; i++) newEgg(id, 'shop', Math.random() < GACHA.shinyChance);
       if (kind === 'curse') S.inventory.curses[id] = (S.inventory.curses[id] || 0) + qty;
       if (kind === 'blessing') S.inventory.blessings[id] = (S.inventory.blessings[id] || 0) + qty;
       if (kind === 'key') S.inventory.keys += qty;
@@ -679,9 +734,9 @@
     /** POST /blessings/:id/use — spend a blessing on yourself */
     async useBlessing(id) {
       await delay(100);
-      if (!S.inventory.blessings[id]) return { ok: false, message: 'You do not own that blessing.' };
-      S.inventory.blessings[id]--;
       const b = BLESSINGS.find(x => x.id === id);
+      if (!b || !S.inventory.blessings[id]) return { ok: false, message: 'You do not own that blessing.' };
+      S.inventory.blessings[id]--;
       let message = `${b.name} is active on your next quest.`;
       if (id === 'incubate') { S.eggs.forEach(e => { e.progress = Math.min(e.needed, e.progress + 1); }); message = 'Every egg in the nest got warmer (+1).'; }
       else if (id === 'reroll') { S.quests.forEach(q => { q.rerolled = false; }); message = 'Every quest has a fresh reroll.'; }
@@ -853,11 +908,12 @@
     /** POST /friends/:id/curse { curseId } — uses a scroll from your inventory */
     async sendCurse(friendId, curseId) {
       await delay(200);
+      const f = S.friends.find(x => x.id === friendId), c = CURSES.find(x => x.id === curseId);
+      if (!f || !c) return { ok: false, message: 'Friend or curse not found.' };
       if (!S.inventory.curses[curseId]) return { ok: false, message: 'No scroll left. Buy one in the shop.' };
       S.inventory.curses[curseId]--;
       S.sentCurses[friendId] = curseId;
       save();
-      const f = S.friends.find(x => x.id === friendId), c = CURSES.find(x => x.id === curseId);
       return { ok: true, message: `${f.name}'s ${f.pet.name} got ${c.name}. They have 24h to break it.` };
     },
 
@@ -865,12 +921,13 @@
     async sendBless(friendId, blessingId = 'double') {
       await delay(200);
       const f = S.friends.find(x => x.id === friendId);
+      const b = BLESSINGS.find(x => x.id === blessingId);
+      if (!f || !b) return { ok: false, message: 'Friend or blessing not found.' };
       const today = new Date().toDateString();
       f.blessDay = f.blessDay || null;
       if (blessingId === 'double' && f.blessDay !== today) f.blessDay = today;
       else if (S.inventory.blessings[blessingId]) S.inventory.blessings[blessingId]--;
       else return { ok: false, message: 'You do not own that blessing. The free Double XP is once per friend per day.' };
-      const b = BLESSINGS.find(x => x.id === blessingId);
       save();
       return { ok: true, message: `${f.pet.name} glows. ${f.name} got ${b.name}.` };
     },
@@ -878,7 +935,9 @@
     /** POST /raids/:id/join — costs raid keys */
     async joinRaid(id) {
       await delay(200);
-      const r = S.raids.find(x => x.id === id) || S.raids[0];
+      const r = S.raids.find(x => x.id === id);
+      if (!r) return { ok: false, message: 'Raid not found.' };
+      if (r.hp <= 0) return { ok: false, message: 'This raid has already been defeated.' };
       if (r.members.includes('me')) return { ok: true, raid: r };
       if (S.inventory.keys < r.keys) return { ok: false, message: `This raid needs ${r.keys} key${r.keys > 1 ? 's' : ''}. You have ${S.inventory.keys}. Get more in the shop.` };
       S.inventory.keys -= r.keys; r.members.push('me'); save();
@@ -950,7 +1009,7 @@
     },
 
     /** DEV: wipe demo */
-    async reset() { S = freshState(); save(); return true; },
+    async reset() { completingQuests.clear(); S = freshState(); save(); return true; },
   };
 
   global.API = API;
