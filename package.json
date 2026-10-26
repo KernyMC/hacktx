@@ -3,8 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "description": "Familiars: real-world quest pet game (static front-end + tiny zero-dependency Node backend)",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "start": "node server/server.js"
+    "start": "node server/server.js",
+    "test": "node tools/qa/regression.js",
+    "test:e2e": "node tools/qa/audit.js",
+    "test:minigames": "node tools/qa/allgames.js"
   }
 }

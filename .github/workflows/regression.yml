@@ -1,0 +1,48 @@
+name: Pixlings regression
+on:
+  push:
+    branches: [systems]
+  pull_request:
+    branches: [systems]
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Run browser walkthrough and minigame sweep
+        env:
+          GEMINI_API_KEY: ' '
+          MODEL_API_KEY: ' '
+          SERPAPI_API_KEY: ' '
+          ELEVENLABS_API_KEY: ' '
+        run: |
+          PORT=8099 npm start > /tmp/pixlings-server.log 2>&1 &
+          curl --fail --retry 15 --retry-connrefused --retry-delay 1 http://localhost:8099/api/health
+          npm run test:e2e -- "$RUNNER_TEMP"
+          npm run test:minigames
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pixlings-browser-qa
+          path: |
+            ${{ runner.temp }}/audit_*.png
+            /tmp/pixlings-server.log
+          if-no-files-found: ignore
