@@ -458,7 +458,7 @@ function captionCurseFailure(c, caption) {
   }
   if (id === 'shout') {
     const letters = text.replace(/[^a-z]/gi, '');
-    if (text.replace(/!/g, '').length === text.length &&
+    if ((text.match(/!/g) || []).length < 2 &&
         text.replace(/[^A-Z]/g, '').length / Math.max(1, letters.length) < 0.6) return 'Shout the caption in capital letters or with exclamation marks.';
   }
   if (id === 'shakespeare' && !/\b(thee|thou|thy|thine|hark|forsooth|doth)\b/i.test(text)) return 'Use Shakespearean language in the caption.';
@@ -700,11 +700,13 @@ async function museJSON(system, user, temperature = 0.7) {
   const base = env('MUSE_BASE_URL', 'https://api.meta.ai/v1').replace(/\/$/, '');
   // Muse Spark reasons before it answers and the reasoning counts against max_tokens: keep the budget
   // generous and the effort low, or the JSON never arrives. Extras are dropped on a 400/422 retry.
+  // Keep both attempts inside the client (52 s) and Vercel (60 s) budgets.
+  const deadline = Date.now() + 48000;
   const call = (extras) => fetchWithTimeout(`${base}/chat/completions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env('MODEL_API_KEY')}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(Object.assign({ model: env('MUSE_MODEL', 'muse-spark-1.3'), temperature, max_tokens: 6000, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }, extras)),
-  }, 50000);
+  }, Math.max(100, deadline - Date.now()));
   let r = await call({ response_format: { type: 'json_object' }, reasoning_effort: 'low' });
   if (r.status === 400 || r.status === 422) { log(`Muse rejected the request options (${r.status}); retrying plain`); r = await call({}); }
   if (!r.ok) throw await upstreamError(r, 'Muse');
