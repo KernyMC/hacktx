@@ -25,5 +25,6 @@ const { chromium } = require('playwright');
   const bad = Object.entries(issues).filter(([k, v]) => v.size);
   console.log('games with issues:', bad.length); bad.forEach(([k, v]) => console.log(' ', k, [...v].join(' || ')));
   console.log(Object.entries(hearts).map(([k, v]) => k + ': ' + v).join('\n'));
+  if (bad.length) process.exitCode = 1;
   await b.close();
 })();
