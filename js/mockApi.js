@@ -315,16 +315,21 @@
     if (!S.pet || !loc) return false;
     const a = Animals.A[S.pet.species] || {};
     const qs = new URLSearchParams({ lat: loc.lat, lng: loc.lng, pet: S.pet.name, species: a.name || S.pet.species, flavor: a.flavor || '', curse: S.activeCurse ? S.activeCurse.name : '' });
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 52000);
+    const day = S.day;
     try {
-      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 25000);
-      const r = await fetch(`${API_BASE}/api/quests?${qs}`, { signal: ctl.signal }); clearTimeout(tm);
+      const r = await fetch(`${API_BASE}/api/quests?${qs}`, { signal: ctl.signal });
       if (!(r.headers.get('content-type') || '').includes('json')) return false;
       const j = await r.json();
       if (!j.ok || !Array.isArray(j.quests) || !j.quests.length) return false;
+      // A slow provider response must never replace an already completed quest
+      // or repopulate a different day's quest list.
+      if (day !== S.day || S.quests.some(q => q.status !== 'open')) return false;
       S.quests = j.quests.map(q => questFrom(q, { real: true }));
       S.questSource = 'serpapi'; S.questWriter = j.writer; S.questDay = new Date().toDateString();
       save(); return true;
     } catch (e) { return false; }
+    finally { clearTimeout(tm); }
   }
 
   function publicQuest(q) {
@@ -855,7 +860,7 @@
     /** POST /village/plan: Muse reads the village's week and proposes 3 outings at real places (template offline) */
     async planTogether() {
       const payload = villagePayload();
-      const j = await remoteJSON('/api/village/plan', payload, 30000);
+      const j = await remoteJSON('/api/village/plan', payload, 52000);
       if (j && j.ok && Array.isArray(j.plans) && j.plans.length) return { plans: j.plans, engine: j.engine || 'muse', reason: j.reason || '' };
       return { plans: localPlans(payload), engine: 'template', reason: j ? 'server answered without plans' : 'server unreachable' };
     },
@@ -874,7 +879,7 @@
     async villageChronicle(force) {
       if (!force && S.chronicle && Date.now() - S.chronicle.at < 6 * 3600e3) return S.chronicle;
       const payload = villagePayload();
-      const j = await remoteJSON('/api/village/chronicle', payload, 30000);
+      const j = await remoteJSON('/api/village/chronicle', payload, 52000);
       const out = j && j.ok && Array.isArray(j.paragraphs) && j.paragraphs.length ? { title: j.title, paragraphs: j.paragraphs, engine: j.engine || 'muse' } : localChronicle(payload);
       S.chronicle = Object.assign({ at: Date.now() }, out); save(); return S.chronicle;
     },
