@@ -73,10 +73,28 @@ async function checkRaces() {
   assert.equal((await rerollRefresh).ok, false);
   assert.ok((await api.getQuests()).some(q => q.id === reroll.id));
 
-  // An old Gemini verdict must not credit an entirely new save.
+  // When two manual refreshes overlap, the older failure must not
+  // generate seed quests over the newer request.
+  await api.reset(); await api.hatch({ name: 'QA' });
+  const first = api.refreshQuests(location);
+  const second = api.refreshQuests(location);
+  assert.equal(requests.length, 2);
+  reply({ ok: false });
+  assert.equal((await first).ok, false, 'superseded refresh must not replace quest list');
+  reply({ ok: true, quests: ['D', 'E', 'F'].map(place) });
+  assert.equal((await second).ok, true);
+  assert.ok((await api.getQuests()).every(q => q.real));
+
+  // A running verification must protect its quest against both refresh
+  // and reroll until the verdict has finished.
   quest = (await api.getQuests())[0];
   const judging = api.completeQuest(quest.id, { type: 'photo', data: proof });
   assert.equal(requests.length, 1);
+  assert.equal((await api.refreshQuests(location)).ok, false);
+  assert.equal(await api.rerollQuest(quest.id, location), null);
+  assert.equal(requests.length, 1, 'blocked actions must not trigger another fetch');
+
+  // An old Gemini verdict must not credit an entirely new save.
   await api.reset();
   reply({ ok: true, engine: 'gemini', message: 'verified' });
   assert.equal((await judging).ok, false);
