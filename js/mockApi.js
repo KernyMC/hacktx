@@ -318,7 +318,7 @@
   // or quest list (e.g. if the player rerolled/completed a quest during the fetch).
   let questRequestSeq = 0;
   async function fetchRealQuests(loc) {
-    if (!S.pet || !loc) return false;
+    if (!S.pet || !loc || completingQuests.size) return false;
     const sourceState = S, sourceDay = S.day, request = ++questRequestSeq;
     const questIds = S.quests.map(q => q.id);
     S.questAttemptAt = Date.now(); save();
@@ -334,7 +334,7 @@
       // A slow provider response must never replace an already completed quest
       // or repopulate a different day's quest list.
       if (day !== S.day || sourceDay !== S.day || sourceState !== S || request !== questRequestSeq ||
-          S.quests.some(q => q.status !== 'open') ||
+          completingQuests.size || S.quests.some(q => q.status !== 'open') ||
           S.quests.length !== questIds.length || S.quests.some((q, i) => q.id !== questIds[i])) return false;
       S.quests = j.quests.map(q => questFrom(q, { real: true }));
       S.questSource = 'serpapi'; S.questWriter = j.writer; S.questDay = new Date().toDateString();
@@ -505,9 +505,14 @@
     async refreshQuests(loc) {
       ensureDay();
       if (S.quests.some(q => q.status !== 'open')) return { ok: false, message: 'Finish today\'s quests first.' };
+      if (completingQuests.size) return { ok: false, message: 'Wait until proof verification finishes before refreshing quests.' };
       const state = S, day = S.day, ids = S.quests.map(q => q.id);
-      const ok = await fetchRealQuests(loc);
+      const pending = fetchRealQuests(loc), request = questRequestSeq;
+      const ok = await pending;
       if (!ok) {
+        if (request !== questRequestSeq || completingQuests.size)
+          return { ok: false, message: 'A newer quest request or proof verification is in progress.',
+            source: S.questSource, quests: S.quests.map(publicQuest) };
         // A failed refresh must not replace quests completed or rerolled while waiting,
         // nor recreate quests after the user reset their game.
         if (S !== state || S.day !== day || S.quests.some(q => q.status !== 'open') ||
@@ -540,7 +545,7 @@
     async rerollQuest(id, loc) {
       ensureDay();
       const i = S.quests.findIndex(q => q.id === id);
-      if (i < 0 || S.quests[i].status !== 'open' || S.quests[i].rerolled) return null;
+      if (i < 0 || completingQuests.has(id) || S.quests[i].status !== 'open' || S.quests[i].rerolled) return null;
       let choices;
       if (S.quests[i].real) {
         // A live quest must never reroll into an unrelated fixed Austin demo place.
