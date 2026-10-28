@@ -314,9 +314,13 @@
     S.questSource = 'seed';
   }
   // Real quests: SerpApi places near the player, written by Gemini in the pet's voice (server/server.js).
-  // Keeps the seed quests when the server/SerpApi is unavailable.
+  // Keep seed quests if unavailable. Ignore responses for a previous game, day,
+  // or quest list (e.g. if the player rerolled/completed a quest during the fetch).
+  let questRequestSeq = 0;
   async function fetchRealQuests(loc) {
-    if (!S.pet || !loc) return false;
+    if (!S.pet || !loc || completingQuests.size) return false;
+    const sourceState = S, sourceDay = S.day, request = ++questRequestSeq;
+    const questIds = S.quests.map(q => q.id);
     S.questAttemptAt = Date.now(); save();
     const a = Animals.A[S.pet.species] || {};
     const qs = new URLSearchParams({ lat: loc.lat, lng: loc.lng, pet: S.pet.name, species: a.name || S.pet.species, flavor: a.flavor || '', curse: S.activeCurse ? S.activeCurse.name : '' });
@@ -329,7 +333,9 @@
       if (!j.ok || !Array.isArray(j.quests) || !j.quests.length) return false;
       // A slow provider response must never replace an already completed quest
       // or repopulate a different day's quest list.
-      if (day !== S.day || S.quests.some(q => q.status !== 'open')) return false;
+      if (day !== S.day || sourceDay !== S.day || sourceState !== S || request !== questRequestSeq ||
+          completingQuests.size || S.quests.some(q => q.status !== 'open') ||
+          S.quests.length !== questIds.length || S.quests.some((q, i) => q.id !== questIds[i])) return false;
       S.quests = j.quests.map(q => questFrom(q, { real: true }));
       S.questSource = 'serpapi'; S.questWriter = j.writer; S.questDay = new Date().toDateString();
       save(); return true;
@@ -425,15 +431,21 @@
         !/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(proof.data) ||
         proof.data.length < 11000)) return false;
     if (proof.type === 'voice' && String(proof.data?.transcript || '').trim().split(/\s+/).length < 4) return false;
-    if (!curse) return true;
-    const words = caption.toLowerCase();
-    if (curse.id === 'pirate') return /\b(arr+|ahoy|matey|aye|ye|avast|scallywag|landlubber)\b/.test(words);
-    if (curse.id === 'shout') return (caption.match(/!/g) || []).length >= 2 ||
+    if (!curse || proof.type !== 'photo') return true;
+    const id = curse.id, words = caption.toLowerCase();
+    if (id === 'mime') return !caption;
+    if (!['pirate', 'rhyme', 'shout', 'shakespeare', 'opera', 'whisper'].includes(id)) return true;
+    if (caption.split(/\s+/).length < 3) return false;
+    if (id === 'pirate') return /\b(arr+|ahoy|matey|aye|ye|avast|scallywag|landlubber)\b/.test(words);
+    if (id === 'shout') return (caption.match(/!/g) || []).length >= 2 ||
       (caption.replace(/[^A-Z]/g, '').length / Math.max(1, caption.replace(/[^a-z]/gi, '').length)) >= 0.6;
-    if (curse.id === 'rhyme') {
-      const ends = words.split(/[\n.!?;,]+/).map(line => line.trim().split(/\s+/).pop()).filter(w => w && w.length >= 2);
+    if (id === 'rhyme') {
+      const ends = words.split(/[\n.!?;,]+/).map(line => (line.match(/[a-z0-9']+/g) || []).pop()).filter(w => w && w.length >= 2);
       return ends.some((w, i) => ends.some((other, j) => j !== i && other.slice(-2) === w.slice(-2)));
     }
+    if (id === 'shakespeare') return /\b(thee|thou|thy|thine|hark|forsooth|doth)\b/i.test(caption);
+    if (id === 'opera') return /ooo/i.test(caption);
+    if (id === 'whisper') return !/[A-Z!]/.test(caption);
     return true;
   }
 
@@ -493,9 +505,22 @@
     async refreshQuests(loc) {
       ensureDay();
       if (S.quests.some(q => q.status !== 'open')) return { ok: false, message: 'Finish today\'s quests first.' };
-      S.questSource = 'seed';
-      const ok = await fetchRealQuests(loc);
-      if (!ok) { makeQuests(); save(); }
+      if (completingQuests.size) return { ok: false, message: 'Wait until proof verification finishes before refreshing quests.' };
+      const state = S, day = S.day, ids = S.quests.map(q => q.id);
+      const pending = fetchRealQuests(loc), request = questRequestSeq;
+      const ok = await pending;
+      if (!ok) {
+        if (request !== questRequestSeq || completingQuests.size)
+          return { ok: false, message: 'A newer quest request or proof verification is in progress.',
+            source: S.questSource, quests: S.quests.map(publicQuest) };
+        // A failed refresh must not replace quests completed or rerolled while waiting,
+        // nor recreate quests after the user reset their game.
+        if (S !== state || S.day !== day || S.quests.some(q => q.status !== 'open') ||
+            S.quests.length !== ids.length || S.quests.some((q, i) => q.id !== ids[i]))
+          return { ok: false, message: 'Quests changed during refresh. Your current progress was kept.',
+            source: S.questSource, quests: S.quests.map(publicQuest) };
+        makeQuests(); save();
+      }
       return { ok: true, source: S.questSource, quests: S.quests.map(publicQuest) };
     },
     questInfo() { return { source: S.questSource || 'seed', writer: S.questWriter || null }; },
@@ -520,7 +545,7 @@
     async rerollQuest(id, loc) {
       ensureDay();
       const i = S.quests.findIndex(q => q.id === id);
-      if (i < 0 || S.quests[i].status !== 'open' || S.quests[i].rerolled) return null;
+      if (i < 0 || completingQuests.has(id) || S.quests[i].status !== 'open' || S.quests[i].rerolled) return null;
       let choices;
       if (S.quests[i].real) {
         // A live quest must never reroll into an unrelated fixed Austin demo place.
@@ -556,6 +581,7 @@
       ensureDay();
       // demo (settings > Demo events): skip the judge and force outcomes { egg, legendary, levelUp, evolve, raidWin }
       const started = Date.now();
+      const verifyingState = S, verifyingPet = S.pet, verifyingDay = S.day;
       const q = S.quests.find(x => x.id === id);
       if (!q || q.status !== 'open') return { ok: false, message: 'Quest not found.' };
       if (!demo && (!proof || !['photo', 'voice'].includes(proof.type)))
@@ -575,6 +601,10 @@
         transcript: proof.type === 'voice' ? proof.data.transcript : undefined,
       });
       if (!demo) await delay(Math.max(0, 1100 - (Date.now() - started)));   // let the judging animation breathe
+      ensureDay();
+      if (S !== verifyingState || S.pet !== verifyingPet || S.day !== verifyingDay ||
+          !S.quests.includes(q) || q.status !== 'open')
+        return { ok: false, message: 'This quest changed while proof was being checked. Open the current quest and try again.' };
       if (!demo && !verdict && !offlineProof(proof, S.activeCurse))
         return { ok: false, rejected: true, message: 'Could not verify that proof offline. Use a real photo and follow any active curse.', reasons: ['Unverifiable offline proof'], engine: 'fallback' };
       if (verdict && verdict.ok === false)
@@ -777,11 +807,16 @@
       await delay(100);
       const b = BLESSINGS.find(x => x.id === id);
       if (!b || !S.inventory.blessings[id]) return { ok: false, message: 'You do not own that blessing.' };
-      if (S.blessings.includes(id)) return { ok: false, message: 'That blessing is already active.' };
+      if (S.blessings.includes(id) || (id === 'shield' && S.shield))
+        return { ok: false, message: 'That blessing is already active.' };
+      if (id === 'incubate' && !S.eggs.some(e => e.progress < e.needed))
+        return { ok: false, message: 'No eggs need warming right now.' };
+      if (id === 'reroll' && !S.quests.some(q => q.status === 'open' && q.rerolled))
+        return { ok: false, message: 'No open quests need a fresh reroll.' };
       S.inventory.blessings[id]--;
       let message = `${b.name} is active on your next quest.`;
       if (id === 'incubate') { S.eggs.forEach(e => { e.progress = Math.min(e.needed, e.progress + 1); }); message = 'Every egg in the nest got warmer (+1).'; }
-      else if (id === 'reroll') { S.quests.forEach(q => { q.rerolled = false; }); message = 'Every quest has a fresh reroll.'; }
+      else if (id === 'reroll') { S.quests.filter(q => q.status === 'open').forEach(q => { q.rerolled = false; }); message = 'Every open quest has a fresh reroll.'; }
       else if (id === 'cheer') { if (S.vacation) S.vacation.startMood = 100; S.mood = 100; S.hunger = 100; message = `Picnic! ${S.pet.name} is full and happy.`; }
       else if (id === 'shield') { S.shield = true; message = 'Hex Shield up. The next curse bounces off.'; }
       else if (!S.blessings.includes(id)) S.blessings.push(id);
@@ -1054,7 +1089,7 @@
     },
 
     /** DEV: wipe demo */
-    async reset() { completingQuests.clear(); S = freshState(); save(); return true; },
+    async reset() { completingQuests.clear(); questRequestSeq++; S = freshState(); save(); return true; },
   };
 
   global.API = API;

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node server/server.js",
-    "test": "node tools/qa/regression.js",
+    "test": "node tools/qa/regression.js && node tools/qa/lifecycle.js",
     "test:e2e": "node tools/qa/audit.js",
     "test:minigames": "node tools/qa/allgames.js"
   }

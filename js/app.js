@@ -463,9 +463,11 @@
   // ------------------------------------------------------------------
   // Quest sheet + proof
   // ------------------------------------------------------------------
-  let activeQuest = null, proof = null, proofTab = 'photo';
+  let activeQuest = null, proof = null, proofTab = 'photo', photoLoadId = 0;
 
   function openQuest(q) {
+    // Invalidate an image still being decoded for a previously opened quest.
+    photoLoadId++;
     activeQuest = q; proof = null;
     Audio8.play('open');
     $('qTitle').textContent = q.title;
@@ -533,30 +535,47 @@
   // photos are downscaled before upload (keeps the Gemini call fast and cheap)
   $('photoInput').addEventListener('change', e => {
     const f = e.target.files[0]; if (!f) return;
-    const img = new Image();
+    const request = ++photoLoadId, quest = activeQuest;
+    proof = null; $('qSubmit').disabled = true; $('photoPreview').hidden = true;
+    const img = new Image(), url = URL.createObjectURL(f);
     img.onload = () => {
-      const s = Math.min(1, 1024 / Math.max(img.width, img.height));
-      const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      const data = c.toDataURL('image/jpeg', 0.85); URL.revokeObjectURL(img.src);
-      $('photoPreview').src = data; $('photoPreview').hidden = false; proof = { type: 'photo', data, caption: captionBox().value.trim() }; $('qSubmit').disabled = false; Audio8.play('accept');
+      URL.revokeObjectURL(url);
+      if (request !== photoLoadId || activeQuest !== quest || $('ovQuest').hidden) return;
+      try {
+        const scale = Math.min(1, 1024 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * scale));
+        c.height = Math.max(1, Math.round(img.height * scale));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        const data = c.toDataURL('image/jpeg', 0.85);
+        $('photoPreview').src = data; $('photoPreview').hidden = false;
+        proof = { type: 'photo', data, caption: captionBox().value.trim() };
+        $('qSubmit').disabled = false; Audio8.play('accept');
+      } catch { toast('Could not process that image. Try another photo.'); }
     };
-    img.onerror = () => toast('Could not read that image.');
-    img.src = URL.createObjectURL(f);
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      if (request === photoLoadId && activeQuest === quest) toast('Could not read that image.');
+    };
+    img.src = url;
   });
 
 
   $('qReroll').onclick = async () => {
-    const button = $('qReroll');
-    if (button.disabled) return;
+    const button = $('qReroll'), original = activeQuest;
+    if (button.disabled || !original) return;
     button.disabled = true;
     Audio8.play('tap');
     try {
-      const q = await API.rerollQuest(activeQuest.id, loc);
-      if (q) { openQuest(q); toast('New quest rolled.'); await renderQuests(); }
-      else toast('No different nearby place available. Try again later.');
+      const q = await API.rerollQuest(original.id, loc);
+      if (q) {
+        if (activeQuest === original && !$('ovQuest').hidden) openQuest(q);
+        toast('New quest rolled.'); await renderQuests();
+      } else if (activeQuest === original && !$('ovQuest').hidden) {
+        toast('No different nearby place available. Try again later.');
+      }
     } finally {
-      button.disabled = !!activeQuest.rerolled;
+      button.disabled = !!activeQuest?.rerolled;
     }
   };
 
